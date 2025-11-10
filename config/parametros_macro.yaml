@@ -1,0 +1,40 @@
+# Parámetros Macroeconómicos - 2025
+# Estos valores se usan para proyectar costos y salarios
+
+parametros:
+  # Año de la proyección
+  anio: 2025
+
+  # Inflación y ajustes
+  ipc: 0.052  # 5.2% - Inflación Índice de Precios al Consumidor
+  ipt: 0.065  # 6.5% - Índice de Precios del Transporte
+
+  # Incrementos salariales
+  incremento_salario_minimo: 0.0953  # 9.53%
+  incremento_subsidio_transporte: 0.23457  # 23.46%
+  incremento_salarios_no_minimo: 0.052  # 5.2% (igual al IPC)
+
+  # Salarios y subsidios base
+  salario_minimo_legal_2024: 1300000
+  salario_minimo_legal_2025: 1423900  # Con incremento del 9.53%
+
+  subsidio_transporte_2024: 162000
+  subsidio_transporte_2025: 200000  # Con incremento del 23.46%
+
+  # Otros parámetros
+  dias_laborales_mes: 30
+  horas_laborales_dia: 8
+  dias_laborales_anio: 360
+
+# Parámetros internos (ajustados según necesidad)
+parametros_internos:
+  ipc_interno: 0.09280003490603694
+  ipt_interno: 0.07230006544209266
+  incremento_salario_minimo_interno: 0.12070000000000003
+  incremento_subsidio_transporte_interno: 0.15219834146480227
+  incremento_salarios_no_minimo_interno: 0.09280003490603694
+
+# Notas:
+# - Los parámetros "internos" son ajustes específicos del modelo
+# - Puedes actualizarlos según proyecciones propias o del DANE
+# - Estos valores afectan todos los cálculos de costos del modelo

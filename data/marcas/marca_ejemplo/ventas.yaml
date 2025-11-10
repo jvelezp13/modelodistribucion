@@ -1,0 +1,70 @@
+# Proyección de Ventas - Marca Ejemplo
+# Define las proyecciones de ventas y metas comerciales
+
+marca_id: marca_ejemplo
+
+# Proyección mensual base
+ventas_mensuales:
+  enero: 140000000
+  febrero: 135000000
+  marzo: 150000000
+  abril: 145000000
+  mayo: 155000000
+  junio: 160000000
+  julio: 150000000
+  agosto: 145000000
+  septiembre: 155000000
+  octubre: 165000000
+  noviembre: 180000000  # Temporada alta
+  diciembre: 200000000  # Temporada alta
+
+# Resumen anual
+resumen_anual:
+  total_ventas_anuales: 1880000000  # $1,880 millones/año
+  promedio_mensual: 156666667  # ~$157 millones/mes
+  mes_menor_venta: febrero
+  mes_mayor_venta: diciembre
+  estacionalidad: alta  # alta, media, baja
+
+# Composición de ventas (opcional)
+composicion:
+  # Por canal
+  por_canal:
+    supermercados: 0.40  # 40%
+    minimercados: 0.30  # 30%
+    tradicional: 0.20  # 20%
+    institucional: 0.10  # 10%
+
+  # Por región (si aplica)
+  por_region:
+    antioquia: 0.60  # 60%
+    bogota: 0.25  # 25%
+    otras: 0.15  # 15%
+
+# Metas y objetivos
+metas:
+  crecimiento_anual_objetivo: 0.08  # 8%
+  margen_objetivo: 0.12  # 12%
+  numero_clientes_activos: 250
+  ticket_promedio: 625000  # $625k por pedido
+  frecuencia_compra_mensual: 3  # veces/mes por cliente
+
+# Escenarios de simulación
+escenarios:
+  optimista:
+    factor_crecimiento: 1.15  # +15% sobre proyección base
+    descripcion: "Escenario optimista con expansión agresiva"
+
+  conservador:
+    factor_crecimiento: 0.90  # -10% sobre proyección base
+    descripcion: "Escenario conservador por posible recesión"
+
+  realista:
+    factor_crecimiento: 1.00  # Proyección base
+    descripcion: "Escenario realista basado en históricos"
+
+# Notas:
+# - Las ventas son en pesos colombianos (COP)
+# - La composición debe sumar 100% (1.0) en cada categoría
+# - Los escenarios se pueden usar para simulaciones "what-if"
+# - Actualizar mensualmente con datos reales para mejorar proyecciones

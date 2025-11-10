@@ -1,0 +1,134 @@
+# Recursos Administrativos Compartidos
+# Personal y costos administrativos que se comparten entre todas las marcas
+
+# Personal administrativo compartido
+personal_administrativo:
+  gerente_general:
+    cantidad: 1
+    salario_base: 8000000
+    perfil_prestacional: administrativo  # Factor ~37.8%
+    criterio_prorrateo: ventas  # Se distribuye proporcionalmente a las ventas
+    descripcion: "Gerente general que administra todas las marcas"
+
+  contador:
+    cantidad: 1
+    tipo_contrato: honorarios  # No tiene prestaciones
+    honorarios_mensuales: 3500000
+    criterio_prorrateo: equitativo  # Todas las marcas pagan por igual
+    descripcion: "Contador externo que lleva la contabilidad de todas las marcas"
+
+  auxiliar_administrativo:
+    cantidad: 1
+    salario_base: 1600000
+    perfil_prestacional: administrativo
+    criterio_prorrateo: headcount  # Por cantidad de empleados de cada marca
+    descripcion: "Auxiliar administrativo que apoya todas las operaciones"
+
+  servicios_generales:
+    cantidad: 1
+    salario_base: 1300000
+    perfil_prestacional: administrativo
+    criterio_prorrateo: ventas
+    descripcion: "Persona de aseo y servicios generales de la oficina"
+
+  desarrollador_talentos:
+    cantidad: 0  # Opcional - puede agregarse después
+    salario_base: 3000000
+    perfil_prestacional: administrativo
+    criterio_prorrateo: headcount
+    descripcion: "RRHH - Gestión de talento humano"
+
+  practicante_sena:
+    cantidad: 1
+    salario_base: 975000  # 75% del salario mínimo
+    perfil_prestacional: aprendiz_sena  # Factor ~13%
+    criterio_prorrateo: equitativo
+    descripcion: "Practicante SENA de apoyo administrativo"
+
+# Infraestructura compartida
+infraestructura:
+  oficina:
+    arriendo_mensual: 2500000
+    criterio_prorrateo: ventas
+    descripcion: "Oficina administrativa compartida"
+
+  servicios_publicos:
+    luz: 500000
+    agua: 150000
+    gas: 80000
+    total_mensual: 730000
+    criterio_prorrateo: ventas
+    descripcion: "Servicios públicos de la oficina"
+
+  comunicaciones:
+    internet_telefonia: 350000
+    celulares_corporativos: 200000  # Líneas admin
+    total_mensual: 550000
+    criterio_prorrateo: ventas
+    descripcion: "Internet, telefonía fija y celulares corporativos"
+
+  seguridad:
+    costo_mensual: 600000
+    criterio_prorrateo: ventas
+    descripcion: "Seguridad de la oficina (vigilancia, alarmas)"
+
+  aseo:
+    suministros_mensuales: 200000
+    criterio_prorrateo: ventas
+    descripcion: "Suministros de aseo para la oficina"
+
+# Servicios y tecnología compartida
+servicios:
+  software_erp:
+    costo_mensual: 800000
+    criterio_prorrateo: ventas
+    descripcion: "Sistema ERP para gestión integral"
+
+  software_nomina:
+    costo_mensual: 150000
+    criterio_prorrateo: headcount
+    descripcion: "Software de nómina y RRHH"
+
+  software_contable:
+    costo_mensual: 200000
+    criterio_prorrateo: equitativo
+    descripcion: "Software contable"
+
+  papeleria_suministros:
+    costo_mensual: 250000
+    criterio_prorrateo: ventas
+    descripcion: "Papelería y suministros de oficina"
+
+# Otros gastos administrativos
+otros_gastos:
+  honorarios_abogado:
+    costo_mensual: 500000
+    criterio_prorrateo: equitativo
+    descripcion: "Asesoría legal (opcional)"
+    activo: false  # Desactivado por defecto
+
+  seguros_generales:
+    costo_mensual: 300000
+    criterio_prorrateo: ventas
+    descripcion: "Seguros generales de la empresa"
+    activo: false
+
+  mantenimiento_oficina:
+    costo_mensual: 150000
+    criterio_prorrateo: ventas
+    descripcion: "Mantenimiento y reparaciones de oficina"
+
+# Resumen de costos mensuales aproximados (solo como referencia)
+# NOTA: Los totales reales se calculan automáticamente por el sistema
+resumen_estimado:
+  personal: 18375000  # Gerente + Contador + Aux. + Servicios + Practicante
+  infraestructura: 4630000  # Oficina + Servicios + Comunicaciones + Seguridad + Aseo
+  servicios: 1400000  # Software + Papelería
+  otros: 450000  # Mantenimiento (si está activo)
+  total_estimado: 24855000  # ~$25M/mes compartidos
+
+# Notas:
+# - Todos estos costos se prorratean entre las marcas según el criterio definido
+# - El criterio_prorrateo puede ser: ventas, volumen, headcount, uso_real, equitativo
+# - Los gastos con activo: false no se incluyen en el cálculo
+# - Actualizar valores según la realidad de tu empresa

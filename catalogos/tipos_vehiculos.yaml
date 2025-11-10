@@ -1,0 +1,148 @@
+# Catálogo de Tipos de Vehículos
+# Especificaciones técnicas y costos de cada tipo de vehículo
+
+vehiculos:
+  # Vehículos Ligeros
+  - id: bicicleta_electrica
+    nombre: "Bicicleta Eléctrica"
+    categoria: "ligero"
+    capacidad_ton: 0.05
+    capacidad_m3: 0.2
+    esquemas_disponibles: ["tradicional"]
+    costos:
+      tradicional:
+        compra: 3500000
+        depreciacion_mensual: 58333  # 5 años vida útil
+        mantenimiento_mensual: 80000
+        seguro_mensual: 0
+        combustible_km: 0
+        impuestos_anuales: 0
+
+  - id: motocarro
+    nombre: "Motocarro"
+    categoria: "ligero"
+    capacidad_ton: 0.5
+    capacidad_m3: 1.5
+    esquemas_disponibles: ["renting", "tradicional"]
+    costos:
+      renting:
+        canon_mensual: 1200000
+        combustible_promedio_mensual: 400000
+        lavada_mensual: 40000
+        reposicion_mensual: 50000
+      tradicional:
+        compra: 18000000
+        depreciacion_mensual: 300000  # 5 años
+        mantenimiento_mensual: 250000
+        seguro_mensual: 120000
+        combustible_promedio_mensual: 400000
+        impuestos_anuales: 180000
+
+  # Vehículos Medianos
+  - id: minitruck
+    nombre: "Minitruck"
+    categoria: "mediano"
+    capacidad_ton: 0.77
+    capacidad_m3: 6.45
+    esquemas_disponibles: ["renting", "tradicional"]
+    costos:
+      renting:
+        canon_mensual: 2300000
+        combustible_promedio_mensual: 900000
+        lavada_mensual: 60000
+        reposicion_mensual: 100000
+      tradicional:
+        compra: 45000000
+        depreciacion_mensual: 750000  # 5 años
+        mantenimiento_mensual: 450000
+        seguro_mensual: 280000
+        combustible_promedio_mensual: 900000
+        impuestos_anuales: 450000
+
+  - id: pickup
+    nombre: "Pick up"
+    categoria: "mediano"
+    capacidad_ton: 0.57
+    capacidad_m3: 7.77
+    esquemas_disponibles: ["renting", "tradicional"]
+    costos:
+      renting:
+        canon_mensual: 2500000
+        combustible_promedio_mensual: 1000000
+        lavada_mensual: 60000
+        reposicion_mensual: 120000
+      tradicional:
+        compra: 50000000
+        depreciacion_mensual: 833333  # 5 años
+        mantenimiento_mensual: 500000
+        seguro_mensual: 300000
+        combustible_promedio_mensual: 1000000
+        impuestos_anuales: 500000
+
+  # Vehículos Pesados
+  - id: nhr
+    nombre: "NHR"
+    categoria: "pesado"
+    capacidad_ton: 1.37
+    capacidad_m3: 13.6
+    esquemas_disponibles: ["renting", "tradicional"]
+    costos:
+      renting:
+        canon_mensual: 2800000
+        combustible_promedio_mensual: 1200000
+        lavada_mensual: 80000
+        reposicion_mensual: 150000
+      tradicional:
+        compra: 75000000
+        depreciacion_mensual: 1250000  # 5 años
+        mantenimiento_mensual: 700000
+        seguro_mensual: 450000
+        combustible_promedio_mensual: 1200000
+        impuestos_anuales: 750000
+
+  - id: nkr
+    nombre: "NKR"
+    categoria: "pesado"
+    capacidad_ton: 1.99
+    capacidad_m3: 18.8
+    esquemas_disponibles: ["renting", "tradicional"]
+    costos:
+      renting:
+        canon_mensual: 3200000
+        combustible_promedio_mensual: 1400000
+        lavada_mensual: 90000
+        reposicion_mensual: 180000
+      tradicional:
+        compra: 95000000
+        depreciacion_mensual: 1583333  # 5 años
+        mantenimiento_mensual: 850000
+        seguro_mensual: 550000
+        combustible_promedio_mensual: 1400000
+        impuestos_anuales: 950000
+
+  - id: npr
+    nombre: "NPR"
+    categoria: "pesado"
+    capacidad_ton: 3.48
+    capacidad_m3: 23.3
+    esquemas_disponibles: ["renting", "tradicional"]
+    costos:
+      renting:
+        canon_mensual: 3800000
+        combustible_promedio_mensual: 1600000
+        lavada_mensual: 100000
+        reposicion_mensual: 200000
+      tradicional:
+        compra: 120000000
+        depreciacion_mensual: 2000000  # 5 años
+        mantenimiento_mensual: 1000000
+        seguro_mensual: 650000
+        combustible_promedio_mensual: 1600000
+        impuestos_anuales: 1200000
+
+# Notas:
+# - Los costos son estimados y deben ajustarse según la realidad del mercado
+# - El combustible_promedio_mensual asume un promedio de km recorridos
+# - La depreciación se calcula linealmente a 5 años
+# - Los impuestos_anuales se dividen por 12 para obtener el costo mensual
+# - Actualizar valores según cotizaciones reales

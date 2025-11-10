@@ -1,0 +1,95 @@
+# Configuración Logística - Marca Ejemplo
+# Define todos los recursos logísticos asignados a esta marca
+
+marca_id: marca_ejemplo
+
+# Flota de vehículos
+vehiculos:
+  # Vehículos en esquema RENTING
+  renting:
+    - tipo: nhr  # Referencia a catalogos/tipos_vehiculos.yaml
+      cantidad: 3
+      asignacion: individual  # 100% dedicados a esta marca
+      kilometraje_promedio_mensual: 3000  # km/mes por vehículo
+
+    - tipo: minitruck
+      cantidad: 2
+      asignacion: individual
+      kilometraje_promedio_mensual: 2500
+
+  # Vehículos en esquema TRADICIONAL (propios)
+  tradicional:
+    - tipo: motocarro
+      cantidad: 1
+      asignacion: individual
+      kilometraje_promedio_mensual: 2000
+
+    # Vehículos compartidos con otras marcas
+    - tipo: npr
+      cantidad: 1
+      asignacion: compartido
+      criterio_prorrateo: volumen  # Se prorrateo por volumen transportado
+      porcentaje_uso: 0.5  # 50% del uso para esta marca
+
+# Personal logístico
+personal:
+  # Conductores
+  conductores:
+    - cantidad: 6  # 3 NHR + 2 Minitruck + 1 Motocarro
+      salario_base: 1800000
+      asignacion: individual
+      perfil_prestacional: logistico
+
+  # Auxiliares de entrega
+  auxiliares_entrega:
+    - cantidad: 3  # Para vehículos grandes
+      salario_base: 1423900  # Salario mínimo
+      asignacion: individual
+      perfil_prestacional: logistico
+
+  # Operarios de bodega
+  operarios_bodega:
+    - cantidad: 2
+      salario_base: 1423900
+      asignacion: compartido  # Trabajan para varias marcas
+      criterio_prorrateo: volumen
+      porcentaje_dedicacion: 0.4  # 40% de su tiempo a esta marca
+      perfil_prestacional: logistico
+
+  # Líder logístico
+  lider_logistico:
+    - cantidad: 1
+      salario_base: 3200000
+      asignacion: compartido
+      criterio_prorrateo: ventas
+      porcentaje_dedicacion: 0.5  # 50% a esta marca
+      perfil_prestacional: administrativo
+
+# Infraestructura logística
+infraestructura:
+  # Bodega
+  bodega:
+    metros_cuadrados_ocupados: 200  # m² dedicados a esta marca
+    asignacion: compartido
+    criterio_prorrateo: volumen
+    # El costo se define en data/compartidos/logistica.yaml
+
+  # Equipos de bodega compartidos
+  equipos:
+    montacargas:
+      asignacion: compartido
+      criterio_prorrateo: volumen
+      porcentaje_uso: 0.3
+
+# Volumen proyectado
+proyeccion_volumen:
+  pallets_mensuales: 120  # Pallets estándar/mes
+  metros_cubicos_mensuales: 180  # m³/mes
+  toneladas_mensuales: 45  # Ton/mes
+  entregas_mensuales: 450  # Número de entregas/mes
+
+# Notas:
+# - Los costos de vehículos se toman del catálogo tipos_vehiculos.yaml
+# - El kilometraje_promedio se usa para calcular combustible variable
+# - Los operarios compartidos se prorratean según el volumen manejado
+# - El volumen proyectado se usa para calcular costos variables y prorrateos

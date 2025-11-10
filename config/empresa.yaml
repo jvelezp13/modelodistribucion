@@ -1,0 +1,36 @@
+# Configuración de la Empresa
+# Datos generales de la razón social
+
+empresa:
+  razon_social: "Nexo Distribuciones S.A.S"
+  nit: "900.XXX.XXX-X"
+  ciudad: "Medellín"
+  departamento: "Antioquia"
+  pais: "Colombia"
+
+  # Datos de contacto
+  contacto:
+    telefono: "+57 XXX XXX XXXX"
+    email: "contacto@nexodistribuciones.com"
+    direccion: "Calle XX # XX - XX"
+
+  # Configuración financiera
+  financiero:
+    moneda: "COP"
+    periodo_fiscal: "mensual"  # mensual, trimestral, anual
+    margen_minimo_objetivo: 0.10  # 10% - Margen mínimo esperado
+    margen_optimo_objetivo: 0.15  # 15% - Margen objetivo ideal
+
+  # Configuración operativa
+  operacion:
+    tipo_distribuidor: "multimarcas"
+    esquema_vehiculos_principal: "renting"  # renting, tradicional, mixto
+    regiones_operacion:
+      - "Antioquia"
+      - "Bogotá"
+      # Agregar más regiones según sea necesario
+
+# Notas:
+# - Actualiza estos datos con la información real de tu empresa
+# - El margen_minimo_objetivo se usa para validar la viabilidad de simulaciones
+# - El esquema_vehiculos_principal define el esquema por defecto en simulaciones
