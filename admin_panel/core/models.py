@@ -17,6 +17,7 @@ class Marca(models.Model):
     fecha_modificacion = models.DateTimeField(auto_now=True)
 
     class Meta:
+        db_table = 'dxv_marca'
         verbose_name = "Marca"
         verbose_name_plural = "Marcas"
         ordering = ['nombre']
@@ -80,6 +81,7 @@ class PersonalComercial(models.Model):
     fecha_modificacion = models.DateTimeField(auto_now=True)
 
     class Meta:
+        db_table = 'dxv_personal_comercial'
         verbose_name = "Personal Comercial"
         verbose_name_plural = "Personal Comercial"
         ordering = ['marca', 'tipo']
@@ -140,6 +142,7 @@ class PersonalLogistico(models.Model):
     fecha_modificacion = models.DateTimeField(auto_now=True)
 
     class Meta:
+        db_table = 'dxv_personal_logistico'
         verbose_name = "Personal Logístico"
         verbose_name_plural = "Personal Logístico"
         ordering = ['marca', 'tipo']
@@ -202,6 +205,7 @@ class Vehiculo(models.Model):
     fecha_modificacion = models.DateTimeField(auto_now=True)
 
     class Meta:
+        db_table = 'dxv_vehiculo'
         verbose_name = "Vehículo"
         verbose_name_plural = "Vehículos"
         ordering = ['marca', 'tipo_vehiculo']
@@ -237,6 +241,7 @@ class ProyeccionVentas(models.Model):
     fecha_modificacion = models.DateTimeField(auto_now=True)
 
     class Meta:
+        db_table = 'dxv_proyeccion_ventas'
         verbose_name = "Proyección de Ventas"
         verbose_name_plural = "Proyecciones de Ventas"
         ordering = ['marca', 'anio', 'mes']
@@ -261,6 +266,7 @@ class VolumenOperacion(models.Model):
     fecha_modificacion = models.DateTimeField(auto_now=True)
 
     class Meta:
+        db_table = 'dxv_volumen_operacion'
         verbose_name = "Volumen de Operación"
         verbose_name_plural = "Volúmenes de Operación"
 
@@ -283,6 +289,7 @@ class ParametrosMacro(models.Model):
     fecha_modificacion = models.DateTimeField(auto_now=True)
 
     class Meta:
+        db_table = 'dxv_parametros_macro'
         verbose_name = "Parámetros Macroeconómicos"
         verbose_name_plural = "Parámetros Macroeconómicos"
         ordering = ['-anio']
@@ -318,6 +325,7 @@ class FactorPrestacional(models.Model):
     fecha_modificacion = models.DateTimeField(auto_now=True)
 
     class Meta:
+        db_table = 'dxv_factor_prestacional'
         verbose_name = "Factor Prestacional"
         verbose_name_plural = "Factores Prestacionales"
         ordering = ['perfil']
@@ -374,6 +382,7 @@ class PersonalAdministrativo(models.Model):
     fecha_modificacion = models.DateTimeField(auto_now=True)
 
     class Meta:
+        db_table = 'dxv_personal_administrativo'
         verbose_name = "Personal Administrativo"
         verbose_name_plural = "Personal Administrativo"
         ordering = ['tipo']
@@ -416,6 +425,7 @@ class GastoAdministrativo(models.Model):
     fecha_modificacion = models.DateTimeField(auto_now=True)
 
     class Meta:
+        db_table = 'dxv_gasto_administrativo'
         verbose_name = "Gasto Administrativo"
         verbose_name_plural = "Gastos Administrativos"
         ordering = ['tipo', 'nombre']
@@ -450,6 +460,7 @@ class GastoComercial(models.Model):
     fecha_modificacion = models.DateTimeField(auto_now=True)
 
     class Meta:
+        db_table = 'dxv_gasto_comercial'
         verbose_name = "Gasto Comercial"
         verbose_name_plural = "Gastos Comerciales"
         ordering = ['marca', 'tipo']
@@ -484,6 +495,7 @@ class GastoLogistico(models.Model):
     fecha_modificacion = models.DateTimeField(auto_now=True)
 
     class Meta:
+        db_table = 'dxv_gasto_logistico'
         verbose_name = "Gasto Logístico"
         verbose_name_plural = "Gastos Logísticos"
         ordering = ['marca', 'tipo']
@@ -552,6 +564,7 @@ class Impuesto(models.Model):
     fecha_modificacion = models.DateTimeField(auto_now=True)
 
     class Meta:
+        db_table = 'dxv_impuesto'
         verbose_name = "Impuesto"
         verbose_name_plural = "Impuestos"
         ordering = ['tipo', 'nombre']
