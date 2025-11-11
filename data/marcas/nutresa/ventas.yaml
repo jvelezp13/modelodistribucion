@@ -1,0 +1,72 @@
+# Proyección de Ventas - Nutresa
+# Basado en datos reales del modelo Simula DxV Nutresa 2025
+
+marca_id: nutresa
+
+# Proyección mensual base
+ventas_mensuales:
+  enero: 1280000000
+  febrero: 1220000000
+  marzo: 1350000000
+  abril: 1310000000
+  mayo: 1340000000
+  junio: 1380000000
+  julio: 1300000000
+  agosto: 1360000000
+  septiembre: 1320000000
+  octubre: 1400000000
+  noviembre: 1480000000  # Temporada alta
+  diciembre: 1590000000  # Temporada alta
+
+# Resumen anual
+resumen_anual:
+  total_ventas_anuales: 16330000000  # $16,330 millones/año
+  promedio_mensual: 1360833333  # ~$1,361 millones/mes
+  mes_menor_venta: febrero
+  mes_mayor_venta: diciembre
+  estacionalidad: alta  # Picos en noviembre-diciembre
+
+# Composición de ventas
+composicion:
+  # Por canal
+  por_canal:
+    mayoristas: 0.45  # 45% - Grandes superficies
+    tradicional: 0.35  # 35% - Tiendas de barrio
+    horeca: 0.12  # 12% - Hoteles, restaurantes
+    institucional: 0.08  # 8% - Colegios, empresas
+
+  # Por región
+  por_region:
+    antioquia: 0.40  # 40%
+    bogota: 0.25  # 25%
+    valle: 0.15  # 15%
+    costa: 0.10  # 10%
+    otras: 0.10  # 10%
+
+# Metas y objetivos
+metas:
+  crecimiento_anual_objetivo: 0.08  # 8%
+  margen_objetivo: 0.15  # 15%
+  numero_clientes_activos: 380
+  ticket_promedio: 1113333  # ~$1.1M por pedido
+  frecuencia_compra_mensual: 3.2  # veces/mes por cliente
+
+# Escenarios de simulación
+escenarios:
+  optimista:
+    factor_crecimiento: 1.12  # +12% sobre proyección base
+    descripcion: "Expansión agresiva con nuevos canales"
+
+  conservador:
+    factor_crecimiento: 0.95  # -5% sobre proyección base
+    descripcion: "Escenario conservador por volatilidad económica"
+
+  realista:
+    factor_crecimiento: 1.00  # Proyección base
+    descripcion: "Basado en históricos y tendencias del mercado"
+
+# Notas:
+# - Datos basados en modelo real Simula DxV Nutresa 2025
+# - Ventas anuales: $16,330 millones (~$1,361M/mes promedio)
+# - Fuerte estacionalidad en fin de año
+# - Diversificación de canales y regiones

@@ -1,0 +1,100 @@
+# Configuración Logística - Nutresa
+# Basado en datos reales del modelo Simula DxV Nutresa 2025
+
+marca_id: nutresa
+
+# Flota de vehículos
+vehiculos:
+  # Vehículos en esquema RENTING
+  renting:
+    - tipo: nhr
+      cantidad: 4
+      asignacion: individual
+      kilometraje_promedio_mensual: 3200
+
+    - tipo: minitruck
+      cantidad: 3
+      asignacion: individual
+      kilometraje_promedio_mensual: 2800
+
+    - tipo: motocarro
+      cantidad: 2
+      asignacion: individual
+      kilometraje_promedio_mensual: 2000
+
+  # Vehículos en esquema TRADICIONAL (propios)
+  tradicional:
+    - tipo: nhr
+      cantidad: 2
+      asignacion: individual
+      kilometraje_promedio_mensual: 3000
+
+    - tipo: pickup
+      cantidad: 1
+      asignacion: individual
+      kilometraje_promedio_mensual: 2500
+
+# Personal logístico
+personal:
+  # Conductores
+  conductores:
+    - cantidad: 10
+      salario_base: 2000000
+      asignacion: individual
+      perfil_prestacional: logistico
+
+  # Auxiliares de entrega
+  auxiliares_entrega:
+    - cantidad: 8
+      salario_base: 1600000
+      asignacion: individual
+      perfil_prestacional: logistico
+
+  # Coordinador logístico
+  coordinador_logistica:
+    - cantidad: 1
+      salario_base: 4200000
+      asignacion: individual
+      perfil_prestacional: administrativo
+
+  # Supervisor de bodega
+  supervisor_bodega:
+    - cantidad: 1
+      salario_base: 3000000
+      asignacion: individual
+      perfil_prestacional: logistico
+
+  # Operarios de bodega
+  operarios_bodega:
+    - cantidad: 3
+      salario_base: 1423900
+      asignacion: individual
+      perfil_prestacional: logistico
+
+# Infraestructura logística
+infraestructura:
+  # Bodega
+  bodega:
+    metros_cuadrados_ocupados: 500
+    asignacion: compartido
+    criterio_prorrateo: volumen
+
+  # Equipos de bodega
+  equipos:
+    montacargas:
+      asignacion: compartido
+      criterio_prorrateo: volumen
+      porcentaje_uso: 0.6
+
+# Volumen proyectado
+proyeccion_volumen:
+  pallets_mensuales: 320
+  metros_cubicos_mensuales: 480
+  toneladas_mensuales: 250
+  entregas_mensuales: 1200
+
+# Notas:
+# - Flota mixta: 9 vehículos renting + 3 tradicionales
+# - Equipo logístico: 23 personas
+# - Cobertura: 18 rutas activas en 9 zonas
+# - Alta capacidad operativa acorde a ventas de $1,336M/mes
