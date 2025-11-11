@@ -1,0 +1,76 @@
+# Configuración Comercial - Nutresa
+# Basado en datos reales del modelo Simula DxV Nutresa 2025
+
+marca_id: nutresa
+nombre: "Nutresa"
+
+# Proyección de ventas mensuales (promedio ~$1,336M/mes)
+proyeccion_ventas_mensual: 1360833333  # Promedio mensual
+
+# Fuerza de ventas
+recursos_comerciales:
+  # Vendedores
+  vendedores:
+    - tipo: vendedor_geografico
+      cantidad: 12
+      salario_base: 2800000
+      asignacion: individual
+      perfil_prestacional: comercial
+
+    - tipo: vendedor_senior
+      cantidad: 3
+      salario_base: 3500000
+      asignacion: individual
+      perfil_prestacional: comercial
+
+    - tipo: vendedor_minimercado
+      cantidad: 4
+      salario_base: 2200000
+      asignacion: individual
+      perfil_prestacional: comercial
+      auxilio_adicional: 150000  # Auxilio transporte adicional
+
+  # Supervisores
+  supervisores:
+    - cantidad: 2
+      salario_base: 4500000
+      asignacion: individual
+      perfil_prestacional: comercial
+
+  # Auxiliares de información comercial
+  auxiliares_informacion_comercial:
+    - cantidad: 1
+      salario_base: 3000000
+      asignacion: individual
+      perfil_prestacional: administrativo
+
+  # Coordinador comercial
+  coordinador_comercial:
+    - cantidad: 1
+      salario_base: 5000000
+      asignacion: individual
+      perfil_prestacional: administrativo
+
+# Costos adicionales por vendedor
+costos_adicionales:
+  plan_datos_voz: 45000  # Por vendedor/mes
+  uniformes_anuales: 180000  # Por persona/año
+  gps: 50000  # Por vendedor/mes
+  control_horario: 15000  # Por vendedor/mes
+
+# Gastos de viaje y lejanía
+gastos_viaje:
+  subsidio_lejania_habilitado: true
+  subsidio_lejania_monto: 300000
+  cantidad_vendedores_lejania: 3  # 3 vendedores en zonas alejadas
+
+# Metas y KPIs
+metas:
+  ventas_anuales_objetivo: 16330000000  # $16,330 millones/año
+  margen_objetivo: 0.15  # 15%
+  crecimiento_esperado: 0.08  # 8% anual
+
+# Notas:
+# - Datos basados en modelo real Simula DxV Nutresa 2025
+# - Fuerza comercial robusta de 23 personas
+# - Cobertura en 9 regiones

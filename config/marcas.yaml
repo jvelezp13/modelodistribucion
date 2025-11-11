@@ -2,6 +2,13 @@
 # Define las marcas que se van a simular en el modelo
 
 marcas:
+  # Nutresa - Marca con datos reales del modelo original
+  - id: nutresa
+    nombre: "Nutresa"
+    descripcion: "Distribución multimarcas Nutresa - Datos reales 2025"
+    activa: true
+    color: "#E74C3C"  # Rojo corporativo
+
   # Ejemplo de marca - Puedes duplicar y modificar
   - id: marca_ejemplo
     nombre: "Marca Ejemplo S.A."
