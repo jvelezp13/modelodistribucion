@@ -19,6 +19,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy project files from admin_panel directory
 COPY admin_panel/ /app/
 
+# Copy data and config directories for import command
+COPY data/ /data/
+COPY config/ /config/
+
 # Collect static files
 RUN python manage.py collectstatic --noinput || true
 
