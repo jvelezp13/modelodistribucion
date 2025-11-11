@@ -1,0 +1,29 @@
+# Configuración de Marcas
+# Define las marcas que se van a simular en el modelo
+
+marcas:
+  # Ejemplo de marca - Puedes duplicar y modificar
+  - id: marca_ejemplo
+    nombre: "Marca Ejemplo S.A."
+    descripcion: "Marca de ejemplo para referencia"
+    activa: true
+    color: "#FF6B6B"  # Color para gráficos
+
+  # Agrega tus marcas aquí:
+  # - id: marca_a
+  #   nombre: "Tu Marca A"
+  #   descripcion: "Descripción de la marca"
+  #   activa: true
+  #   color: "#4ECDC4"
+
+  # - id: marca_b
+  #   nombre: "Tu Marca B"
+  #   descripcion: "Otra marca"
+  #   activa: true
+  #   color: "#45B7D1"
+
+# Configuración general de marcas
+configuracion:
+  permitir_recursos_compartidos: true
+  criterio_prorrateo_default: "ventas"  # ventas, volumen, headcount, equitativo
+  calcular_margenes_consolidados: true

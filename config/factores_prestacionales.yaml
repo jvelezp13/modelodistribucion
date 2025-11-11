@@ -1,0 +1,69 @@
+# Factores Prestacionales - Cálculo de Nómina
+# Estos factores se aplican sobre el salario base para calcular el costo total
+
+# PERFIL ADMINISTRATIVO
+# Personal de oficina, gerencia, contabilidad
+administrativo:
+  salud: 0.0  # 0% - La empresa no paga salud para empleados (la paga el empleado)
+  pension: 0.12  # 12% - Pensión obligatoria
+  arl: 0.00522  # 0.522% - Riesgo I (mínimo)
+  cesantias: 0.09371794871794871  # ~9.37%
+  intereses_cesantias: 0.011246153846153847  # ~1.12%
+  prima: 0.09371794871794871  # ~9.37%
+  vacaciones: 0.041666666666666664  # ~4.17% (15 días de 360)
+  dotacion: 0.0  # Variable según salario
+  factor_total: 0.378367890443339  # ~37.8%
+
+# PERFIL COMERCIAL
+# Vendedores, supervisores, personal de ventas
+comercial:
+  salud: 0.0  # 0%
+  pension: 0.12  # 12%
+  arl: 0.0435  # 4.35% - Riesgo IV (vendedores en calle)
+  cesantias: 0.09371794871794871  # ~9.37%
+  intereses_cesantias: 0.011246153846153847  # ~1.12%
+  prima: 0.09371794871794871  # ~9.37%
+  vacaciones: 0.041666666666666664  # ~4.17%
+  dotacion: 0.0  # Variable
+  factor_total: 0.4021820512820512  # ~40.2%
+
+# PERFIL LOGÍSTICO
+# Conductores, auxiliares de entrega, operarios
+logistico:
+  salud: 0.0  # 0%
+  pension: 0.12  # 12%
+  arl: 0.0435  # 4.35% - Riesgo IV (actividades físicas)
+  cesantias: 0.09371794871794871  # ~9.37%
+  intereses_cesantias: 0.011246153846153847  # ~1.12%
+  prima: 0.09371794871794871  # ~9.37%
+  vacaciones: 0.041666666666666664  # ~4.17%
+  dotacion: 0.0  # Variable
+  factor_total: 0.4021820512820512  # ~40.2%
+
+# APRENDIZ SENA
+# Practicantes bajo contrato de aprendizaje
+aprendiz_sena:
+  salud: 0.125  # 12.5% (solo ARL, no pensión)
+  pension: 0.0  # 0% (no aplica)
+  arl: 0.00522  # 0.522%
+  cesantias: 0.0  # 0%
+  intereses_cesantias: 0.0  # 0%
+  prima: 0.0  # 0%
+  vacaciones: 0.0  # 0%
+  dotacion: 0.0  # 0%
+  factor_total: 0.13022  # ~13%
+
+# NOTAS IMPORTANTES:
+# 1. El factor_total es la suma de todos los conceptos prestacionales
+# 2. Se aplica así: Costo Total = Salario Base × (1 + factor_total) + Subsidio Transporte
+# 3. El ARL varía según el nivel de riesgo:
+#    - Riesgo I (0.522%): Oficinas, administrativos
+#    - Riesgo IV (4.35%): Vendedores, conductores, operarios
+# 4. La dotación no está incluida en el factor porque se paga por aparte
+# 5. Estos factores son válidos para Colombia según la legislación vigente
+
+# REFERENCIAS LEGALES:
+# - Código Sustantivo del Trabajo (CST)
+# - Ley 50 de 1990
+# - Ley 789 de 2002
+# - Decreto 1772 de 1994 (ARL)

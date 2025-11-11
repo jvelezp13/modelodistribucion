@@ -1,0 +1,80 @@
+# Configuración Comercial - Marca Ejemplo
+# Define todos los recursos comerciales asignados a esta marca
+
+marca_id: marca_ejemplo
+nombre: "Marca Ejemplo S.A."
+
+# Proyección de ventas mensuales (en pesos)
+proyeccion_ventas_mensual: 150000000  # $150 millones/mes
+
+# Fuerza de ventas
+recursos_comerciales:
+  # Vendedores
+  vendedores:
+    - tipo: vendedor_geografico
+      cantidad: 5
+      salario_base: 2150000
+      asignacion: individual  # 100% dedicado a esta marca
+      perfil_prestacional: comercial  # Referencia a config/factores_prestacionales.yaml
+
+    - tipo: vendedor_senior
+      cantidad: 2
+      salario_base: 2850000
+      asignacion: individual
+      perfil_prestacional: comercial
+
+    - tipo: vendedor_minimercado
+      cantidad: 1
+      salario_base: 2150000
+      asignacion: individual
+      perfil_prestacional: comercial
+      auxilio_adicional: 200000  # Auxilio especial para minimercados
+
+  # Supervisores
+  supervisores:
+    - cantidad: 1
+      salario_base: 3500000
+      asignacion: compartido  # Se comparte con otras marcas
+      criterio_prorrateo: ventas
+      porcentaje_dedicacion: 0.6  # 60% de su tiempo a esta marca
+      perfil_prestacional: comercial
+
+  # Auxiliares
+  auxiliares_informacion_comercial:
+    - cantidad: 1
+      salario_base: 1800000
+      asignacion: individual
+      perfil_prestacional: administrativo
+
+  # Supernumerarios (temporales, por picos de venta)
+  supernumerarios:
+    cantidad: 1
+    salario_base: 1423900  # Salario mínimo
+    meses_activos: 12  # Cuántos meses del año trabajan
+    perfil_prestacional: comercial
+
+# Costos adicionales por vendedor
+costos_adicionales:
+  plan_datos_voz: 35000  # Por vendedor/mes
+  uniformes_anuales: 150000  # Por persona/año
+  gps: 45000  # Por vendedor/mes
+  control_horario: 12000  # Por vendedor/mes
+
+# Gastos de viaje y lejanía
+gastos_viaje:
+  # Si aplica, para vendedores en zonas lejanas
+  subsidio_lejania_habilitado: false
+  subsidio_lejania_monto: 0
+  cantidad_vendedores_lejania: 0
+
+# Metas y KPIs (opcional)
+metas:
+  ventas_anuales_objetivo: 1800000000  # $1,800 millones/año
+  margen_objetivo: 0.12  # 12%
+  crecimiento_esperado: 0.08  # 8% anual
+
+# Notas:
+# - Los salarios son mensuales en pesos colombianos
+# - Las prestaciones se calculan automáticamente según el perfil_prestacional
+# - Los costos adicionales se suman al costo total de cada vendedor
+# - El prorrateo de supervisores compartidos se hace automáticamente
