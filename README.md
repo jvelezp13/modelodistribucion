@@ -13,7 +13,8 @@
 5. [Rubros y Relaciones](#-rubros-y-relaciones)
 6. [Estructura del Proyecto](#-estructura-del-proyecto)
 7. [Guía de Uso](#-guía-de-uso)
-8. [Roadmap](#-roadmap)
+8. [Gestión de Rubros y Flexibilidad](#-gestión-de-rubros-y-flexibilidad)
+9. [Roadmap](#-roadmap)
 
 ---
 
@@ -668,6 +669,278 @@ costos_adicionales:
 4. Crear `data/marcas/nueva_marca/ventas.yaml`
 5. Actualizar `config/marcas.yaml` para incluir la nueva marca
 6. Ejecutar la simulación
+
+---
+
+## 🔧 Gestión de Rubros y Flexibilidad
+
+Uno de los pilares fundamentales del sistema es la **flexibilidad total** para agregar, modificar y eliminar rubros sin tocar código.
+
+### Filosofía de Diseño: YAML + Git (Fase 1)
+
+**¿Por qué YAML en lugar de Base de Datos al inicio?**
+
+El sistema usa archivos YAML por estas ventajas clave:
+
+✅ **Súper fácil de editar** - Cualquier editor de texto
+✅ **Versionamiento completo** - Git rastrea todos los cambios
+✅ **Sin infraestructura** - No necesitas servidor de BD
+✅ **Flexible y humano** - Comentarios, visual, entendible
+✅ **Perfecto para iterar** - Cambios inmediatos, sin migraciones
+
+### ¿Cómo Agregar/Modificar/Eliminar Rubros?
+
+#### Agregar un Nuevo Rubro
+
+**Opción 1: Editar directamente el YAML**
+
+```yaml
+# data/marcas/mi_marca/comercial.yaml
+
+vendedores:
+  # Rubro existente
+  - tipo: vendedor_geografico
+    cantidad: 5
+    salario_base: 2150000
+    asignacion: individual
+
+  # NUEVO RUBRO - Solo agrégalo aquí!
+  - tipo: vendedor_ecommerce
+    cantidad: 2
+    salario_base: 2400000
+    asignacion: individual
+    bono_ventas_online: 300000  # Campo personalizado
+```
+
+**Opción 2: Usar el Panel de Gestión (próximamente)**
+
+El sistema incluirá un panel web donde podrás:
+- Ver todos los rubros activos
+- Agregar nuevos rubros con formulario
+- Modificar valores existentes
+- Desactivar rubros obsoletos
+- Ver historial de cambios
+
+#### Modificar un Rubro Existente
+
+Simplemente edita el archivo YAML:
+
+```yaml
+# Cambiar salario de vendedores
+vendedores:
+  - tipo: vendedor_geografico
+    cantidad: 5
+    salario_base: 2300000  # ← Cambié de 2150000 a 2300000
+    asignacion: individual
+```
+
+Guarda, haz commit en Git, y listo.
+
+#### Eliminar/Desactivar un Rubro
+
+**Opción 1: Comentar (mantiene histórico)**
+```yaml
+vendedores:
+  # - tipo: vendedor_minimercado  # ← Ya no lo usamos
+  #   cantidad: 1
+  #   salario_base: 2150000
+```
+
+**Opción 2: Eliminar completamente**
+```yaml
+vendedores:
+  # Eliminado: vendedor_minimercado
+  - tipo: vendedor_geografico
+    cantidad: 5
+```
+
+### Catálogo Central de Rubros
+
+El sistema mantiene un **catálogo maestro** de todos los tipos de rubros disponibles:
+
+**`catalogos/rubros.yaml`** - Define qué rubros puedes usar
+
+```yaml
+rubros_disponibles:
+  - id: vendedor_geografico
+    nombre: "Vendedor Geográfico"
+    categoria: comercial
+    tipo: personal
+    campos_requeridos:
+      - cantidad
+      - salario_base
+    campos_opcionales:
+      - comision_porcentaje
+      - auxilio_adicional
+    asignacion_permitida: [individual, compartido]
+    activo: true
+
+  - id: vehiculo_nhr
+    nombre: "Vehículo NHR"
+    categoria: logistica
+    tipo: vehiculo
+    esquemas: [renting, tradicional]
+    activo: true
+```
+
+**Ventajas del catálogo:**
+- Validación automática de datos
+- Autocompletado en interfaces
+- Documentación incluida
+- Control de qué rubros están activos
+
+### Sistema de Validación Flexible
+
+El `RubroManager` valida que:
+- Los rubros usados existan en el catálogo
+- Los campos requeridos estén presentes
+- Los valores sean del tipo correcto
+- La asignación (individual/compartido) sea válida
+
+Pero NO te limita - puedes agregar campos personalizados cuando lo necesites.
+
+### Versionamiento y Auditoría
+
+**Cada cambio queda registrado en Git:**
+
+```bash
+# Ver historial de cambios en una marca
+git log --oneline data/marcas/marca_a/comercial.yaml
+
+# Ver qué cambió exactamente
+git diff HEAD~1 data/marcas/marca_a/comercial.yaml
+
+# Revertir un cambio
+git checkout HEAD~1 data/marcas/marca_a/comercial.yaml
+```
+
+**Ventajas:**
+- Sabes quién cambió qué y cuándo
+- Puedes revertir errores
+- Comparas versiones fácilmente
+- Auditoría completa sin BD
+
+### Migración Futura a Base de Datos
+
+**¿Cuándo migrar a BD?**
+
+Cuando necesites:
+- ✅ Interfaz web para usuarios no técnicos
+- ✅ Más de 10 usuarios editando simultáneamente
+- ✅ Guardar miles de simulaciones históricas
+- ✅ Integración automática con ERP/sistemas contables
+- ✅ APIs para terceros
+
+**Estrategia de migración:**
+
+```
+Fase 1 (Hoy - 6 meses): YAML + Git
+  ↓ Migración gradual
+Fase 2 (6-12 meses): Híbrido (YAML + BD)
+  ↓ Migración completa
+Fase 3 (>12 meses): BD + API + Multi-usuario
+```
+
+**Lo mejor: La migración NO rompe nada**
+
+El código usa una capa de abstracción (`DataLoader`) que puede leer de YAML o BD:
+
+```python
+# El mismo código funciona con YAML o BD
+marca = data_loader.cargar_marca("marca_a")
+
+# Internamente puede leer de:
+# - YAML: data/marcas/marca_a/comercial.yaml
+# - BD: SELECT * FROM marcas WHERE id = 'marca_a'
+```
+
+Cambias la fuente de datos sin cambiar la lógica del sistema.
+
+### Ejemplos Prácticos de Flexibilidad
+
+**Ejemplo 1: Agregar nuevo tipo de vendedor**
+
+```yaml
+# En 30 segundos agregas un nuevo perfil:
+vendedores:
+  - tipo: vendedor_farmacia
+    cantidad: 3
+    salario_base: 2500000
+    comision_porcentaje: 0.02
+    certificacion_requerida: true
+    bono_certificacion: 200000
+```
+
+**Ejemplo 2: Crear rubro completamente personalizado**
+
+```yaml
+# Quieres trackear influencers digitales?
+marketing_digital:
+  - tipo: influencer_instagram
+    cantidad: 2
+    pago_mensual: 1500000
+    alcance_promedio: 50000
+    engagement_rate: 0.08
+    asignacion: individual
+```
+
+El sistema lo procesa automáticamente.
+
+**Ejemplo 3: Cambiar criterio de prorrateo**
+
+```yaml
+# Cambiar cómo se distribuye el gerente entre marcas
+gerente_general:
+  salario_base: 8000000
+  criterio_prorrateo: headcount  # ← Cambié de "ventas" a "headcount"
+```
+
+Un cambio, impacto inmediato en todos los cálculos.
+
+### Mejores Prácticas
+
+**1. Usa nombres descriptivos**
+```yaml
+# ❌ Malo
+- tipo: v1
+  cantidad: 5
+
+# ✅ Bueno
+- tipo: vendedor_tradicional
+  cantidad: 5
+```
+
+**2. Comenta tus cambios**
+```yaml
+# 2025-11-10: Incremento salarial por inflación
+vendedores:
+  - tipo: vendedor_geografico
+    salario_base: 2300000  # Antes: 2150000
+```
+
+**3. Haz commits frecuentes**
+```bash
+git commit -m "Incrementar salarios vendedores 7% por inflación"
+```
+
+**4. Usa ramas para experimentos**
+```bash
+git checkout -b experimento/salarios-competitivos
+# Haz cambios experimentales
+# Si funciona: merge
+# Si no: descarta la rama
+```
+
+### Resumen
+
+🎯 **El sistema es flexible por diseño:**
+- Agrega rubros → Edita YAML
+- Modifica valores → Edita YAML
+- Elimina rubros → Comenta o borra en YAML
+- Todo versionado → Git automático
+- Migración futura → Sin romper nada
+
+No hay límites artificiales. Si necesitas trackear algo nuevo, simplemente agrégalo.
 
 ---
 

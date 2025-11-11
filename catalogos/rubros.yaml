@@ -1,0 +1,571 @@
+# Catálogo Central de Rubros
+# Define todos los tipos de rubros disponibles en el sistema
+
+# Este archivo es el "diccionario" del sistema - define qué rubros puedes usar
+# y qué campos son válidos para cada uno.
+
+rubros_disponibles:
+  # ============================================================================
+  # RUBROS COMERCIALES - Personal de ventas
+  # ============================================================================
+
+  - id: vendedor_geografico
+    nombre: "Vendedor Geográfico"
+    categoria: comercial
+    tipo: personal
+    descripcion: "Vendedor tradicional que cubre una zona geográfica"
+    campos_requeridos:
+      - cantidad
+      - salario_base
+    campos_opcionales:
+      - comision_porcentaje
+      - auxilio_adicional
+      - zona_asignada
+    asignacion_permitida: [individual, compartido]
+    perfil_prestacional: comercial
+    subsidio_transporte: true
+    activo: true
+
+  - id: vendedor_senior
+    nombre: "Vendedor Senior"
+    categoria: comercial
+    tipo: personal
+    descripcion: "Vendedor con mayor experiencia y responsabilidades"
+    campos_requeridos:
+      - cantidad
+      - salario_base
+    campos_opcionales:
+      - bono_senioridad
+      - clientes_clave
+    asignacion_permitida: [individual, compartido]
+    perfil_prestacional: comercial
+    subsidio_transporte: true
+    activo: true
+
+  - id: vendedor_consumo_local
+    nombre: "Vendedor Consumo Local"
+    categoria: comercial
+    tipo: personal
+    descripcion: "Vendedor especializado en tiendas de barrio"
+    campos_requeridos:
+      - cantidad
+      - salario_base
+    campos_opcionales:
+      - costo_salario_diferencial
+    asignacion_permitida: [individual, compartido]
+    perfil_prestacional: comercial
+    subsidio_transporte: true
+    activo: true
+
+  - id: vendedor_minimercado
+    nombre: "Vendedor Minimercado"
+    categoria: comercial
+    tipo: personal
+    descripcion: "Vendedor especializado en minimercados"
+    campos_requeridos:
+      - cantidad
+      - salario_base
+    campos_opcionales:
+      - auxilio_adicional
+    asignacion_permitida: [individual, compartido]
+    perfil_prestacional: comercial
+    subsidio_transporte: true
+    activo: true
+
+  - id: vendedor_especializado_droguerias
+    nombre: "Vendedor Especializado de Droguerías"
+    categoria: comercial
+    tipo: personal
+    descripcion: "Vendedor especializado en canal farma"
+    campos_requeridos:
+      - cantidad
+      - salario_base
+    campos_opcionales:
+      - certificacion_farma
+      - auxilio_adicional
+    asignacion_permitida: [individual, compartido]
+    perfil_prestacional: comercial
+    subsidio_transporte: true
+    activo: true
+
+  - id: vendedor_snacker
+    nombre: "Vendedor Snacker"
+    categoria: comercial
+    tipo: personal
+    descripcion: "Vendedor especializado en snacks"
+    campos_requeridos:
+      - cantidad
+      - salario_base
+    asignacion_permitida: [individual, compartido]
+    perfil_prestacional: comercial
+    subsidio_transporte: true
+    activo: true
+
+  - id: vendedor_televenta
+    nombre: "Vendedor Televenta"
+    categoria: comercial
+    tipo: personal
+    descripcion: "Vendedor que trabaja por teléfono/remoto"
+    campos_requeridos:
+      - cantidad
+      - salario_base
+    campos_opcionales:
+      - costo_plan_datos
+    asignacion_permitida: [individual, compartido]
+    perfil_prestacional: comercial
+    subsidio_transporte: true
+    activo: true
+
+  - id: desarrollador_comercial
+    nombre: "Desarrollador Comercial"
+    categoria: comercial
+    tipo: personal
+    descripcion: "Desarrolla nuevos clientes y mercados"
+    campos_requeridos:
+      - cantidad
+      - salario_base
+    campos_opcionales:
+      - bono_nuevos_clientes
+    asignacion_permitida: [individual, compartido]
+    perfil_prestacional: comercial
+    subsidio_transporte: true
+    activo: true
+
+  - id: asesor_tecnico
+    nombre: "Asesor Técnico"
+    categoria: comercial
+    tipo: personal
+    descripcion: "Asesor técnico de productos"
+    campos_requeridos:
+      - cantidad
+      - salario_base
+    campos_opcionales:
+      - certificaciones
+    asignacion_permitida: [individual, compartido]
+    perfil_prestacional: comercial
+    subsidio_transporte: true
+    activo: true
+
+  - id: supervisor_ventas
+    nombre: "Supervisor de Ventas"
+    categoria: comercial
+    tipo: personal
+    descripcion: "Supervisor que coordina equipo de vendedores"
+    campos_requeridos:
+      - cantidad
+      - salario_base
+    campos_opcionales:
+      - vendedores_a_cargo
+      - subsidio_lejania
+    asignacion_permitida: [individual, compartido]
+    perfil_prestacional: comercial
+    subsidio_transporte: true
+    activo: true
+
+  - id: auxiliar_informacion_comercial
+    nombre: "Auxiliar de Información Comercial"
+    categoria: comercial
+    tipo: personal
+    descripcion: "Auxiliar administrativo del área comercial"
+    campos_requeridos:
+      - cantidad
+      - salario_base
+    asignacion_permitida: [individual, compartido]
+    perfil_prestacional: administrativo  # Trabaja en oficina
+    subsidio_transporte: true
+    activo: true
+
+  - id: supernumerario_ventas
+    nombre: "Supernumerario de Ventas"
+    categoria: comercial
+    tipo: personal
+    descripcion: "Personal temporal para picos de venta"
+    campos_requeridos:
+      - cantidad
+      - salario_base
+    campos_opcionales:
+      - meses_activos  # Cuántos meses del año trabajan
+    asignacion_permitida: [individual]
+    perfil_prestacional: comercial
+    subsidio_transporte: true
+    activo: true
+
+  # ============================================================================
+  # RUBROS LOGÍSTICOS - Vehículos
+  # ============================================================================
+
+  - id: vehiculo_bicicleta_electrica
+    nombre: "Vehículo Bicicleta Eléctrica"
+    categoria: logistica
+    tipo: vehiculo
+    descripcion: "Bicicleta eléctrica para entregas ligeras"
+    campos_requeridos:
+      - cantidad
+      - tipo_esquema  # tradicional
+    campos_opcionales:
+      - kilometraje_promedio_mensual
+    asignacion_permitida: [individual, compartido]
+    esquemas_disponibles: [tradicional]
+    activo: true
+
+  - id: vehiculo_motocarro
+    nombre: "Vehículo Motocarro"
+    categoria: logistica
+    tipo: vehiculo
+    descripcion: "Motocarro 0.5 Ton"
+    campos_requeridos:
+      - cantidad
+      - tipo_esquema  # renting o tradicional
+    campos_opcionales:
+      - kilometraje_promedio_mensual
+    asignacion_permitida: [individual, compartido]
+    esquemas_disponibles: [renting, tradicional]
+    activo: true
+
+  - id: vehiculo_minitruck
+    nombre: "Vehículo Minitruck"
+    categoria: logistica
+    tipo: vehiculo
+    descripcion: "Minitruck 0.77 Ton - 6.45 m³"
+    campos_requeridos:
+      - cantidad
+      - tipo_esquema
+    campos_opcionales:
+      - kilometraje_promedio_mensual
+    asignacion_permitida: [individual, compartido]
+    esquemas_disponibles: [renting, tradicional]
+    activo: true
+
+  - id: vehiculo_pickup
+    nombre: "Vehículo Pick up"
+    categoria: logistica
+    tipo: vehiculo
+    descripcion: "Pick up 0.57 Ton - 7.77 m³"
+    campos_requeridos:
+      - cantidad
+      - tipo_esquema
+    campos_opcionales:
+      - kilometraje_promedio_mensual
+    asignacion_permitida: [individual, compartido]
+    esquemas_disponibles: [renting, tradicional]
+    activo: true
+
+  - id: vehiculo_nhr
+    nombre: "Vehículo NHR"
+    categoria: logistica
+    tipo: vehiculo
+    descripcion: "NHR 1.37 Ton - 13.6 m³"
+    campos_requeridos:
+      - cantidad
+      - tipo_esquema
+    campos_opcionales:
+      - kilometraje_promedio_mensual
+    asignacion_permitida: [individual, compartido]
+    esquemas_disponibles: [renting, tradicional]
+    activo: true
+
+  - id: vehiculo_nkr
+    nombre: "Vehículo NKR"
+    categoria: logistica
+    tipo: vehiculo
+    descripcion: "NKR 1.99 Ton - 18.8 m³"
+    campos_requeridos:
+      - cantidad
+      - tipo_esquema
+    campos_opcionales:
+      - kilometraje_promedio_mensual
+    asignacion_permitida: [individual, compartido]
+    esquemas_disponibles: [renting, tradicional]
+    activo: true
+
+  - id: vehiculo_npr
+    nombre: "Vehículo NPR"
+    categoria: logistica
+    tipo: vehiculo
+    descripcion: "NPR 3.48 Ton - 23.3 m³"
+    campos_requeridos:
+      - cantidad
+      - tipo_esquema
+    campos_opcionales:
+      - kilometraje_promedio_mensual
+    asignacion_permitida: [individual, compartido]
+    esquemas_disponibles: [renting, tradicional]
+    activo: true
+
+  # ============================================================================
+  # RUBROS LOGÍSTICOS - Personal
+  # ============================================================================
+
+  - id: conductor
+    nombre: "Conductor"
+    categoria: logistica
+    tipo: personal
+    descripcion: "Conductor de vehículo de distribución"
+    campos_requeridos:
+      - cantidad
+      - salario_base
+    campos_opcionales:
+      - vehiculo_asignado
+      - licencia_categoria
+    asignacion_permitida: [individual, compartido]
+    perfil_prestacional: logistico
+    subsidio_transporte: true
+    activo: true
+
+  - id: auxiliar_entrega
+    nombre: "Auxiliar de Entrega"
+    categoria: logistica
+    tipo: personal
+    descripcion: "Auxiliar que acompaña al conductor"
+    campos_requeridos:
+      - cantidad
+      - salario_base
+    asignacion_permitida: [individual, compartido]
+    perfil_prestacional: logistico
+    subsidio_transporte: true
+    activo: true
+
+  - id: operario_bodega
+    nombre: "Operario de Bodega"
+    categoria: logistica
+    tipo: personal
+    descripcion: "Operario de almacén y bodega"
+    campos_requeridos:
+      - cantidad
+      - salario_base
+    asignacion_permitida: [individual, compartido]
+    perfil_prestacional: logistico
+    subsidio_transporte: true
+    activo: true
+
+  - id: lider_logistico
+    nombre: "Líder Logístico"
+    categoria: logistica
+    tipo: personal
+    descripcion: "Líder del área logística"
+    campos_requeridos:
+      - cantidad
+      - salario_base
+    asignacion_permitida: [individual, compartido]
+    perfil_prestacional: administrativo
+    subsidio_transporte: true
+    activo: true
+
+  - id: supernumerario_logistica
+    nombre: "Supernumerario Logística"
+    categoria: logistica
+    tipo: personal
+    descripcion: "Personal temporal para picos de demanda logística"
+    campos_requeridos:
+      - cantidad
+      - salario_base
+    campos_opcionales:
+      - meses_activos
+    asignacion_permitida: [individual]
+    perfil_prestacional: logistico
+    subsidio_transporte: true
+    activo: true
+
+  # ============================================================================
+  # RUBROS ADMINISTRATIVOS - Personal
+  # ============================================================================
+
+  - id: gerente_general
+    nombre: "Gerente General"
+    categoria: administrativa
+    tipo: personal
+    descripcion: "Gerente general de la operación"
+    campos_requeridos:
+      - cantidad
+      - salario_base
+    asignacion_permitida: [compartido]  # Siempre compartido
+    perfil_prestacional: administrativo
+    subsidio_transporte: false  # Salario alto
+    criterio_prorrateo_default: ventas
+    activo: true
+
+  - id: auxiliar_administrativo
+    nombre: "Auxiliar Administrativo"
+    categoria: administrativa
+    tipo: personal
+    descripcion: "Auxiliar administrativo general"
+    campos_requeridos:
+      - cantidad
+      - salario_base
+    asignacion_permitida: [individual, compartido]
+    perfil_prestacional: administrativo
+    subsidio_transporte: true
+    activo: true
+
+  - id: contador
+    nombre: "Contador"
+    categoria: administrativa
+    tipo: honorarios
+    descripcion: "Contador externo (honorarios)"
+    campos_requeridos:
+      - cantidad
+      - honorarios_mensuales
+    asignacion_permitida: [compartido]
+    tiene_prestaciones: false
+    criterio_prorrateo_default: equitativo
+    activo: true
+
+  - id: servicios_generales
+    nombre: "Servicios Generales"
+    categoria: administrativa
+    tipo: personal
+    descripcion: "Personal de aseo y oficios varios"
+    campos_requeridos:
+      - cantidad
+      - salario_base
+    asignacion_permitida: [compartido]
+    perfil_prestacional: administrativo
+    subsidio_transporte: true
+    activo: true
+
+  - id: desarrollador_talentos
+    nombre: "Desarrollador de Talentos"
+    categoria: administrativa
+    tipo: personal
+    descripcion: "Profesional de RRHH"
+    campos_requeridos:
+      - cantidad
+      - salario_base
+    asignacion_permitida: [compartido]
+    perfil_prestacional: administrativo
+    subsidio_transporte: false
+    activo: false  # Opcional, desactivado por defecto
+
+  - id: practicante_sena
+    nombre: "Practicante SENA"
+    categoria: administrativa
+    tipo: personal
+    descripcion: "Practicante bajo contrato de aprendizaje"
+    campos_requeridos:
+      - cantidad
+      - salario_base  # 75% del salario mínimo
+    asignacion_permitida: [individual, compartido]
+    perfil_prestacional: aprendiz_sena
+    subsidio_transporte: false
+    activo: true
+
+  # ============================================================================
+  # RUBROS ADMINISTRATIVOS - Infraestructura y Servicios
+  # ============================================================================
+
+  - id: arriendo_oficina
+    nombre: "Arriendo de Oficina"
+    categoria: administrativa
+    tipo: infraestructura
+    descripcion: "Arriendo mensual de oficina administrativa"
+    campos_requeridos:
+      - costo_mensual
+    campos_opcionales:
+      - metros_cuadrados
+      - direccion
+    asignacion_permitida: [compartido]
+    criterio_prorrateo_default: ventas
+    activo: true
+
+  - id: servicios_publicos_oficina
+    nombre: "Servicios Públicos Oficina"
+    categoria: administrativa
+    tipo: servicio
+    descripcion: "Luz, agua, gas de oficina"
+    campos_requeridos:
+      - costo_mensual
+    asignacion_permitida: [compartido]
+    criterio_prorrateo_default: ventas
+    activo: true
+
+  - id: internet_telefonia
+    nombre: "Internet y Telefonía"
+    categoria: administrativa
+    tipo: servicio
+    descripcion: "Internet, telefonía fija y celulares corporativos"
+    campos_requeridos:
+      - costo_mensual
+    asignacion_permitida: [compartido]
+    criterio_prorrateo_default: ventas
+    activo: true
+
+  - id: software_erp
+    nombre: "Software ERP"
+    categoria: administrativa
+    tipo: software
+    descripcion: "Sistema ERP de gestión"
+    campos_requeridos:
+      - costo_mensual
+    campos_opcionales:
+      - nombre_sistema
+      - numero_licencias
+    asignacion_permitida: [compartido]
+    criterio_prorrateo_default: ventas
+    activo: true
+
+  - id: papeleria_suministros
+    nombre: "Papelería y Suministros"
+    categoria: administrativa
+    tipo: servicio
+    descripcion: "Papelería y suministros de oficina"
+    campos_requeridos:
+      - costo_mensual
+    asignacion_permitida: [compartido]
+    criterio_prorrateo_default: ventas
+    activo: true
+
+  - id: seguridad_oficina
+    nombre: "Seguridad de Oficina"
+    categoria: administrativa
+    tipo: servicio
+    descripcion: "Vigilancia y alarmas"
+    campos_requeridos:
+      - costo_mensual
+    asignacion_permitida: [compartido]
+    criterio_prorrateo_default: ventas
+    activo: true
+
+  # ============================================================================
+  # RUBROS LOGÍSTICOS - Infraestructura
+  # ============================================================================
+
+  - id: arriendo_bodega
+    nombre: "Arriendo de Bodega"
+    categoria: logistica
+    tipo: infraestructura
+    descripcion: "Arriendo de bodega/almacén"
+    campos_requeridos:
+      - costo_mensual
+    campos_opcionales:
+      - metros_cuadrados
+      - ubicacion
+    asignacion_permitida: [individual, compartido]
+    criterio_prorrateo_default: volumen
+    activo: true
+
+  - id: servicios_publicos_bodega
+    nombre: "Servicios Públicos Bodega"
+    categoria: logistica
+    tipo: servicio
+    descripcion: "Servicios públicos de bodega"
+    campos_requeridos:
+      - costo_mensual
+    asignacion_permitida: [compartido]
+    criterio_prorrateo_default: volumen
+    activo: true
+
+# Metadatos del catálogo
+metadata:
+  version: "1.0.0"
+  fecha_actualizacion: "2025-11-10"
+  total_rubros: 46
+  categorias: [comercial, logistica, administrativa]
+  tipos: [personal, vehiculo, infraestructura, servicio, software, honorarios]
+
+# Notas:
+# - activo: true/false → Si el rubro está disponible para usar
+# - asignacion_permitida: [individual, compartido] → Cómo se puede asignar
+# - perfil_prestacional: comercial/administrativo/logistico/aprendiz_sena
+# - subsidio_transporte: true/false → Si aplica subsidio de transporte
+# - criterio_prorrateo_default: ventas/volumen/headcount/equitativo/uso_real
+# - Para agregar un nuevo rubro, copia un ejemplo y modifica los valores
