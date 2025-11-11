@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15
+    container_name: dxv_postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-dxv_db}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Django Admin Panel
+  django_admin:
+    build:
+      context: ./admin_panel
+      dockerfile: Dockerfile
+    container_name: dxv_django
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-dev-secret-key-change-in-production}
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-False}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,0.0.0.0}
+      POSTGRES_DB: ${POSTGRES_DB:-dxv_db}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             gunicorn --bind 0.0.0.0:8000 --workers 3 dxv_admin.wsgi:application"
+
+  # Streamlit Dashboard
+  streamlit_dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.streamlit
+    container_name: dxv_streamlit
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-dxv_db}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+    ports:
+      - "8501:8501"
+    depends_on:
+      - postgres
+      - django_admin
+    volumes:
+      - ./panels:/app/panels
+      - ./utils:/app/utils
+      - ./core:/app/core
+
+volumes:
+  postgres_data:
