@@ -136,47 +136,54 @@ class Simulator:
         """
         recursos = datos_comercial.get('recursos_comerciales', {})
 
-        # Procesar vendedores
-        for vendedor_data in recursos.get('vendedores', []):
-            tipo = vendedor_data.get('tipo')
-            cantidad = vendedor_data.get('cantidad', 0)
-            salario_base = vendedor_data.get('salario_base', 0)
-            perfil = vendedor_data.get('perfil_prestacional', 'comercial')
-            asignacion_str = vendedor_data.get('asignacion', 'individual')
+        # Procesar TODOS los tipos de personal comercial
+        # (vendedores, supervisores, auxiliares, coordinadores, etc.)
+        for tipo_personal, empleados_list in recursos.items():
+            # Puede ser una lista de grupos de empleados
+            if not isinstance(empleados_list, list):
+                empleados_list = [empleados_list]
 
-            if cantidad == 0 or salario_base == 0:
-                continue
+            for empleado_data in empleados_list:
+                # Para vendedores, el tipo está dentro del diccionario
+                tipo = empleado_data.get('tipo', tipo_personal)
+                cantidad = empleado_data.get('cantidad', 0)
+                salario_base = empleado_data.get('salario_base', 0)
+                perfil = empleado_data.get('perfil_prestacional', 'comercial')
+                asignacion_str = empleado_data.get('asignacion', 'individual')
 
-            # Calcular costo con la calculadora
-            costo = self.calc_nomina.calcular_costo_empleado(
-                salario_base=salario_base,
-                perfil=perfil
-            )
+                if cantidad == 0 or salario_base == 0:
+                    continue
 
-            # Crear rubro
-            rubro = RubroPersonal(
-                id=f"{tipo}_{marca.marca_id}",
-                nombre=f"{tipo.replace('_', ' ').title()}",
-                categoria='comercial',
-                tipo='personal',
-                tipo_asignacion=TipoAsignacion(asignacion_str),
-                marca_id=marca.marca_id if asignacion_str == 'individual' else None,
-                cantidad=cantidad,
-                salario_base=salario_base,
-                prestaciones=costo.prestaciones,
-                subsidio_transporte=costo.subsidio_transporte,
-                factor_prestacional=0.402 if perfil == 'comercial' else 0.378
-            )
+                # Calcular costo con la calculadora
+                costo = self.calc_nomina.calcular_costo_empleado(
+                    salario_base=salario_base,
+                    perfil=perfil
+                )
 
-            if rubro.es_individual():
-                marca.agregar_rubro_individual(rubro)
-                marca.empleados_comerciales += cantidad
-            else:
-                # Los compartidos se procesan después
-                criterio_str = vendedor_data.get('criterio_prorrateo', 'ventas')
-                rubro.criterio_prorrateo = CriterioProrrateo(criterio_str)
-                rubro.porcentaje_dedicacion = vendedor_data.get('porcentaje_dedicacion')
-                self.rubros_compartidos.append(rubro)
+                # Crear rubro
+                rubro = RubroPersonal(
+                    id=f"{tipo}_{marca.marca_id}",
+                    nombre=f"{tipo.replace('_', ' ').title()}",
+                    categoria='comercial',
+                    tipo='personal',
+                    tipo_asignacion=TipoAsignacion(asignacion_str),
+                    marca_id=marca.marca_id if asignacion_str == 'individual' else None,
+                    cantidad=cantidad,
+                    salario_base=salario_base,
+                    prestaciones=costo.prestaciones,
+                    subsidio_transporte=costo.subsidio_transporte,
+                    factor_prestacional=0.402 if perfil == 'comercial' else 0.378
+                )
+
+                if rubro.es_individual():
+                    marca.agregar_rubro_individual(rubro)
+                    marca.empleados_comerciales += cantidad
+                else:
+                    # Los compartidos se procesan después
+                    criterio_str = empleado_data.get('criterio_prorrateo', 'ventas')
+                    rubro.criterio_prorrateo = CriterioProrrateo(criterio_str)
+                    rubro.porcentaje_dedicacion = empleado_data.get('porcentaje_dedicacion')
+                    self.rubros_compartidos.append(rubro)
 
         logger.debug(f"Rubros comerciales procesados para {marca.nombre}")
 
@@ -265,6 +272,53 @@ class Simulator:
                 criterio_str = vehiculo_data.get('criterio_prorrateo', 'volumen')
                 rubro.criterio_prorrateo = CriterioProrrateo(criterio_str)
                 self.rubros_compartidos.append(rubro)
+
+        # Procesar personal logístico
+        personal_config = datos_logistica.get('personal', {})
+
+        for tipo_personal, empleados_list in personal_config.items():
+            # Puede ser una lista de grupos de empleados
+            if not isinstance(empleados_list, list):
+                empleados_list = [empleados_list]
+
+            for empleado_data in empleados_list:
+                cantidad = empleado_data.get('cantidad', 0)
+                salario_base = empleado_data.get('salario_base', 0)
+                perfil = empleado_data.get('perfil_prestacional', 'logistico')
+                asignacion_str = empleado_data.get('asignacion', 'individual')
+
+                if cantidad == 0 or salario_base == 0:
+                    continue
+
+                # Calcular costo con la calculadora
+                costo = self.calc_nomina.calcular_costo_empleado(
+                    salario_base=salario_base,
+                    perfil=perfil
+                )
+
+                # Crear rubro
+                rubro = RubroPersonal(
+                    id=f"{tipo_personal}_{marca.marca_id}",
+                    nombre=f"{tipo_personal.replace('_', ' ').title()}",
+                    categoria='logistica',
+                    tipo='personal',
+                    tipo_asignacion=TipoAsignacion(asignacion_str),
+                    marca_id=marca.marca_id if asignacion_str == 'individual' else None,
+                    cantidad=cantidad,
+                    salario_base=salario_base,
+                    prestaciones=costo.prestaciones,
+                    subsidio_transporte=costo.subsidio_transporte,
+                    factor_prestacional=0.402 if perfil == 'logistico' else 0.378
+                )
+
+                if rubro.es_individual():
+                    marca.agregar_rubro_individual(rubro)
+                    marca.empleados_logisticos += cantidad
+                else:
+                    criterio_str = empleado_data.get('criterio_prorrateo', 'volumen')
+                    rubro.criterio_prorrateo = CriterioProrrateo(criterio_str)
+                    rubro.porcentaje_dedicacion = empleado_data.get('porcentaje_dedicacion')
+                    self.rubros_compartidos.append(rubro)
 
         logger.debug(f"Rubros logísticos procesados para {marca.nombre}")
 
