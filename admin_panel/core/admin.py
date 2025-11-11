@@ -6,7 +6,9 @@ from django.db.models import Sum, Count
 from .models import (
     Marca, PersonalComercial, PersonalLogistico,
     Vehiculo, ProyeccionVentas, VolumenOperacion,
-    ParametrosMacro, FactorPrestacional
+    ParametrosMacro, FactorPrestacional,
+    PersonalAdministrativo, GastoAdministrativo,
+    GastoComercial, GastoLogistico, Impuesto
 )
 
 
@@ -261,3 +263,158 @@ class FactorPrestacionalAdmin(admin.ModelAdmin):
         return f"{obj.salud * 100:.2f}%"
     salud_percent.short_description = 'Salud'
     salud_percent.admin_order_field = 'salud'
+
+
+@admin.register(PersonalAdministrativo)
+class PersonalAdministrativoAdmin(admin.ModelAdmin):
+    list_display = ('tipo', 'cantidad', 'tipo_contrato', 'valor_mensual', 'criterio_prorrateo')
+    list_filter = ('tipo', 'tipo_contrato', 'criterio_prorrateo')
+    search_fields = ('nombre',)
+    readonly_fields = ('fecha_creacion', 'fecha_modificacion')
+
+    fieldsets = (
+        ('Información Básica', {
+            'fields': ('nombre', 'tipo', 'cantidad', 'tipo_contrato')
+        }),
+        ('Nómina', {
+            'fields': ('salario_base', 'perfil_prestacional'),
+            'classes': ('collapse',)
+        }),
+        ('Honorarios', {
+            'fields': ('honorarios_mensuales',),
+            'classes': ('collapse',)
+        }),
+        ('Prorrateo', {
+            'fields': ('asignacion', 'criterio_prorrateo')
+        }),
+        ('Metadata', {
+            'fields': ('fecha_creacion', 'fecha_modificacion'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def valor_mensual(self, obj):
+        if obj.tipo_contrato == 'nomina' and obj.salario_base:
+            return f"${obj.salario_base:,.0f}"
+        elif obj.tipo_contrato == 'honorarios' and obj.honorarios_mensuales:
+            return f"${obj.honorarios_mensuales:,.0f}"
+        return "-"
+    valor_mensual.short_description = 'Valor Mensual'
+
+
+@admin.register(GastoAdministrativo)
+class GastoAdministrativoAdmin(admin.ModelAdmin):
+    list_display = ('nombre', 'tipo', 'valor_mensual_formateado', 'criterio_prorrateo')
+    list_filter = ('tipo', 'criterio_prorrateo')
+    search_fields = ('nombre', 'notas')
+    readonly_fields = ('fecha_creacion', 'fecha_modificacion')
+
+    fieldsets = (
+        ('Información Básica', {
+            'fields': ('nombre', 'tipo', 'valor_mensual')
+        }),
+        ('Prorrateo', {
+            'fields': ('criterio_prorrateo',)
+        }),
+        ('Notas', {
+            'fields': ('notas',),
+            'classes': ('collapse',)
+        }),
+        ('Metadata', {
+            'fields': ('fecha_creacion', 'fecha_modificacion'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def valor_mensual_formateado(self, obj):
+        return f"${obj.valor_mensual:,.0f}"
+    valor_mensual_formateado.short_description = 'Valor Mensual'
+    valor_mensual_formateado.admin_order_field = 'valor_mensual'
+
+
+@admin.register(GastoComercial)
+class GastoComercialAdmin(admin.ModelAdmin):
+    list_display = ('marca', 'nombre', 'tipo', 'valor_mensual_formateado', 'fecha_modificacion')
+    list_filter = ('marca', 'tipo')
+    search_fields = ('nombre', 'notas')
+    readonly_fields = ('fecha_creacion', 'fecha_modificacion')
+
+    fieldsets = (
+        ('Información Básica', {
+            'fields': ('marca', 'nombre', 'tipo', 'valor_mensual')
+        }),
+        ('Notas', {
+            'fields': ('notas',),
+            'classes': ('collapse',)
+        }),
+        ('Metadata', {
+            'fields': ('fecha_creacion', 'fecha_modificacion'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def valor_mensual_formateado(self, obj):
+        return f"${obj.valor_mensual:,.0f}"
+    valor_mensual_formateado.short_description = 'Valor Mensual'
+    valor_mensual_formateado.admin_order_field = 'valor_mensual'
+
+
+@admin.register(GastoLogistico)
+class GastoLogisticoAdmin(admin.ModelAdmin):
+    list_display = ('marca', 'nombre', 'tipo', 'valor_mensual_formateado', 'fecha_modificacion')
+    list_filter = ('marca', 'tipo')
+    search_fields = ('nombre', 'notas')
+    readonly_fields = ('fecha_creacion', 'fecha_modificacion')
+
+    fieldsets = (
+        ('Información Básica', {
+            'fields': ('marca', 'nombre', 'tipo', 'valor_mensual')
+        }),
+        ('Notas', {
+            'fields': ('notas',),
+            'classes': ('collapse',)
+        }),
+        ('Metadata', {
+            'fields': ('fecha_creacion', 'fecha_modificacion'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def valor_mensual_formateado(self, obj):
+        return f"${obj.valor_mensual:,.0f}"
+    valor_mensual_formateado.short_description = 'Valor Mensual'
+    valor_mensual_formateado.admin_order_field = 'valor_mensual'
+
+
+@admin.register(Impuesto)
+class ImpuestoAdmin(admin.ModelAdmin):
+    list_display = ('nombre', 'tipo', 'aplicacion', 'valor_display', 'periodicidad', 'activo')
+    list_filter = ('tipo', 'aplicacion', 'periodicidad', 'activo')
+    search_fields = ('nombre', 'notas')
+    readonly_fields = ('fecha_creacion', 'fecha_modificacion')
+
+    fieldsets = (
+        ('Información Básica', {
+            'fields': ('nombre', 'tipo', 'aplicacion', 'periodicidad', 'activo')
+        }),
+        ('Configuración', {
+            'fields': ('porcentaje', 'valor_fijo'),
+            'description': 'Completa el porcentaje (para impuestos sobre ventas/utilidad) o el valor fijo'
+        }),
+        ('Notas', {
+            'fields': ('notas',),
+            'classes': ('collapse',)
+        }),
+        ('Metadata', {
+            'fields': ('fecha_creacion', 'fecha_modificacion'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def valor_display(self, obj):
+        if obj.porcentaje:
+            return f"{obj.porcentaje * 100:.2f}%"
+        elif obj.valor_fijo:
+            return f"${obj.valor_fijo:,.0f}"
+        return "-"
+    valor_display.short_description = 'Valor'

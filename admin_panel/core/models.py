@@ -324,3 +324,241 @@ class FactorPrestacional(models.Model):
 
     def __str__(self):
         return f"{self.get_perfil_display()} - {self.factor_total * 100:.2f}%"
+
+
+class PersonalAdministrativo(models.Model):
+    """Personal administrativo (puede ser compartido entre marcas)"""
+
+    TIPO_CHOICES = [
+        ('gerente_general', 'Gerente General'),
+        ('contador', 'Contador'),
+        ('auxiliar_administrativo', 'Auxiliar Administrativo'),
+        ('servicios_generales', 'Servicios Generales'),
+        ('practicante_sena', 'Practicante SENA'),
+        ('asistente_gerencia', 'Asistente de Gerencia'),
+    ]
+
+    TIPO_CONTRATO_CHOICES = [
+        ('nomina', 'Nómina'),
+        ('honorarios', 'Honorarios'),
+    ]
+
+    ASIGNACION_CHOICES = [
+        ('compartido', 'Compartido entre marcas'),
+    ]
+
+    nombre = models.CharField(max_length=200, verbose_name="Nombre/Descripción")
+    tipo = models.CharField(max_length=50, choices=TIPO_CHOICES, verbose_name="Tipo de Personal")
+    cantidad = models.IntegerField(validators=[MinValueValidator(1)], verbose_name="Cantidad")
+    tipo_contrato = models.CharField(max_length=20, choices=TIPO_CONTRATO_CHOICES, default='nomina')
+
+    # Para nómina
+    salario_base = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, verbose_name="Salario Base")
+    perfil_prestacional = models.CharField(max_length=20, default='administrativo', verbose_name="Perfil")
+
+    # Para honorarios
+    honorarios_mensuales = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, verbose_name="Honorarios Mensuales")
+
+    asignacion = models.CharField(max_length=20, choices=ASIGNACION_CHOICES, default='compartido')
+    criterio_prorrateo = models.CharField(
+        max_length=20,
+        choices=[
+            ('ventas', 'Por Ventas'),
+            ('headcount', 'Por Headcount'),
+            ('equitativo', 'Equitativo'),
+        ],
+        default='equitativo'
+    )
+
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_modificacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Personal Administrativo"
+        verbose_name_plural = "Personal Administrativo"
+        ordering = ['tipo']
+
+    def __str__(self):
+        return f"{self.get_tipo_display()} ({self.cantidad})"
+
+
+class GastoAdministrativo(models.Model):
+    """Gastos administrativos generales (compartidos)"""
+
+    TIPO_CHOICES = [
+        ('arriendo_oficina', 'Arriendo de Oficina'),
+        ('servicios_publicos', 'Servicios Públicos'),
+        ('internet_telefonia', 'Internet y Telefonía'),
+        ('vigilancia', 'Vigilancia y Seguridad'),
+        ('aseo_cafeteria', 'Aseo y Cafetería'),
+        ('papeleria', 'Papelería y Útiles'),
+        ('software_licencias', 'Software y Licencias'),
+        ('seguros', 'Seguros'),
+        ('impuestos_predial', 'Impuestos Prediales'),
+        ('otros', 'Otros Gastos Administrativos'),
+    ]
+
+    nombre = models.CharField(max_length=200, verbose_name="Nombre/Descripción")
+    tipo = models.CharField(max_length=50, choices=TIPO_CHOICES, verbose_name="Tipo de Gasto")
+    valor_mensual = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Valor Mensual")
+    criterio_prorrateo = models.CharField(
+        max_length=20,
+        choices=[
+            ('ventas', 'Por Ventas'),
+            ('headcount', 'Por Headcount'),
+            ('equitativo', 'Equitativo'),
+        ],
+        default='ventas'
+    )
+    notas = models.TextField(blank=True, verbose_name="Notas")
+
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_modificacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Gasto Administrativo"
+        verbose_name_plural = "Gastos Administrativos"
+        ordering = ['tipo', 'nombre']
+
+    def __str__(self):
+        return f"{self.get_tipo_display()} - ${self.valor_mensual:,.0f}"
+
+
+class GastoComercial(models.Model):
+    """Gastos comerciales por marca"""
+
+    TIPO_CHOICES = [
+        ('comisiones', 'Comisiones de Ventas'),
+        ('merchandising', 'Materiales de Merchandising'),
+        ('capacitacion', 'Capacitación y Entrenamiento'),
+        ('eventos', 'Eventos Comerciales'),
+        ('herramientas_digitales', 'Herramientas Digitales (CRM, Apps)'),
+        ('transporte_vendedores', 'Transporte de Vendedores'),
+        ('viaticos', 'Viáticos'),
+        ('publicidad', 'Publicidad y Marketing'),
+        ('muestras', 'Muestras y Degustaciones'),
+        ('otros', 'Otros Gastos Comerciales'),
+    ]
+
+    marca = models.ForeignKey(Marca, on_delete=models.CASCADE, related_name='gastos_comerciales')
+    nombre = models.CharField(max_length=200, verbose_name="Nombre/Descripción")
+    tipo = models.CharField(max_length=50, choices=TIPO_CHOICES, verbose_name="Tipo de Gasto")
+    valor_mensual = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Valor Mensual")
+    notas = models.TextField(blank=True, verbose_name="Notas")
+
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_modificacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Gasto Comercial"
+        verbose_name_plural = "Gastos Comerciales"
+        ordering = ['marca', 'tipo']
+
+    def __str__(self):
+        return f"{self.marca.nombre} - {self.get_tipo_display()}: ${self.valor_mensual:,.0f}"
+
+
+class GastoLogistico(models.Model):
+    """Gastos logísticos por marca"""
+
+    TIPO_CHOICES = [
+        ('mantenimiento_vehiculos', 'Mantenimiento de Vehículos'),
+        ('seguros_carga', 'Seguros de Carga'),
+        ('peajes', 'Peajes y Parqueaderos'),
+        ('equipos_carga', 'Equipos de Carga (Estibas, Carretas)'),
+        ('combustible_adicional', 'Combustible Adicional'),
+        ('neumaticos', 'Neumáticos y Repuestos'),
+        ('bodegaje', 'Bodegaje Externo'),
+        ('equipos_bodega', 'Equipos de Bodega'),
+        ('embalaje', 'Material de Embalaje'),
+        ('otros', 'Otros Gastos Logísticos'),
+    ]
+
+    marca = models.ForeignKey(Marca, on_delete=models.CASCADE, related_name='gastos_logisticos')
+    nombre = models.CharField(max_length=200, verbose_name="Nombre/Descripción")
+    tipo = models.CharField(max_length=50, choices=TIPO_CHOICES, verbose_name="Tipo de Gasto")
+    valor_mensual = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Valor Mensual")
+    notas = models.TextField(blank=True, verbose_name="Notas")
+
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_modificacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Gasto Logístico"
+        verbose_name_plural = "Gastos Logísticos"
+        ordering = ['marca', 'tipo']
+
+    def __str__(self):
+        return f"{self.marca.nombre} - {self.get_tipo_display()}: ${self.valor_mensual:,.0f}"
+
+
+class Impuesto(models.Model):
+    """Impuestos y obligaciones tributarias"""
+
+    TIPO_CHOICES = [
+        ('iva', 'IVA'),
+        ('renta', 'Impuesto de Renta'),
+        ('ica', 'ICA (Industria y Comercio)'),
+        ('retefuente', 'Retención en la Fuente'),
+        ('reteica', 'Retención ICA'),
+        ('predial', 'Predial'),
+        ('vehiculos', 'Impuesto Vehículos'),
+        ('estampillas', 'Estampillas'),
+        ('otros', 'Otros Impuestos'),
+    ]
+
+    PERIODICIDAD_CHOICES = [
+        ('mensual', 'Mensual'),
+        ('bimestral', 'Bimestral'),
+        ('trimestral', 'Trimestral'),
+        ('anual', 'Anual'),
+    ]
+
+    APLICACION_CHOICES = [
+        ('sobre_ventas', 'Sobre Ventas'),
+        ('sobre_utilidad', 'Sobre Utilidad'),
+        ('fijo', 'Valor Fijo'),
+    ]
+
+    nombre = models.CharField(max_length=200, verbose_name="Nombre del Impuesto")
+    tipo = models.CharField(max_length=50, choices=TIPO_CHOICES, verbose_name="Tipo")
+    aplicacion = models.CharField(max_length=20, choices=APLICACION_CHOICES, verbose_name="Aplicación")
+
+    # Para impuestos porcentuales
+    porcentaje = models.DecimalField(
+        max_digits=6,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        verbose_name="Porcentaje (%)",
+        help_text="Para impuestos sobre ventas o utilidad"
+    )
+
+    # Para impuestos fijos
+    valor_fijo = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Valor Fijo",
+        help_text="Para impuestos de valor fijo"
+    )
+
+    periodicidad = models.CharField(max_length=20, choices=PERIODICIDAD_CHOICES, default='mensual')
+    activo = models.BooleanField(default=True, verbose_name="Activo")
+    notas = models.TextField(blank=True, verbose_name="Notas")
+
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_modificacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Impuesto"
+        verbose_name_plural = "Impuestos"
+        ordering = ['tipo', 'nombre']
+
+    def __str__(self):
+        if self.porcentaje:
+            return f"{self.get_tipo_display()} - {self.porcentaje * 100:.2f}%"
+        elif self.valor_fijo:
+            return f"{self.get_tipo_display()} - ${self.valor_fijo:,.0f}"
+        return self.get_tipo_display()
