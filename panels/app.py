@@ -253,6 +253,56 @@ def mostrar_detalle_marca(marca):
         st.write(f"- Empleados Comerciales: {marca.empleados_comerciales}")
         st.write(f"- Empleados Logísticos: {marca.empleados_logisticos}")
 
+    # NUEVA SECCIÓN: Detalle de Rubros Individuales
+    st.markdown("#### 📋 Detalle de Rubros Individuales")
+
+    if marca.rubros_individuales:
+        rubros_data = []
+        for rubro in marca.rubros_individuales:
+            rubro_info = {
+                'Nombre': rubro.nombre,
+                'Categoría': rubro.categoria.capitalize(),
+                'Tipo': rubro.tipo
+            }
+
+            # Si es personal, mostrar detalles de nómina
+            if hasattr(rubro, 'cantidad') and hasattr(rubro, 'salario_base'):
+                rubro_info['Cantidad'] = rubro.cantidad
+                rubro_info['Salario Base'] = formatear_moneda(rubro.salario_base)
+                rubro_info['Costo Unitario'] = formatear_moneda(rubro.valor_unitario)
+                rubro_info['Costo Total'] = formatear_moneda(rubro.valor_total)
+            # Si es vehículo
+            elif hasattr(rubro, 'tipo_vehiculo'):
+                rubro_info['Cantidad'] = rubro.cantidad
+                rubro_info['Tipo Vehículo'] = rubro.tipo_vehiculo.upper()
+                rubro_info['Esquema'] = rubro.esquema.capitalize()
+                rubro_info['Costo Unitario'] = formatear_moneda(rubro.valor_unitario)
+                rubro_info['Costo Total'] = formatear_moneda(rubro.valor_total)
+            else:
+                rubro_info['Costo Total'] = formatear_moneda(rubro.valor_total)
+
+            rubros_data.append(rubro_info)
+
+        df_rubros = pd.DataFrame(rubros_data)
+        st.dataframe(df_rubros, hide_index=True, use_container_width=True)
+
+        # Subtotales por categoría
+        st.markdown("**Subtotales por Categoría:**")
+        col1, col2, col3 = st.columns(3)
+
+        comercial_total = sum(r.valor_total for r in marca.rubros_individuales if r.categoria == 'comercial')
+        logistico_total = sum(r.valor_total for r in marca.rubros_individuales if r.categoria == 'logistica')
+        admin_total = sum(r.valor_total for r in marca.rubros_individuales if r.categoria == 'administrativa')
+
+        with col1:
+            st.metric("Comercial", formatear_moneda(comercial_total))
+        with col2:
+            st.metric("Logística", formatear_moneda(logistico_total))
+        with col3:
+            st.metric("Administrativa", formatear_moneda(admin_total))
+    else:
+        st.info("Esta marca no tiene rubros individuales asignados")
+
     st.markdown("---")
 
 
@@ -321,7 +371,67 @@ def main():
     with tab3:
         st.subheader("🔍 Información Detallada")
 
-        st.markdown("### Rubros Compartidos")
+        # Nueva sección: Proyecciones de Ventas
+        st.markdown("### 📈 Proyección de Ventas Mensuales")
+
+        # Cargar datos de ventas desde YAML para cada marca
+        loader = get_loader()
+
+        for marca in resultado.marcas:
+            try:
+                datos_ventas = loader.cargar_marca_ventas(marca.marca_id)
+
+                if 'ventas_mensuales' in datos_ventas:
+                    st.markdown(f"#### {marca.nombre}")
+
+                    # Crear DataFrame con las ventas mensuales
+                    ventas_mensuales = datos_ventas['ventas_mensuales']
+                    meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                            'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+
+                    df_ventas = pd.DataFrame({
+                        'Mes': [m.capitalize() for m in meses],
+                        'Ventas': [ventas_mensuales.get(m, 0) for m in meses]
+                    })
+
+                    # Gráfico de línea
+                    fig_ventas = px.line(
+                        df_ventas,
+                        x='Mes',
+                        y='Ventas',
+                        title=f'Proyección Mensual - {marca.nombre}',
+                        markers=True
+                    )
+                    fig_ventas.update_layout(yaxis_title="Ventas (COP)")
+                    st.plotly_chart(fig_ventas, use_container_width=True)
+
+                    # Tabla con valores
+                    df_ventas_display = df_ventas.copy()
+                    df_ventas_display['Ventas'] = df_ventas_display['Ventas'].apply(formatear_moneda)
+
+                    col1, col2 = st.columns([2, 1])
+                    with col1:
+                        st.dataframe(df_ventas_display, hide_index=True, use_container_width=True)
+
+                    with col2:
+                        # Resumen
+                        total_anual = df_ventas['Ventas'].sum()
+                        promedio = df_ventas['Ventas'].mean()
+                        mes_max = df_ventas.loc[df_ventas['Ventas'].idxmax(), 'Mes']
+                        mes_min = df_ventas.loc[df_ventas['Ventas'].idxmin(), 'Mes']
+
+                        st.metric("Total Anual", formatear_moneda(total_anual))
+                        st.metric("Promedio Mensual", formatear_moneda(promedio))
+                        st.write(f"**Mes Mayor:** {mes_max}")
+                        st.write(f"**Mes Menor:** {mes_min}")
+
+                    st.markdown("---")
+
+            except Exception as e:
+                st.warning(f"No se pudieron cargar datos de ventas para {marca.nombre}")
+
+        # Rubros Compartidos
+        st.markdown("### 🔄 Rubros Compartidos")
         st.write(f"Total de rubros compartidos: {len(resultado.rubros_compartidos)}")
 
         if resultado.rubros_compartidos:
@@ -337,7 +447,7 @@ def main():
             ])
             st.dataframe(rubros_df, hide_index=True, use_container_width=True)
 
-        st.markdown("### Metadata")
+        st.markdown("### ⚙️ Metadata")
         st.json(resultado.metadata)
 
 
