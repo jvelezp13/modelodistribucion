@@ -1,5 +1,5 @@
 # Core Dependencies
-python>=3.9
+# Python 3.9+ required (specify in Dockerfile or environment, not here)
 
 # Data Processing
 pandas>=2.0.0
