@@ -17,7 +17,7 @@ root_path = Path(__file__).parent.parent
 sys.path.insert(0, str(root_path))
 
 from core.simulator import Simulator, simular_modelo_completo
-from utils.loaders import get_loader
+from utils.loaders_db import get_loader_db as get_loader
 
 # Configuración de la página
 st.set_page_config(
