@@ -336,6 +336,12 @@ def main():
             help="Selecciona las marcas que deseas incluir en la simulación"
         )
 
+        # Botón para recargar datos desde PostgreSQL
+        if st.button("🔄 Recargar Datos desde BD", use_container_width=True, help="Limpia el caché y recarga los datos desde PostgreSQL"):
+            st.cache_data.clear()
+            st.success("✅ Caché limpiado. Los datos se recargarán desde la base de datos.")
+            st.rerun()
+
         # Botón de simulación
         ejecutar = st.button("🚀 Ejecutar Simulación", type="primary", use_container_width=True)
 
