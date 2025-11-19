@@ -16,12 +16,8 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy only necessary files (avoid copying core/ simulator to prevent conflicts)
-COPY panels/ /app/panels/
-COPY utils/ /app/utils/
-COPY admin_panel/ /app/admin_panel/
-COPY config/ /app/config/
-COPY data/ /app/data/
+# Copy project files
+COPY . /app/
 
 # Expose Streamlit port
 EXPOSE 8501
