@@ -4,9 +4,10 @@ DataLoader que usa PostgreSQL a través de Django ORM
 from typing import Dict, List, Any, Optional
 import logging
 
-# Inicializar Django antes de importar modelos
+# Inicializar Django antes de importar modelos (reorganiza sys.path)
 from . import django_init
 
+# Importar modelos de Django (ahora core.models será de /app/admin_panel/core/)
 from core.models import (
     Marca, PersonalComercial, PersonalLogistico,
     Vehiculo, ProyeccionVentas, VolumenOperacion,
