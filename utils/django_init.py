@@ -31,6 +31,19 @@ if admin_panel_str in sys.path:
     sys.path.remove(admin_panel_str)
 sys.path.insert(0, admin_panel_str)
 
+# CRÍTICO: Remover módulo 'core' del cache de Python si existe
+# Esto es necesario porque si se importó core.simulator antes,
+# Python tiene cacheado el módulo 'core' del simulador, y no podrá
+# importar core.models desde admin_panel/core/
+if 'core' in sys.modules:
+    del sys.modules['core']
+if 'core.simulator' in sys.modules:
+    # Guardar referencia para restaurar después
+    core_simulator_module = sys.modules['core.simulator']
+    del sys.modules['core.simulator']
+else:
+    core_simulator_module = None
+
 # Configurar variables de entorno de Django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'dxv_admin.settings')
 
@@ -41,3 +54,7 @@ django.setup()
 # Restaurar /app al path después de configurar Django (al final, no al inicio)
 if removed_root and root_str not in sys.path:
     sys.path.append(root_str)
+
+# Restaurar core.simulator si existía
+if core_simulator_module:
+    sys.modules['core.simulator'] = core_simulator_module
