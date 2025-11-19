@@ -29,3 +29,7 @@ mypy>=1.5.0
 
 # Database (para conexión a PostgreSQL)
 psycopg2-binary>=2.9.0
+
+# Django (para DataLoaderDB que usa Django ORM)
+Django>=5.0
+python-dotenv>=1.0.0
