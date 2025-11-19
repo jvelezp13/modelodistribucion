@@ -1,18 +1,11 @@
 """
 DataLoader que usa PostgreSQL a través de Django ORM
 """
-import os
-import sys
-import django
-from pathlib import Path
 from typing import Dict, List, Any, Optional
 import logging
 
-# Configurar Django
-admin_panel_path = Path(__file__).parent.parent / 'admin_panel'
-sys.path.insert(0, str(admin_panel_path))
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'dxv_admin.settings')
-django.setup()
+# Inicializar Django antes de importar modelos
+from . import django_init
 
 from core.models import (
     Marca, PersonalComercial, PersonalLogistico,
