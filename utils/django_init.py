@@ -5,15 +5,18 @@ import os
 import sys
 from pathlib import Path
 
-# Agregar admin_panel al path
+# Agregar admin_panel al INICIO del path para que Django encuentre core.models
 admin_panel_path = Path(__file__).parent.parent / 'admin_panel'
-if str(admin_panel_path) not in sys.path:
-    sys.path.insert(0, str(admin_panel_path))
+admin_panel_str = str(admin_panel_path)
 
-# Configurar variables de entorno de Django si no están configuradas
-if 'DJANGO_SETTINGS_MODULE' not in os.environ:
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'dxv_admin.settings')
+# Remover si existe y agregar al inicio para asegurar prioridad
+if admin_panel_str in sys.path:
+    sys.path.remove(admin_panel_str)
+sys.path.insert(0, admin_panel_str)
 
-# Configurar Django
+# Configurar variables de entorno de Django
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'dxv_admin.settings')
+
+# Inicializar Django
 import django
 django.setup()
