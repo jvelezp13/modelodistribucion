@@ -12,11 +12,17 @@ from typing import Dict, Any
 import sys
 from pathlib import Path
 
-# Agregar el directorio raíz al path para imports
+# Configurar paths para imports
 root_path = Path(__file__).parent.parent
-sys.path.insert(0, str(root_path))
 
+# Agregar root path para importar el simulador (core.simulator)
+if str(root_path) not in sys.path:
+    sys.path.insert(0, str(root_path))
+
+# Importar simulador PRIMERO (antes de que Django reorganice los paths)
 from core.simulator import Simulator, simular_modelo_completo
+
+# Importar loader de DB (esto configurará Django y reorganizará paths)
 from utils.loaders_db import get_loader_db as get_loader
 
 # Configuración de la página
