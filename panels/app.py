@@ -335,9 +335,11 @@ def mostrar_detalle_marca(marca):
 
 def main():
     """Función principal del dashboard."""
-    # Inicializar session state para forzar recarga
+    # Inicializar session state para forzar recarga y mantener selección
     if 'reload_timestamp' not in st.session_state:
         st.session_state.reload_timestamp = 0
+    if 'marcas_seleccionadas' not in st.session_state:
+        st.session_state.marcas_seleccionadas = None
 
     # Header
     st.markdown('<p class="main-header">Sistema de Distribución Multimarcas</p>', unsafe_allow_html=True)
@@ -347,14 +349,6 @@ def main():
     with st.sidebar:
         st.header("⚙️ Configuración")
 
-        # Botón para recargar datos desde PostgreSQL (ANTES de cargar marcas)
-        if st.button("🔄 Recargar Datos desde BD", use_container_width=True, help="Limpia el caché y recarga los datos desde PostgreSQL"):
-            import time
-            st.session_state.reload_timestamp = time.time()
-            st.cache_data.clear()
-            st.success("✅ Caché limpiado. Los datos se recargarán desde la base de datos.")
-            st.rerun()
-
         # Selección de marcas (con timestamp para forzar recarga)
         marcas_disponibles = cargar_marcas_disponibles(_force_reload=st.session_state.reload_timestamp)
 
@@ -362,12 +356,29 @@ def main():
             st.error("No se encontraron marcas configuradas")
             st.stop()
 
+        # Usar marcas guardadas o todas por defecto
+        default_marcas = st.session_state.marcas_seleccionadas if st.session_state.marcas_seleccionadas else marcas_disponibles
+
         marcas_seleccionadas = st.multiselect(
             "Marcas a Simular",
             marcas_disponibles,
-            default=marcas_disponibles,
-            help="Selecciona las marcas que deseas incluir en la simulación"
+            default=default_marcas,
+            help="Selecciona las marcas que deseas incluir en la simulación",
+            key="multiselect_marcas"
         )
+
+        # Guardar selección actual en session_state
+        st.session_state.marcas_seleccionadas = marcas_seleccionadas
+
+        # Botón para recargar datos desde PostgreSQL
+        if st.button("🔄 Recargar Datos desde BD", use_container_width=True, help="Limpia el caché y recarga los datos desde PostgreSQL"):
+            import time
+            st.session_state.reload_timestamp = time.time()
+            # Mantener las marcas seleccionadas actuales
+            # (ya están guardadas en session_state.marcas_seleccionadas)
+            st.cache_data.clear()
+            st.success("✅ Caché limpiado. Los datos se recargarán desde la base de datos.")
+            st.rerun()
 
         # Botón de simulación
         ejecutar = st.button("🚀 Ejecutar Simulación", type="primary", use_container_width=True)
