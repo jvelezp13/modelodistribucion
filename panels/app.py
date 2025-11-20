@@ -368,6 +368,9 @@ def main():
         # Botón de simulación
         ejecutar = st.button("🚀 Ejecutar Simulación", type="primary", use_container_width=True)
 
+        # DEBUG: Botón para ver datos crudos de BD
+        ver_debug = st.checkbox("🔍 Mostrar Info de Debug", value=False)
+
         st.markdown("---")
         st.markdown("### 📖 Acerca de")
         st.markdown("""
@@ -393,6 +396,28 @@ def main():
     if resultado is None:
         st.error("No se pudo ejecutar la simulación")
         st.stop()
+
+    # DEBUG: Mostrar datos crudos de BD
+    if ver_debug:
+        st.markdown("---")
+        st.markdown("### 🔍 DEBUG: Datos Crudos de PostgreSQL")
+
+        loader = get_loader()
+        for marca_id in marcas_seleccionadas:
+            with st.expander(f"📊 Datos de {marca_id.upper()}", expanded=True):
+                try:
+                    # Cargar datos comerciales
+                    datos_comerciales = loader.cargar_marca_comercial(marca_id)
+
+                    st.markdown("**Personal Comercial:**")
+                    for tipo, lista_personal in datos_comerciales['recursos_comerciales'].items():
+                        total_cantidad = sum(p['cantidad'] for p in lista_personal)
+                        st.write(f"- **{tipo}**: {len(lista_personal)} registros, Total: {total_cantidad} personas")
+                        for idx, p in enumerate(lista_personal, 1):
+                            st.write(f"  Registro {idx}: Cantidad={p['cantidad']}, Salario=${p['salario_base']:,.0f}")
+                except Exception as e:
+                    st.error(f"Error cargando datos: {str(e)}")
+        st.markdown("---")
 
     # Tabs principales
     tab1, tab2, tab3 = st.tabs(["📊 Resumen General", "📈 Por Marca", "🔍 Detalles"])
