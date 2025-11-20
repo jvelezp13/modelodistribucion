@@ -4,6 +4,12 @@
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
+// Debug: Log de la URL del API
+if (typeof window !== 'undefined') {
+  console.log('🔗 API URL configurada:', API_URL);
+  console.log('🔗 NEXT_PUBLIC_API_URL:', process.env.NEXT_PUBLIC_API_URL);
+}
+
 export interface Marca {
   marca_id: string;
   nombre: string;
@@ -75,6 +81,8 @@ class APIClient {
   ): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
 
+    console.log(`🌐 Fetching: ${url}`);
+
     try {
       const response = await fetch(url, {
         ...options,
@@ -84,14 +92,20 @@ class APIClient {
         },
       });
 
+      console.log(`📡 Response status: ${response.status} for ${url}`);
+
       if (!response.ok) {
         const error = await response.json().catch(() => ({ detail: 'Error desconocido' }));
+        console.error(`❌ API Error Response:`, error);
         throw new Error(error.detail || `HTTP ${response.status}`);
       }
 
-      return await response.json();
+      const data = await response.json();
+      console.log(`✅ Success for ${endpoint}:`, data);
+      return data;
     } catch (error) {
-      console.error(`API Error [${endpoint}]:`, error);
+      console.error(`❌ API Error [${endpoint}]:`, error);
+      console.error(`❌ Full URL attempted: ${url}`);
       throw error;
     }
   }
