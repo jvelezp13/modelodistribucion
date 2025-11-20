@@ -89,7 +89,11 @@ def ejecutar_simulacion(marcas_seleccionadas, _force_reload=None):
         _force_reload: Timestamp para forzar recarga (underscore evita que se use en hash del cache)
     """
     try:
-        resultado = simular_modelo_completo(marcas_seleccionadas)
+        # IMPORTANTE: Usar loader de DB en lugar de YAML
+        loader = get_loader()
+        simulator = Simulator(loader=loader)
+        simulator.cargar_marcas(marcas_seleccionadas)
+        resultado = simulator.ejecutar_simulacion()
         return resultado
     except Exception as e:
         st.error(f"Error en la simulación: {str(e)}")
