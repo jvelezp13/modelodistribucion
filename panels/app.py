@@ -41,29 +41,237 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Estilos personalizados
+# Estilos personalizados modernos y profesionales
 st.markdown("""
 <style>
+    /* Importar fuente moderna */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+    /* Variables globales */
+    :root {
+        --primary-color: #0066FF;
+        --secondary-color: #4F46E5;
+        --success-color: #10B981;
+        --warning-color: #F59E0B;
+        --danger-color: #EF4444;
+        --text-primary: #1A1F36;
+        --text-secondary: #6B7280;
+        --bg-primary: #FFFFFF;
+        --bg-secondary: #F7F9FC;
+        --border-color: #E5E7EB;
+        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Tipografía mejorada */
+    html, body, [class*="css"] {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        font-weight: 400;
+        line-height: 1.6;
+    }
+
+    /* Header principal */
     .main-header {
-        font-size: 2.5rem;
+        font-size: 2.25rem;
         font-weight: 700;
-        color: #1f77b4;
-        margin-bottom: 1rem;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+        letter-spacing: -0.025em;
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
     }
+
+    /* Subtítulos */
+    .subtitle {
+        font-size: 1rem;
+        color: var(--text-secondary);
+        margin-bottom: 2rem;
+        font-weight: 500;
+    }
+
+    /* Mejorar métricas de Streamlit */
+    [data-testid="stMetricValue"] {
+        font-size: 1.875rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    [data-testid="stMetricLabel"] {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    [data-testid="stMetricDelta"] {
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    /* Cards con sombra moderna */
     .metric-card {
-        background-color: #f0f2f6;
-        padding: 1rem;
-        border-radius: 0.5rem;
-        border-left: 4px solid #1f77b4;
+        background: var(--bg-primary);
+        padding: 1.5rem;
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow-md);
+        transition: all 0.3s ease;
     }
+
+    .metric-card:hover {
+        box-shadow: var(--shadow-lg);
+        transform: translateY(-2px);
+    }
+
+    /* Cards con indicador de color */
     .success-metric {
-        border-left-color: #28a745;
+        border-left: 4px solid var(--success-color);
     }
+
     .warning-metric {
-        border-left-color: #ffc107;
+        border-left: 4px solid var(--warning-color);
     }
+
     .danger-metric {
-        border-left-color: #dc3545;
+        border-left: 4px solid var(--danger-color);
+    }
+
+    .primary-metric {
+        border-left: 4px solid var(--primary-color);
+    }
+
+    /* Mejorar botones */
+    .stButton > button {
+        border-radius: 8px;
+        font-weight: 600;
+        padding: 0.625rem 1.25rem;
+        transition: all 0.2s ease;
+        border: none;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .stButton > button:hover {
+        box-shadow: var(--shadow-md);
+        transform: translateY(-1px);
+    }
+
+    .stButton > button[kind="primary"] {
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    }
+
+    /* Mejorar sidebar */
+    [data-testid="stSidebar"] {
+        background-color: var(--bg-secondary);
+        border-right: 1px solid var(--border-color);
+    }
+
+    [data-testid="stSidebar"] h2 {
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 1.5rem;
+    }
+
+    /* Mejorar multiselect */
+    .stMultiSelect [data-baseweb="select"] {
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+    }
+
+    /* Mejorar tabs */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 0.5rem;
+        border-bottom: 2px solid var(--border-color);
+    }
+
+    .stTabs [data-baseweb="tab"] {
+        font-weight: 600;
+        border-radius: 8px 8px 0 0;
+        padding: 0.75rem 1.5rem;
+        transition: all 0.2s ease;
+    }
+
+    .stTabs [data-baseweb="tab"]:hover {
+        background-color: var(--bg-secondary);
+    }
+
+    .stTabs [aria-selected="true"] {
+        background: linear-gradient(to bottom, var(--bg-secondary), transparent);
+        border-bottom: 3px solid var(--primary-color);
+    }
+
+    /* Mejorar tablas */
+    .dataframe {
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid var(--border-color);
+    }
+
+    .dataframe thead tr {
+        background-color: var(--bg-secondary);
+    }
+
+    .dataframe thead th {
+        font-weight: 700;
+        color: var(--text-primary);
+        padding: 1rem;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.05em;
+    }
+
+    .dataframe tbody tr:hover {
+        background-color: var(--bg-secondary);
+    }
+
+    /* Mejorar expanders */
+    .streamlit-expanderHeader {
+        font-weight: 600;
+        color: var(--text-primary);
+        background-color: var(--bg-secondary);
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+    }
+
+    /* Mejorar checkbox */
+    .stCheckbox {
+        font-weight: 500;
+    }
+
+    /* Spinner mejorado */
+    .stSpinner > div {
+        border-top-color: var(--primary-color) !important;
+    }
+
+    /* Alertas mejoradas */
+    .stAlert {
+        border-radius: 8px;
+        border-left-width: 4px;
+        box-shadow: var(--shadow-sm);
+    }
+
+    /* Espaciado y separadores */
+    hr {
+        margin: 2rem 0;
+        border: none;
+        border-top: 2px solid var(--border-color);
+        opacity: 0.5;
+    }
+
+    /* Animaciones suaves */
+    * {
+        transition: background-color 0.2s ease, border-color 0.2s ease;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .main-header {
+            font-size: 1.75rem;
+        }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -341,9 +549,9 @@ def main():
     if 'marcas_seleccionadas' not in st.session_state:
         st.session_state.marcas_seleccionadas = None
 
-    # Header
+    # Header moderno
     st.markdown('<p class="main-header">Sistema de Distribución Multimarcas</p>', unsafe_allow_html=True)
-    st.markdown("**Modelo de Distribución y Ventas (DxV)** - Simulación y Optimización")
+    st.markdown('<p class="subtitle">Modelo de Distribución y Ventas (DxV) - Simulación y Optimización</p>', unsafe_allow_html=True)
 
     # Sidebar
     with st.sidebar:
