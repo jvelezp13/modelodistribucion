@@ -41,7 +41,7 @@ app.add_middleware(
 
 
 @app.get("/")
-async def root():
+def root():
     """Health check endpoint"""
     return {
         "status": "ok",
@@ -51,7 +51,7 @@ async def root():
 
 
 @app.get("/api/marcas")
-async def listar_marcas() -> List[str]:
+def listar_marcas() -> List[str]:
     """Lista todas las marcas activas disponibles"""
     try:
         loader = get_loader()
@@ -64,7 +64,7 @@ async def listar_marcas() -> List[str]:
 
 
 @app.post("/api/simulate")
-async def ejecutar_simulacion(marcas_seleccionadas: List[str]) -> Dict[str, Any]:
+def ejecutar_simulacion(marcas_seleccionadas: List[str]) -> Dict[str, Any]:
     """
     Ejecuta la simulación para las marcas seleccionadas.
 
@@ -98,7 +98,7 @@ async def ejecutar_simulacion(marcas_seleccionadas: List[str]) -> Dict[str, Any]
 
 
 @app.get("/api/marcas/{marca_id}/comercial")
-async def obtener_datos_comerciales(marca_id: str) -> Dict[str, Any]:
+def obtener_datos_comerciales(marca_id: str) -> Dict[str, Any]:
     """
     Obtiene los datos comerciales de una marca (para debug).
 
@@ -120,7 +120,7 @@ async def obtener_datos_comerciales(marca_id: str) -> Dict[str, Any]:
 
 
 @app.get("/api/marcas/{marca_id}/ventas")
-async def obtener_datos_ventas(marca_id: str) -> Dict[str, Any]:
+def obtener_datos_ventas(marca_id: str) -> Dict[str, Any]:
     """
     Obtiene las proyecciones de ventas de una marca.
 
