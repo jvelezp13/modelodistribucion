@@ -61,16 +61,25 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-@st.cache_data
-def cargar_marcas_disponibles():
-    """Carga la lista de marcas disponibles."""
+@st.cache_data(ttl=60)  # Cache por 1 minuto
+def cargar_marcas_disponibles(_force_reload=None):
+    """Carga la lista de marcas disponibles.
+
+    Args:
+        _force_reload: Timestamp para forzar recarga (underscore evita que se use en hash del cache)
+    """
     loader = get_loader()
     return loader.listar_marcas()
 
 
-@st.cache_data(ttl=300)  # Cache por 5 minutos
-def ejecutar_simulacion(marcas_seleccionadas):
-    """Ejecuta la simulación para las marcas seleccionadas."""
+@st.cache_data(ttl=60)  # Cache por 1 minuto
+def ejecutar_simulacion(marcas_seleccionadas, _force_reload=None):
+    """Ejecuta la simulación para las marcas seleccionadas.
+
+    Args:
+        marcas_seleccionadas: Tupla de marcas a simular
+        _force_reload: Timestamp para forzar recarga (underscore evita que se use en hash del cache)
+    """
     try:
         resultado = simular_modelo_completo(marcas_seleccionadas)
         return resultado
@@ -314,6 +323,10 @@ def mostrar_detalle_marca(marca):
 
 def main():
     """Función principal del dashboard."""
+    # Inicializar session state para forzar recarga
+    if 'reload_timestamp' not in st.session_state:
+        st.session_state.reload_timestamp = 0
+
     # Header
     st.markdown('<p class="main-header">Sistema de Distribución Multimarcas</p>', unsafe_allow_html=True)
     st.markdown("**Modelo de Distribución y Ventas (DxV)** - Simulación y Optimización")
@@ -322,8 +335,16 @@ def main():
     with st.sidebar:
         st.header("⚙️ Configuración")
 
-        # Selección de marcas
-        marcas_disponibles = cargar_marcas_disponibles()
+        # Botón para recargar datos desde PostgreSQL (ANTES de cargar marcas)
+        if st.button("🔄 Recargar Datos desde BD", use_container_width=True, help="Limpia el caché y recarga los datos desde PostgreSQL"):
+            import time
+            st.session_state.reload_timestamp = time.time()
+            st.cache_data.clear()
+            st.success("✅ Caché limpiado. Los datos se recargarán desde la base de datos.")
+            st.rerun()
+
+        # Selección de marcas (con timestamp para forzar recarga)
+        marcas_disponibles = cargar_marcas_disponibles(_force_reload=st.session_state.reload_timestamp)
 
         if not marcas_disponibles:
             st.error("No se encontraron marcas configuradas")
@@ -335,12 +356,6 @@ def main():
             default=marcas_disponibles,
             help="Selecciona las marcas que deseas incluir en la simulación"
         )
-
-        # Botón para recargar datos desde PostgreSQL
-        if st.button("🔄 Recargar Datos desde BD", use_container_width=True, help="Limpia el caché y recarga los datos desde PostgreSQL"):
-            st.cache_data.clear()
-            st.success("✅ Caché limpiado. Los datos se recargarán desde la base de datos.")
-            st.rerun()
 
         # Botón de simulación
         ejecutar = st.button("🚀 Ejecutar Simulación", type="primary", use_container_width=True)
@@ -360,9 +375,12 @@ def main():
         st.warning("⚠️ Selecciona al menos una marca para simular")
         st.stop()
 
-    # Ejecutar simulación
+    # Ejecutar simulación (con timestamp para forzar recarga)
     with st.spinner("⏳ Ejecutando simulación..."):
-        resultado = ejecutar_simulacion(tuple(marcas_seleccionadas))
+        resultado = ejecutar_simulacion(
+            tuple(marcas_seleccionadas),
+            _force_reload=st.session_state.reload_timestamp
+        )
 
     if resultado is None:
         st.error("No se pudo ejecutar la simulación")
