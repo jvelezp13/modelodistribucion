@@ -10,7 +10,15 @@ import plotly.graph_objects as go
 import pandas as pd
 from typing import Dict, Any
 import sys
+import logging
 from pathlib import Path
+
+# Configurar logging para debug
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    force=True
+)
 
 # Configurar paths para imports
 root_path = Path(__file__).parent.parent
