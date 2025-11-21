@@ -1,5 +1,5 @@
 # Core Dependencies
-python>=3.9
+# Python 3.9+ required (specify in Dockerfile or environment, not here)
 
 # Data Processing
 pandas>=2.0.0
@@ -27,6 +27,9 @@ black>=23.0.0
 flake8>=6.0.0
 mypy>=1.5.0
 
-# Optional - Database (for future phases)
-# sqlalchemy>=2.0.0
-# psycopg2-binary>=2.9.0
+# Database (para conexión a PostgreSQL)
+psycopg2-binary>=2.9.0
+
+# Django (para DataLoaderDB que usa Django ORM)
+Django>=5.0
+python-dotenv>=1.0.0
