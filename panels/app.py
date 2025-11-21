@@ -10,14 +10,28 @@ import plotly.graph_objects as go
 import pandas as pd
 from typing import Dict, Any
 import sys
+import logging
 from pathlib import Path
 
-# Agregar el directorio raíz al path para imports
-root_path = Path(__file__).parent.parent
-sys.path.insert(0, str(root_path))
+# Configurar logging para debug
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    force=True
+)
 
+# Configurar paths para imports
+root_path = Path(__file__).parent.parent
+
+# Agregar root path para importar el simulador (core.simulator)
+if str(root_path) not in sys.path:
+    sys.path.insert(0, str(root_path))
+
+# Importar simulador PRIMERO (antes de que Django reorganice los paths)
 from core.simulator import Simulator, simular_modelo_completo
-from utils.loaders import get_loader
+
+# Importar loader de DB (esto configurará Django y reorganizará paths)
+from utils.loaders_db import get_loader_db as get_loader
 
 # Configuración de la página
 st.set_page_config(
@@ -27,46 +41,267 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Estilos personalizados
+# Estilos personalizados modernos y profesionales
 st.markdown("""
 <style>
+    /* Importar fuente moderna */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+    /* Variables globales */
+    :root {
+        --primary-color: #0066FF;
+        --secondary-color: #4F46E5;
+        --success-color: #10B981;
+        --warning-color: #F59E0B;
+        --danger-color: #EF4444;
+        --text-primary: #1A1F36;
+        --text-secondary: #6B7280;
+        --bg-primary: #FFFFFF;
+        --bg-secondary: #F7F9FC;
+        --border-color: #E5E7EB;
+        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Tipografía mejorada */
+    html, body, [class*="css"] {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        font-weight: 400;
+        line-height: 1.6;
+    }
+
+    /* Header principal */
     .main-header {
-        font-size: 2.5rem;
+        font-size: 2.25rem;
         font-weight: 700;
-        color: #1f77b4;
-        margin-bottom: 1rem;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+        letter-spacing: -0.025em;
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
     }
+
+    /* Subtítulos */
+    .subtitle {
+        font-size: 1rem;
+        color: var(--text-secondary);
+        margin-bottom: 2rem;
+        font-weight: 500;
+    }
+
+    /* Mejorar métricas de Streamlit */
+    [data-testid="stMetricValue"] {
+        font-size: 1.875rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    [data-testid="stMetricLabel"] {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    [data-testid="stMetricDelta"] {
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    /* Cards con sombra moderna */
     .metric-card {
-        background-color: #f0f2f6;
-        padding: 1rem;
-        border-radius: 0.5rem;
-        border-left: 4px solid #1f77b4;
+        background: var(--bg-primary);
+        padding: 1.5rem;
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow-md);
+        transition: all 0.3s ease;
     }
+
+    .metric-card:hover {
+        box-shadow: var(--shadow-lg);
+        transform: translateY(-2px);
+    }
+
+    /* Cards con indicador de color */
     .success-metric {
-        border-left-color: #28a745;
+        border-left: 4px solid var(--success-color);
     }
+
     .warning-metric {
-        border-left-color: #ffc107;
+        border-left: 4px solid var(--warning-color);
     }
+
     .danger-metric {
-        border-left-color: #dc3545;
+        border-left: 4px solid var(--danger-color);
+    }
+
+    .primary-metric {
+        border-left: 4px solid var(--primary-color);
+    }
+
+    /* Mejorar botones */
+    .stButton > button {
+        border-radius: 8px;
+        font-weight: 600;
+        padding: 0.625rem 1.25rem;
+        transition: all 0.2s ease;
+        border: none;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .stButton > button:hover {
+        box-shadow: var(--shadow-md);
+        transform: translateY(-1px);
+    }
+
+    .stButton > button[kind="primary"] {
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    }
+
+    /* Mejorar sidebar */
+    [data-testid="stSidebar"] {
+        background-color: var(--bg-secondary);
+        border-right: 1px solid var(--border-color);
+    }
+
+    [data-testid="stSidebar"] h2 {
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 1.5rem;
+    }
+
+    /* Mejorar multiselect */
+    .stMultiSelect [data-baseweb="select"] {
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+    }
+
+    /* Mejorar tabs */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 0.5rem;
+        border-bottom: 2px solid var(--border-color);
+    }
+
+    .stTabs [data-baseweb="tab"] {
+        font-weight: 600;
+        border-radius: 8px 8px 0 0;
+        padding: 0.75rem 1.5rem;
+        transition: all 0.2s ease;
+    }
+
+    .stTabs [data-baseweb="tab"]:hover {
+        background-color: var(--bg-secondary);
+    }
+
+    .stTabs [aria-selected="true"] {
+        background: linear-gradient(to bottom, var(--bg-secondary), transparent);
+        border-bottom: 3px solid var(--primary-color);
+    }
+
+    /* Mejorar tablas */
+    .dataframe {
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid var(--border-color);
+    }
+
+    .dataframe thead tr {
+        background-color: var(--bg-secondary);
+    }
+
+    .dataframe thead th {
+        font-weight: 700;
+        color: var(--text-primary);
+        padding: 1rem;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.05em;
+    }
+
+    .dataframe tbody tr:hover {
+        background-color: var(--bg-secondary);
+    }
+
+    /* Mejorar expanders */
+    .streamlit-expanderHeader {
+        font-weight: 600;
+        color: var(--text-primary);
+        background-color: var(--bg-secondary);
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+    }
+
+    /* Mejorar checkbox */
+    .stCheckbox {
+        font-weight: 500;
+    }
+
+    /* Spinner mejorado */
+    .stSpinner > div {
+        border-top-color: var(--primary-color) !important;
+    }
+
+    /* Alertas mejoradas */
+    .stAlert {
+        border-radius: 8px;
+        border-left-width: 4px;
+        box-shadow: var(--shadow-sm);
+    }
+
+    /* Espaciado y separadores */
+    hr {
+        margin: 2rem 0;
+        border: none;
+        border-top: 2px solid var(--border-color);
+        opacity: 0.5;
+    }
+
+    /* Animaciones suaves */
+    * {
+        transition: background-color 0.2s ease, border-color 0.2s ease;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .main-header {
+            font-size: 1.75rem;
+        }
     }
 </style>
 """, unsafe_allow_html=True)
 
 
-@st.cache_data
-def cargar_marcas_disponibles():
-    """Carga la lista de marcas disponibles."""
+@st.cache_data(ttl=60)  # Cache por 1 minuto
+def cargar_marcas_disponibles(_force_reload=None):
+    """Carga la lista de marcas disponibles.
+
+    Args:
+        _force_reload: Timestamp para forzar recarga (underscore evita que se use en hash del cache)
+    """
     loader = get_loader()
     return loader.listar_marcas()
 
 
-@st.cache_data(ttl=300)  # Cache por 5 minutos
-def ejecutar_simulacion(marcas_seleccionadas):
-    """Ejecuta la simulación para las marcas seleccionadas."""
+@st.cache_data(ttl=60)  # Cache por 1 minuto
+def ejecutar_simulacion(marcas_seleccionadas, _force_reload=None):
+    """Ejecuta la simulación para las marcas seleccionadas.
+
+    Args:
+        marcas_seleccionadas: Tupla de marcas a simular
+        _force_reload: Timestamp para forzar recarga (underscore evita que se use en hash del cache)
+    """
     try:
-        resultado = simular_modelo_completo(marcas_seleccionadas)
+        # IMPORTANTE: Usar loader de DB en lugar de YAML
+        loader = get_loader()
+        simulator = Simulator(loader=loader)
+        simulator.cargar_marcas(marcas_seleccionadas)
+        resultado = simulator.ejecutar_simulacion()
         return resultado
     except Exception as e:
         st.error(f"Error en la simulación: {str(e)}")
@@ -308,30 +543,56 @@ def mostrar_detalle_marca(marca):
 
 def main():
     """Función principal del dashboard."""
-    # Header
+    # Inicializar session state para forzar recarga y mantener selección
+    if 'reload_timestamp' not in st.session_state:
+        st.session_state.reload_timestamp = 0
+    if 'marcas_seleccionadas' not in st.session_state:
+        st.session_state.marcas_seleccionadas = None
+
+    # Header moderno
     st.markdown('<p class="main-header">Sistema de Distribución Multimarcas</p>', unsafe_allow_html=True)
-    st.markdown("**Modelo de Distribución y Ventas (DxV)** - Simulación y Optimización")
+    st.markdown('<p class="subtitle">Modelo de Distribución y Ventas (DxV) - Simulación y Optimización</p>', unsafe_allow_html=True)
 
     # Sidebar
     with st.sidebar:
         st.header("⚙️ Configuración")
 
-        # Selección de marcas
-        marcas_disponibles = cargar_marcas_disponibles()
+        # Selección de marcas (con timestamp para forzar recarga)
+        marcas_disponibles = cargar_marcas_disponibles(_force_reload=st.session_state.reload_timestamp)
 
         if not marcas_disponibles:
             st.error("No se encontraron marcas configuradas")
             st.stop()
 
+        # Usar marcas guardadas o todas por defecto
+        default_marcas = st.session_state.marcas_seleccionadas if st.session_state.marcas_seleccionadas else marcas_disponibles
+
         marcas_seleccionadas = st.multiselect(
             "Marcas a Simular",
             marcas_disponibles,
-            default=marcas_disponibles,
-            help="Selecciona las marcas que deseas incluir en la simulación"
+            default=default_marcas,
+            help="Selecciona las marcas que deseas incluir en la simulación",
+            key="multiselect_marcas"
         )
+
+        # Guardar selección actual en session_state
+        st.session_state.marcas_seleccionadas = marcas_seleccionadas
+
+        # Botón para recargar datos desde PostgreSQL
+        if st.button("🔄 Recargar Datos desde BD", use_container_width=True, help="Limpia el caché y recarga los datos desde PostgreSQL"):
+            import time
+            st.session_state.reload_timestamp = time.time()
+            # Mantener las marcas seleccionadas actuales
+            # (ya están guardadas en session_state.marcas_seleccionadas)
+            st.cache_data.clear()
+            st.success("✅ Caché limpiado. Los datos se recargarán desde la base de datos.")
+            st.rerun()
 
         # Botón de simulación
         ejecutar = st.button("🚀 Ejecutar Simulación", type="primary", use_container_width=True)
+
+        # DEBUG: Botón para ver datos crudos de BD
+        ver_debug = st.checkbox("🔍 Mostrar Info de Debug", value=False)
 
         st.markdown("---")
         st.markdown("### 📖 Acerca de")
@@ -348,13 +609,38 @@ def main():
         st.warning("⚠️ Selecciona al menos una marca para simular")
         st.stop()
 
-    # Ejecutar simulación
+    # Ejecutar simulación (con timestamp para forzar recarga)
     with st.spinner("⏳ Ejecutando simulación..."):
-        resultado = ejecutar_simulacion(tuple(marcas_seleccionadas))
+        resultado = ejecutar_simulacion(
+            tuple(marcas_seleccionadas),
+            _force_reload=st.session_state.reload_timestamp
+        )
 
     if resultado is None:
         st.error("No se pudo ejecutar la simulación")
         st.stop()
+
+    # DEBUG: Mostrar datos crudos de BD
+    if ver_debug:
+        st.markdown("---")
+        st.markdown("### 🔍 DEBUG: Datos Crudos de PostgreSQL")
+
+        loader = get_loader()
+        for marca_id in marcas_seleccionadas:
+            with st.expander(f"📊 Datos de {marca_id.upper()}", expanded=True):
+                try:
+                    # Cargar datos comerciales
+                    datos_comerciales = loader.cargar_marca_comercial(marca_id)
+
+                    st.markdown("**Personal Comercial:**")
+                    for tipo, lista_personal in datos_comerciales['recursos_comerciales'].items():
+                        total_cantidad = sum(p['cantidad'] for p in lista_personal)
+                        st.write(f"- **{tipo}**: {len(lista_personal)} registros, Total: {total_cantidad} personas")
+                        for idx, p in enumerate(lista_personal, 1):
+                            st.write(f"  Registro {idx}: Cantidad={p['cantidad']}, Salario=${p['salario_base']:,.0f}")
+                except Exception as e:
+                    st.error(f"Error cargando datos: {str(e)}")
+        st.markdown("---")
 
     # Tabs principales
     tab1, tab2, tab3 = st.tabs(["📊 Resumen General", "📈 Por Marca", "🔍 Detalles"])

@@ -1,0 +1,145 @@
+/**
+ * API Client para comunicarse con el backend FastAPI
+ */
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+// Debug: Log de la URL del API
+if (typeof window !== 'undefined') {
+  console.log('🔗 API URL configurada:', API_URL);
+  console.log('🔗 NEXT_PUBLIC_API_URL:', process.env.NEXT_PUBLIC_API_URL);
+}
+
+export interface Marca {
+  marca_id: string;
+  nombre: string;
+  ventas_mensuales: number;
+  costo_total: number;
+  costo_comercial: number;
+  costo_logistico: number;
+  costo_administrativo: number;
+  margen_porcentaje: number;
+  total_empleados: number;
+  empleados_comerciales: number;
+  empleados_logisticos: number;
+  rubros_individuales: Rubro[];
+  rubros_compartidos_asignados: Rubro[];
+}
+
+export interface Rubro {
+  id: string;
+  nombre: string;
+  categoria: string;
+  tipo: string;
+  valor_total: number;
+  cantidad?: number;
+  salario_base?: number;
+  valor_unitario?: number;
+  tipo_vehiculo?: string;
+  esquema?: string;
+  criterio_prorrateo?: string;
+}
+
+export interface Consolidado {
+  total_ventas_mensuales: number;
+  total_ventas_anuales: number;
+  total_costos_mensuales: number;
+  total_costos_anuales: number;
+  margen_consolidado: number;
+  total_empleados: number;
+  costo_comercial_total: number;
+  costo_logistico_total: number;
+  costo_administrativo_total: number;
+}
+
+export interface SimulacionResult {
+  consolidado: Consolidado;
+  marcas: Marca[];
+  rubros_compartidos: Rubro[];
+  metadata: Record<string, any>;
+}
+
+export interface VentasData {
+  marca_id: string;
+  ventas_mensuales: Record<string, number>;
+  resumen_anual: {
+    total_ventas_anuales: number;
+    promedio_mensual: number;
+  };
+}
+
+class APIClient {
+  private baseURL: string;
+
+  constructor(baseURL: string = API_URL) {
+    this.baseURL = baseURL;
+  }
+
+  private async request<T>(
+    endpoint: string,
+    options?: RequestInit
+  ): Promise<T> {
+    const url = `${this.baseURL}${endpoint}`;
+
+    console.log(`🌐 Fetching: ${url}`);
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          ...options?.headers,
+        },
+      });
+
+      console.log(`📡 Response status: ${response.status} for ${url}`);
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: 'Error desconocido' }));
+        console.error(`❌ API Error Response:`, error);
+        throw new Error(error.detail || `HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log(`✅ Success for ${endpoint}:`, data);
+      return data;
+    } catch (error) {
+      console.error(`❌ API Error [${endpoint}]:`, error);
+      console.error(`❌ Full URL attempted: ${url}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Lista todas las marcas activas
+   */
+  async listarMarcas(): Promise<string[]> {
+    return this.request<string[]>('/api/marcas');
+  }
+
+  /**
+   * Ejecuta la simulación para las marcas seleccionadas
+   */
+  async ejecutarSimulacion(marcas: string[]): Promise<SimulacionResult> {
+    return this.request<SimulacionResult>('/api/simulate', {
+      method: 'POST',
+      body: JSON.stringify(marcas),
+    });
+  }
+
+  /**
+   * Obtiene datos comerciales de una marca (para debug)
+   */
+  async obtenerDatosComerciales(marcaId: string): Promise<any> {
+    return this.request(`/api/marcas/${marcaId}/comercial`);
+  }
+
+  /**
+   * Obtiene proyecciones de ventas de una marca
+   */
+  async obtenerDatosVentas(marcaId: string): Promise<VentasData> {
+    return this.request<VentasData>(`/api/marcas/${marcaId}/ventas`);
+  }
+}
+
+export const apiClient = new APIClient();

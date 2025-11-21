@@ -1,19 +1,13 @@
 """
 DataLoader que usa PostgreSQL a través de Django ORM
 """
-import os
-import sys
-import django
-from pathlib import Path
 from typing import Dict, List, Any, Optional
 import logging
 
-# Configurar Django
-admin_panel_path = Path(__file__).parent.parent / 'admin_panel'
-sys.path.insert(0, str(admin_panel_path))
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'dxv_admin.settings')
-django.setup()
+# Inicializar Django antes de importar modelos (reorganiza sys.path)
+from . import django_init
 
+# Importar modelos de Django (ahora core.models será de /app/admin_panel/core/)
 from core.models import (
     Marca, PersonalComercial, PersonalLogistico,
     Vehiculo, ProyeccionVentas, VolumenOperacion,
@@ -133,7 +127,15 @@ class DataLoaderDB:
         """Carga los datos comerciales de una marca desde PostgreSQL"""
         try:
             marca = Marca.objects.get(marca_id=marca_id)
-            personal = PersonalComercial.objects.filter(marca=marca)
+
+            # IMPORTANTE: Forzar recarga desde DB (evitar caché de Django ORM)
+            personal = PersonalComercial.objects.filter(marca=marca).all()
+
+            # DEBUG: Log para verificar qué se está leyendo
+            logger.info(f"[DEBUG] Cargando personal comercial de {marca_id}")
+            logger.info(f"[DEBUG] Total registros: {personal.count()}")
+            for p in personal:
+                logger.info(f"[DEBUG] - Tipo: {p.tipo}, Cantidad: {p.cantidad}, ID: {p.id}")
 
             # Calcular proyección de ventas mensual promedio
             proyecciones = ProyeccionVentas.objects.filter(marca=marca)
@@ -151,7 +153,7 @@ class DataLoaderDB:
                 if tipo_key not in recursos_comerciales:
                     recursos_comerciales[tipo_key] = []
 
-                recursos_comerciales[tipo_key].append({
+                data = {
                     'tipo': p.tipo,
                     'cantidad': p.cantidad,
                     'salario_base': float(p.salario_base),
@@ -160,7 +162,10 @@ class DataLoaderDB:
                     'auxilio_adicional': float(p.auxilio_adicional) if p.auxilio_adicional else 0,
                     'porcentaje_dedicacion': float(p.porcentaje_dedicacion) if p.porcentaje_dedicacion else None,
                     'criterio_prorrateo': p.criterio_prorrateo,
-                })
+                }
+
+                logger.info(f"[DEBUG] Agregando {p.tipo}: cantidad={p.cantidad}")
+                recursos_comerciales[tipo_key].append(data)
 
             return {
                 'marca_id': marca.marca_id,
