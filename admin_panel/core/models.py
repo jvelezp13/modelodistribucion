@@ -575,3 +575,124 @@ class Impuesto(models.Model):
         elif self.valor_fijo:
             return f"{self.get_tipo_display()} - ${self.valor_fijo:,.0f}"
         return self.get_tipo_display()
+
+
+class ConfiguracionDescuentos(models.Model):
+    """Configuración de descuentos e incentivos por marca"""
+
+    marca = models.OneToOneField(
+        Marca,
+        on_delete=models.CASCADE,
+        related_name='configuracion_descuentos',
+        verbose_name="Marca"
+    )
+
+    # REBATE / RxP
+    porcentaje_rebate = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        verbose_name="Rebate (%)",
+        help_text="Porcentaje de rebate sobre ventas netas (0-100%)"
+    )
+
+    # DESCUENTO FINANCIERO
+    aplica_descuento_financiero = models.BooleanField(
+        default=False,
+        verbose_name="¿Aplica Descuento Financiero?"
+    )
+    porcentaje_descuento_financiero = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        verbose_name="Descuento Financiero (%)",
+        help_text="Porcentaje de descuento por pronto pago (0-100%)"
+    )
+
+    activa = models.BooleanField(default=True, verbose_name="Activa")
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_modificacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'dxv_configuracion_descuentos'
+        verbose_name = "Configuración de Descuentos"
+        verbose_name_plural = "Configuraciones de Descuentos"
+        ordering = ['marca']
+
+    def __str__(self):
+        return f"{self.marca.nombre} - Descuentos"
+
+    def clean(self):
+        """Validación: si no aplica descuento financiero, el porcentaje debe ser 0"""
+        from django.core.exceptions import ValidationError
+        if not self.aplica_descuento_financiero and self.porcentaje_descuento_financiero > 0:
+            raise ValidationError(
+                "El porcentaje de descuento financiero debe ser 0 si no aplica descuento financiero"
+            )
+
+    def total_tramos_porcentaje(self):
+        """Calcula la suma de porcentajes de todos los tramos"""
+        return self.tramos.aggregate(
+            total=models.Sum('porcentaje_ventas')
+        )['total'] or 0
+
+    def validar_tramos(self):
+        """Valida que los tramos sumen 100%"""
+        total = self.total_tramos_porcentaje()
+        return abs(total - 100) < 0.01  # Tolerancia por decimales
+
+    total_tramos_porcentaje.short_description = "Total % Tramos"
+
+
+class TramoDescuentoFactura(models.Model):
+    """Tramos de descuento a pie de factura"""
+
+    configuracion = models.ForeignKey(
+        ConfiguracionDescuentos,
+        on_delete=models.CASCADE,
+        related_name='tramos',
+        verbose_name="Configuración"
+    )
+    orden = models.PositiveIntegerField(
+        verbose_name="Orden",
+        help_text="Orden del tramo (1, 2, 3...)"
+    )
+    porcentaje_ventas = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        verbose_name="% de Ventas",
+        help_text="Porcentaje del total de ventas (ej: 50%)"
+    )
+    porcentaje_descuento = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        verbose_name="% de Descuento",
+        help_text="Porcentaje de descuento aplicado (ej: 19%)"
+    )
+
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_modificacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'dxv_tramo_descuento_factura'
+        verbose_name = "Tramo de Descuento"
+        verbose_name_plural = "Tramos de Descuento"
+        ordering = ['configuracion', 'orden']
+        unique_together = ['configuracion', 'orden']
+
+    def __str__(self):
+        return f"Tramo {self.orden}: {self.porcentaje_ventas}% ventas → {self.porcentaje_descuento}% desc."
+
+    def clean(self):
+        """Validaciones del tramo"""
+        from django.core.exceptions import ValidationError
+
+        if self.porcentaje_ventas <= 0:
+            raise ValidationError("El porcentaje de ventas debe ser mayor a 0")
+
+        if self.porcentaje_descuento < 0:
+            raise ValidationError("El porcentaje de descuento no puede ser negativo")
