@@ -8,7 +8,8 @@ from .models import (
     Vehiculo, ProyeccionVentas, VolumenOperacion,
     ParametrosMacro, FactorPrestacional,
     PersonalAdministrativo, GastoAdministrativo,
-    GastoComercial, GastoLogistico, Impuesto
+    GastoComercial, GastoLogistico, Impuesto,
+    ConfiguracionDescuentos, TramoDescuentoFactura
 )
 
 
@@ -418,3 +419,128 @@ class ImpuestoAdmin(admin.ModelAdmin):
             return f"${obj.valor_fijo:,.0f}"
         return "-"
     valor_display.short_description = 'Valor'
+
+
+class TramoDescuentoFacturaInline(admin.TabularInline):
+    """Inline para tramos de descuento"""
+    model = TramoDescuentoFactura
+    extra = 1
+    fields = ('orden', 'porcentaje_ventas', 'porcentaje_descuento')
+    ordering = ('orden',)
+
+
+@admin.register(ConfiguracionDescuentos)
+class ConfiguracionDescuentosAdmin(admin.ModelAdmin):
+    list_display = (
+        'marca',
+        'porcentaje_rebate_display',
+        'descuento_financiero_display',
+        'total_tramos_display',
+        'activa',
+        'fecha_modificacion'
+    )
+    list_filter = ('activa', 'aplica_descuento_financiero')
+    search_fields = ('marca__nombre',)
+    readonly_fields = ('fecha_creacion', 'fecha_modificacion', 'total_tramos_porcentaje')
+    inlines = [TramoDescuentoFacturaInline]
+
+    fieldsets = (
+        ('Marca', {
+            'fields': ('marca', 'activa')
+        }),
+        ('Descuento a Pie de Factura', {
+            'fields': ('total_tramos_porcentaje',),
+            'description': 'Los tramos de descuento se configuran en la tabla inferior. La suma de los porcentajes de ventas debe ser 100%.'
+        }),
+        ('Rebate / RxP', {
+            'fields': ('porcentaje_rebate',),
+            'description': 'Porcentaje de rebate sobre las ventas netas (después de descuentos a pie de factura)'
+        }),
+        ('Descuento Financiero', {
+            'fields': ('aplica_descuento_financiero', 'porcentaje_descuento_financiero'),
+            'description': 'Descuento por pronto pago'
+        }),
+        ('Metadata', {
+            'fields': ('fecha_creacion', 'fecha_modificacion'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def porcentaje_rebate_display(self, obj):
+        return f"{obj.porcentaje_rebate:.2f}%"
+    porcentaje_rebate_display.short_description = 'Rebate'
+    porcentaje_rebate_display.admin_order_field = 'porcentaje_rebate'
+
+    def descuento_financiero_display(self, obj):
+        if obj.aplica_descuento_financiero:
+            return f"SÍ - {obj.porcentaje_descuento_financiero:.2f}%"
+        return "NO"
+    descuento_financiero_display.short_description = 'Desc. Financiero'
+
+    def total_tramos_display(self, obj):
+        total = obj.total_tramos_porcentaje()
+        if abs(total - 100) < 0.01:
+            color = "green"
+            status = "✓"
+        elif total == 0:
+            color = "gray"
+            status = "⚠"
+        else:
+            color = "red"
+            status = "✗"
+        return f'<span style="color: {color}; font-weight: bold;">{status} {total:.2f}%</span>'
+    total_tramos_display.short_description = 'Total Tramos'
+    total_tramos_display.allow_tags = True
+
+    def save_model(self, request, obj, form, change):
+        """Valida antes de guardar"""
+        from django.contrib import messages
+        super().save_model(request, obj, form, change)
+
+        # Validar que los tramos sumen 100% después de guardar
+        if obj.tramos.exists():
+            total = obj.total_tramos_porcentaje()
+            if abs(total - 100) > 0.01:
+                messages.warning(
+                    request,
+                    f"Advertencia: Los tramos de descuento suman {total:.2f}% en lugar de 100%"
+                )
+
+
+@admin.register(TramoDescuentoFactura)
+class TramoDescuentoFacturaAdmin(admin.ModelAdmin):
+    list_display = (
+        'configuracion',
+        'orden',
+        'porcentaje_ventas_display',
+        'porcentaje_descuento_display',
+        'fecha_modificacion'
+    )
+    list_filter = ('configuracion__marca',)
+    search_fields = ('configuracion__marca__nombre',)
+    readonly_fields = ('fecha_creacion', 'fecha_modificacion')
+    ordering = ('configuracion', 'orden')
+
+    fieldsets = (
+        ('Configuración', {
+            'fields': ('configuracion', 'orden')
+        }),
+        ('Tramo', {
+            'fields': ('porcentaje_ventas', 'porcentaje_descuento'),
+            'description': 'Define qué porcentaje de las ventas totales se aplica este descuento'
+        }),
+        ('Metadata', {
+            'fields': ('fecha_creacion', 'fecha_modificacion'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def porcentaje_ventas_display(self, obj):
+        return f"{obj.porcentaje_ventas:.2f}%"
+    porcentaje_ventas_display.short_description = '% Ventas'
+    porcentaje_ventas_display.admin_order_field = 'porcentaje_ventas'
+
+    def porcentaje_descuento_display(self, obj):
+        return f"{obj.porcentaje_descuento:.2f}%"
+    porcentaje_descuento_display.short_description = '% Descuento'
+    porcentaje_descuento_display.admin_order_field = 'porcentaje_descuento'
