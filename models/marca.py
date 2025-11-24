@@ -77,7 +77,6 @@ class Marca:
         Returns:
             Margen como decimal (0.0 - 1.0)
         """
-        """
         ventas_base = self.ventas_mensuales
         if ventas_base == 0:
             return 0.0
