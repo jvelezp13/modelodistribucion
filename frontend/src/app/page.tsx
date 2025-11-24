@@ -171,12 +171,12 @@ export default function DashboardPage() {
                   <MetricCard
                     label={resultado.consolidado.total_ventas_netas_mensuales ? "Ventas Netas" : "Ventas Mensuales"}
                     value={formatearMoneda(
-                      resultado.consolidado.total_ventas_netas_mensuales ||
-                      resultado.consolidado.total_ventas_brutas_mensuales ||
-                      resultado.consolidado.total_ventas_mensuales
+                      resultado.consolidado.total_ventas_netas_mensuales ??
+                      resultado.consolidado.total_ventas_brutas_mensuales ??
+                      resultado.consolidado.total_ventas_mensuales ?? 0
                     )}
                     subtitle={resultado.consolidado.total_descuentos_mensuales ?
-                      `Brutas: ${formatearMoneda(resultado.consolidado.total_ventas_brutas_mensuales)} (-${formatearPorcentaje(resultado.consolidado.porcentaje_descuento_promedio)})` :
+                      `Brutas: ${formatearMoneda(resultado.consolidado.total_ventas_brutas_mensuales ?? 0)} (-${formatearPorcentaje(resultado.consolidado.porcentaje_descuento_promedio ?? 0)})` :
                       `${formatearMoneda(resultado.consolidado.total_ventas_anuales)} anuales`
                     }
                     icon={<DollarSign className="h-6 w-6" />}
@@ -260,12 +260,12 @@ export default function DashboardPage() {
                         </thead>
                         <tbody>
                           {resultado.marcas.map((marca) => {
-                            const tieneDescuentos = marca.porcentaje_descuento_total > 0;
+                            const tieneDescuentos = (marca.porcentaje_descuento_total ?? 0) > 0;
                             return (
                               <tr key={marca.marca_id} className="border-b border-secondary-100 hover:bg-primary-50 transition-colors">
                                 <td className="py-3 px-4 font-medium text-secondary-900">{marca.nombre}</td>
                                 <td className="py-3 px-4 text-right text-success font-semibold">
-                                  {formatearMoneda(marca.ventas_netas_mensuales || marca.ventas_mensuales)}
+                                  {formatearMoneda(marca.ventas_netas_mensuales ?? marca.ventas_mensuales)}
                                   {tieneDescuentos && (
                                     <div className="text-xs text-secondary-500 font-normal">
                                       Brutas: {formatearMoneda(marca.ventas_mensuales)}
@@ -275,7 +275,7 @@ export default function DashboardPage() {
                                 <td className="py-3 px-4 text-right">
                                   {tieneDescuentos ? (
                                     <span className="text-orange-600 font-medium">
-                                      -{formatearPorcentaje(marca.porcentaje_descuento_total)}
+                                      -{formatearPorcentaje(marca.porcentaje_descuento_total ?? 0)}
                                     </span>
                                   ) : (
                                     <span className="text-secondary-400">-</span>
@@ -311,9 +311,9 @@ export default function DashboardPage() {
                       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                         <MetricCard
                           label={marca.ventas_netas_mensuales && marca.ventas_netas_mensuales !== marca.ventas_mensuales ? "Ventas Netas" : "Ventas Mensuales"}
-                          value={formatearMoneda(marca.ventas_netas_mensuales || marca.ventas_mensuales)}
-                          subtitle={marca.porcentaje_descuento_total > 0 ?
-                            `Brutas: ${formatearMoneda(marca.ventas_mensuales)} (-${formatearPorcentaje(marca.porcentaje_descuento_total)})` :
+                          value={formatearMoneda(marca.ventas_netas_mensuales ?? marca.ventas_mensuales)}
+                          subtitle={(marca.porcentaje_descuento_total ?? 0) > 0 ?
+                            `Brutas: ${formatearMoneda(marca.ventas_mensuales)} (-${formatearPorcentaje(marca.porcentaje_descuento_total ?? 0)})` :
                             undefined
                           }
                           variant="success"
@@ -326,8 +326,8 @@ export default function DashboardPage() {
                         <MetricCard
                           label="Margen"
                           value={formatearPorcentaje(marca.margen_porcentaje)}
-                          subtitle={marca.porcentaje_descuento_total > 0 ?
-                            `Desc: ${formatearMoneda(marca.descuento_pie_factura + marca.rebate + marca.descuento_financiero)}` :
+                          subtitle={(marca.porcentaje_descuento_total ?? 0) > 0 ?
+                            `Desc: ${formatearMoneda((marca.descuento_pie_factura ?? 0) + (marca.rebate ?? 0) + (marca.descuento_financiero ?? 0))}` :
                             undefined
                           }
                           variant={marca.margen_porcentaje > 10 ? 'success' : 'danger'}
