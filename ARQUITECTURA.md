@@ -1,6 +1,6 @@
 # Arquitectura Técnica - Sistema de Distribución Multimarcas
 
-Este documento describe la arquitectura técnica detallada del sistema.
+Este documento describe la arquitectura técnica detallada del sistema en su versión híbrida moderna.
 
 ---
 
@@ -8,47 +8,33 @@ Este documento describe la arquitectura técnica detallada del sistema.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                        USUARIO / INTERFAZ                            │
-│                      (Streamlit Dashboard)                           │
-└────────────────────────────┬─────────────────────────────────────────┘
-                             │
-                             ↓
+│                        INTERFACES DE USUARIO                         │
+│                                                                     │
+│  ┌──────────────┐      ┌──────────────┐      ┌──────────────┐       │
+│  │  Next.js     │      │  Streamlit   │      │ Django Admin │       │
+│  │  (Frontend)  │      │  (Legacy)    │      │  (Backoffice)│       │
+│  └──────┬───────┘      └──────┬───────┘      └──────┬───────┘       │
+│         │                     │                     │               │
+└─────────┼─────────────────────┼─────────────────────┼───────────────┘
+          │                     │                     │
+          ↓ (HTTP/JSON)         ↓ (Python Import)     ↓ (ORM)
 ┌─────────────────────────────────────────────────────────────────────┐
-│                     CAPA DE VISUALIZACIÓN                            │
-│  ┌─────────────┐  ┌──────────────┐  ┌────────────────┐              │
-│  │  Dashboard  │  │ Panel Marca  │  │  Comparativo   │              │
-│  │   General   │  │  Individual  │  │  Multimarcas   │              │
-│  └─────────────┘  └──────────────┘  └────────────────┘              │
-└────────────────────────────┬─────────────────────────────────────────┘
-                             │
-                             ↓
+│                   CAPA DE PROCESAMIENTO Y API                        │
+│                                                                     │
+│  ┌──────────────┐      ┌──────────────┐      ┌─────────────────┐    │
+│  │   FastAPI    │      │  Simulator   │      │   Django ORM    │    │
+│  │    (API)     │◄────►│    (Core)    │◄────►│    (Models)     │    │
+│  └──────────────┘      └──────────────┘      └─────────────────┘    │
+└─────────────────────────────────────────────────────────────────────┘
+                                                      │
+                                                      ↓ (SQL)
 ┌─────────────────────────────────────────────────────────────────────┐
-│                   CAPA DE PROCESAMIENTO                              │
-│  ┌──────────────┐  ┌──────────────┐  ┌─────────────────┐            │
-│  │  Simulator   │  │  Allocator   │  │  Calculadoras   │            │
-│  │    (Core)    │  │  (Prorrateo) │  │  Especializadas │            │
-│  └──────────────┘  └──────────────┘  └─────────────────┘            │
-└────────────────────────────┬─────────────────────────────────────────┘
-                             │
-                             ↓
-┌─────────────────────────────────────────────────────────────────────┐
-│                      CAPA DE MODELOS                                 │
-│  ┌────────────┐  ┌─────────────┐  ┌──────────────┐                  │
-│  │   Marca    │  │   Rubro     │  │   Personal   │                  │
-│  ├────────────┤  ├─────────────┤  ├──────────────┤                  │
-│  │ Comercial  │  │  Vehículo   │  │  Calculadora │                  │
-│  │ Logística  │  │             │  │   Financiera │                  │
-│  │    Admin   │  │             │  │              │                  │
-│  └────────────┘  └─────────────┘  └──────────────┘                  │
-└────────────────────────────┬─────────────────────────────────────────┘
-                             │
-                             ↓
-┌─────────────────────────────────────────────────────────────────────┐
-│                      CAPA DE DATOS                                   │
-│  ┌──────────────────┐  ┌─────────────────┐  ┌───────────────┐       │
-│  │  Configuración   │  │   Catálogos     │  │  Datos por    │       │
-│  │   (YAML)         │  │   Maestros      │  │    Marca      │       │
-│  └──────────────────┘  └─────────────────┘  └───────────────┘       │
+│                       CAPA DE DATOS (PERSISTENCIA)                   │
+│                                                                     │
+│                      ┌──────────────────────┐                       │
+│                      │      PostgreSQL      │                       │
+│                      │   (Fuente de Verdad) │                       │
+│                      └──────────────────────┘                       │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -56,306 +42,93 @@ Este documento describe la arquitectura técnica detallada del sistema.
 
 ## 📦 Detalle de Componentes
 
-### 1. CAPA DE VISUALIZACIÓN (panels/)
+### 1. CAPA DE DATOS (PostgreSQL)
 
-**Responsabilidad:** Presentar la información al usuario de forma interactiva.
+**Responsabilidad:** Almacenar toda la información del sistema de forma estructurada y relacional.
 
-#### Componentes:
-
-**`app.py`** - Aplicación principal de Streamlit
-- Punto de entrada del sistema
-- Navegación entre paneles
-- Gestión de sesión del usuario
-
-**`dashboard_general.py`** - Dashboard consolidado
-- Vista ejecutiva de todas las marcas
-- KPIs principales
-- Gráficos de alto nivel
-
-**`panel_marca.py`** - Panel individual por marca
-- Detalle completo de una marca
-- Desglose por rama (Comercial, Logística, Admin)
-- Comparación con objetivos
-
-**`panel_comparativo.py`** - Comparación entre marcas
-- Tablas comparativas
-- Gráficos de barras y tortas
-- Análisis de eficiencia
-
-**`simulador_escenarios.py`** - Simulador "what-if"
-- Cambiar parámetros en tiempo real
-- Ver impacto en costos y márgenes
-- Guardar escenarios
+**Modelos Principales:**
+- `Marca`: Configuración base de cada marca.
+- `PersonalComercial`: Vendedores, supervisores.
+- `Vehiculo`: Flota de transporte.
+- `ProyeccionVentas`: Datos mensuales de ventas.
+- `ParametrosMacro`: IPC, aumentos salariales.
 
 ---
 
-### 2. CAPA DE PROCESAMIENTO (core/)
+### 2. CAPA DE GESTIÓN (Django Admin)
 
-**Responsabilidad:** Lógica de negocio y cálculos complejos.
+**Ubicación:** `admin_panel/`
 
-#### Componentes:
+**Responsabilidad:** Proveer una interfaz administrativa robusta para gestionar los datos maestros.
 
-**`simulator.py`** - Motor principal de simulación
-```python
-class Simulator:
-    def __init__(self, config):
-        self.config = config
-        self.marcas = []
-        self.recursos_compartidos = []
-
-    def cargar_datos(self):
-        """Carga configuraciones y datos de marcas"""
-
-    def calcular_costos_individuales(self):
-        """Calcula costos directos por marca"""
-
-    def calcular_costos_compartidos(self):
-        """Calcula costos compartidos y prorrateos"""
-
-    def ejecutar_simulacion(self):
-        """Ejecuta simulación completa"""
-        # 1. Cargar datos
-        # 2. Calcular costos individuales
-        # 3. Calcular costos compartidos
-        # 4. Aplicar prorrateos
-        # 5. Totalizar por marca
-        # 6. Calcular márgenes
-        return resultados
-```
-
-**`allocator.py`** - Asignador de gastos compartidos
-```python
-class Allocator:
-    def __init__(self, marcas, recursos_compartidos):
-        self.marcas = marcas
-        self.recursos_compartidos = recursos_compartidos
-
-    def calcular_prorrateo_ventas(self, recurso):
-        """Prorrateo proporcional a las ventas"""
-
-    def calcular_prorrateo_volumen(self, recurso):
-        """Prorrateo proporcional al volumen"""
-
-    def calcular_prorrateo_headcount(self, recurso):
-        """Prorrateo por cantidad de empleados"""
-
-    def calcular_prorrateo_equitativo(self, recurso):
-        """Prorrateo equitativo (partes iguales)"""
-
-    def asignar_recursos(self):
-        """Asigna todos los recursos compartidos"""
-        for recurso in self.recursos_compartidos:
-            criterio = recurso.criterio_prorrateo
-            if criterio == 'ventas':
-                self.calcular_prorrateo_ventas(recurso)
-            elif criterio == 'volumen':
-                self.calcular_prorrateo_volumen(recurso)
-            # ... etc
-```
-
-**`calculator_nomina.py`** - Calculadora de nómina
-```python
-class CalculadoraNomina:
-    def __init__(self, factores_prestacionales):
-        self.factores = factores_prestacionales
-
-    def calcular_costo_empleado(self, salario_base, perfil, subsidio_transporte=True):
-        """
-        Calcula el costo total mensual de un empleado
-
-        Args:
-            salario_base: Salario base mensual
-            perfil: 'administrativo', 'comercial', 'logistico', 'aprendiz_sena'
-            subsidio_transporte: Si aplica subsidio de transporte
-
-        Returns:
-            dict con desglose de costos
-        """
-        factor = self.factores[perfil]['factor_total']
-        subsidio = 200000 if subsidio_transporte and salario_base < 2600000 else 0
-
-        costo_prestaciones = salario_base * factor
-        costo_total = salario_base + costo_prestaciones + subsidio
-
-        return {
-            'salario_base': salario_base,
-            'prestaciones': costo_prestaciones,
-            'subsidio_transporte': subsidio,
-            'total': costo_total
-        }
-```
-
-**`calculator_vehiculos.py`** - Calculadora de vehículos
-```python
-class CalculadoraVehiculos:
-    def __init__(self, catalogo_vehiculos):
-        self.catalogo = catalogo_vehiculos
-
-    def calcular_costo_renting(self, tipo_vehiculo, km_mensuales):
-        """Calcula costo mensual de vehículo en renting"""
-        vehiculo = self.catalogo[tipo_vehiculo]
-        costos = vehiculo['costos']['renting']
-
-        canon = costos['canon_mensual']
-        combustible = costos['combustible_promedio_mensual']
-        lavada = costos['lavada_mensual']
-        reposicion = costos['reposicion_mensual']
-
-        total = canon + combustible + lavada + reposicion
-
-        return {
-            'canon': canon,
-            'combustible': combustible,
-            'lavada': lavada,
-            'reposicion': reposicion,
-            'total': total
-        }
-
-    def calcular_costo_tradicional(self, tipo_vehiculo, km_mensuales):
-        """Calcula costo mensual de vehículo propio"""
-        # Similar pero con depreciación, mantenimiento, seguro, etc.
-```
-
-**`validator.py`** - Validador de datos
-```python
-class Validator:
-    def validar_marca(self, datos_marca):
-        """Valida que los datos de una marca sean correctos"""
-        # Verificar campos requeridos
-        # Verificar rangos válidos
-        # Verificar consistencia
-
-    def validar_recursos(self, recursos):
-        """Valida que los recursos sean válidos"""
-
-    def validar_simulacion(self, resultados):
-        """Valida que los resultados de la simulación sean coherentes"""
-```
+**Características:**
+- Gestión de usuarios y permisos.
+- CRUD completo para todos los modelos.
+- Importación/Exportación de datos (YAML support para seed data).
+- Ejecución de migraciones de base de datos.
 
 ---
 
-### 3. CAPA DE MODELOS (models/)
+### 3. CAPA DE PROCESAMIENTO (Core Python)
 
-**Responsabilidad:** Representar las entidades del negocio.
+**Ubicación:** `core/`
 
-#### Clases principales:
+**Responsabilidad:** Lógica de negocio pura, agnóstica del framework web.
 
-**`Marca`** - Representa una marca
-```python
-class Marca:
-    def __init__(self, marca_id, nombre):
-        self.id = marca_id
-        self.nombre = nombre
-        self.ventas_mensuales = 0
-        self.recursos_comerciales = []
-        self.recursos_logisticos = []
-        self.costos_asignados = {}
+**Componentes:**
+- **`Simulator`**: Orquestador de la simulación.
+- **`Allocator`**: Lógica de prorrateo de gastos compartidos.
+- **`Calculators`**: Motores de cálculo de nómina y costos vehiculares.
 
-    def calcular_total_costos(self):
-        """Calcula el costo total de la marca"""
-
-    def calcular_margen(self):
-        """Calcula el margen de la marca"""
-        return (self.ventas_mensuales - self.total_costos) / self.ventas_mensuales
-```
-
-**`Rubro`** - Representa un rubro de costo
-```python
-class Rubro:
-    def __init__(self, nombre, tipo_asignacion, valor):
-        self.nombre = nombre
-        self.tipo_asignacion = tipo_asignacion  # 'individual', 'compartido'
-        self.valor = valor
-        self.criterio_prorrateo = None  # Si es compartido
-
-    def calcular_asignacion(self, marca, todas_marcas):
-        """Calcula cuánto de este rubro le corresponde a la marca"""
-        if self.tipo_asignacion == 'individual':
-            return self.valor
-        else:
-            # Aplicar prorrateo
-            return self._prorratear(marca, todas_marcas)
-```
+**Integración:**
+Este núcleo es importado tanto por la API (FastAPI) como por el Dashboard Legacy (Streamlit) para garantizar consistencia en los cálculos.
 
 ---
 
-### 4. CAPA DE DATOS
+### 4. CAPA DE API (FastAPI)
 
-**Responsabilidad:** Almacenar y cargar configuraciones y datos.
+**Ubicación:** `api/`
 
-#### Estructura:
+**Responsabilidad:** Exponer la lógica del Core como servicios RESTful para el Frontend moderno.
 
-```
-data/
-├── marcas/
-│   └── [marca_id]/
-│       ├── comercial.yaml    # Recursos comerciales
-│       ├── logistica.yaml    # Recursos logísticos
-│       └── ventas.yaml       # Proyecciones de ventas
-├── compartidos/
-│   ├── administrativo.yaml   # Recursos admin compartidos
-│   ├── logistica.yaml        # Recursos logísticos compartidos
-│   └── prorrateos.yaml       # Reglas de prorrateo
-└── referencia/
-    └── *.xlsx                # Archivos de referencia
-```
+**Endpoints:**
+- `/simulate/{marca_id}`: Ejecuta simulación para una marca.
+- `/marcas/`: Lista marcas disponibles.
+- `/results/`: Entrega resultados en formato JSON.
+
+---
+
+### 5. CAPA DE VISUALIZACIÓN
+
+#### A. Frontend Moderno (Next.js)
+**Ubicación:** `frontend/`
+- Interfaz reactiva y rápida.
+- Gráficos interactivos con Recharts/Chart.js.
+- Consumo de datos vía API.
+
+#### B. Dashboard Legacy (Streamlit)
+**Ubicación:** `panels/`
+- Herramienta de prototipado rápido.
+- Conexión directa a DB (vía `utils/loaders_db.py`).
+- Útil para validación rápida de cambios en el Core.
 
 ---
 
 ## 🔄 Flujo de Datos
 
-### 1. Carga Inicial
+### 1. Configuración y Carga
+1. El usuario administrador ingresa al **Django Admin**.
+2. Crea o modifica marcas, asigna personal y vehículos.
+3. Los datos se guardan en **PostgreSQL**.
 
-```
-Usuario inicia app
-    ↓
-app.py carga configuraciones (YAML)
-    ↓
-Simulator.cargar_datos()
-    ↓
-Crea instancias de Marca, Rubro, etc.
-```
-
-### 2. Cálculo de Costos
-
-```
-Simulator.ejecutar_simulacion()
-    ↓
-1. Calcular costos individuales por marca
-   - Vendedores dedicados
-   - Vehículos exclusivos
-   - etc.
-    ↓
-2. Calcular costos compartidos
-   - Gerente
-   - Bodega
-   - Contador
-   - etc.
-    ↓
-3. Allocator.asignar_recursos()
-   - Aplicar prorrateos según criterio
-   - Asignar proporciones a cada marca
-    ↓
-4. Totalizar por marca
-   - Suma de costos individuales + compartidos
-    ↓
-5. Calcular márgenes
-   - (Ventas - Costos) / Ventas
-```
-
-### 3. Visualización
-
-```
-Resultados de simulación
-    ↓
-Dashboard General muestra KPIs
-    ↓
-Usuario navega a Panel Marca
-    ↓
-Panel Marca muestra detalles
-    ↓
-Usuario exporta a Excel/PDF
-```
+### 2. Simulación
+1. El usuario final accede al **Frontend (Next.js)**.
+2. Selecciona una marca y solicita simulación.
+3. El frontend llama a la **API (FastAPI)**.
+4. La API instancia el **Simulator (Core)**.
+5. El Simulator carga datos desde **PostgreSQL** (vía Django ORM).
+6. Se ejecutan los cálculos en memoria.
+7. La API devuelve los resultados JSON al Frontend.
 
 ---
 
@@ -363,71 +136,39 @@ Usuario exporta a Excel/PDF
 
 | Componente | Tecnología | Propósito |
 |------------|------------|-----------|
-| **Backend** | Python 3.9+ | Lógica de negocio |
-| **Frontend** | Streamlit | Dashboards interactivos |
-| **Datos** | YAML | Configuraciones |
-| **Procesamiento** | Pandas, NumPy | Manipulación de datos |
-| **Visualización** | Plotly, Matplotlib | Gráficos |
-| **Exportación** | openpyxl, reportlab | Excel y PDF |
-| **Tests** | pytest | Testing |
+| **Base de Datos** | PostgreSQL 15 | Persistencia robusta |
+| **Backend Admin** | Django 4.x | Gestión de datos y ORM |
+| **API** | FastAPI | Servicios de alto rendimiento |
+| **Frontend** | Next.js 14 | Interfaz de usuario moderna |
+| **Core Logic** | Python 3.9+ | Lógica de negocio compartida |
+| **Legacy UI** | Streamlit | Prototipado y validación |
+| **Infraestructura** | Docker Compose | Orquestación local |
 
 ---
 
 ## 🔒 Principios de Diseño
 
-1. **Separación de Responsabilidades**
-   - Cada capa tiene una responsabilidad clara
-   - Los modelos no conocen la presentación
-   - La presentación no conoce la lógica de negocio
-
-2. **Configurabilidad**
-   - Todo se configura mediante YAML
-   - No hay valores hardcodeados
-   - Fácil de adaptar a diferentes escenarios
-
-3. **Extensibilidad**
-   - Fácil agregar nuevas marcas
-   - Fácil agregar nuevos tipos de rubros
-   - Fácil agregar nuevos criterios de prorrateo
-
-4. **Validación**
-   - Validación temprana de datos
-   - Mensajes de error claros
-   - Prevención de estados inconsistentes
-
-5. **Testabilidad**
-   - Componentes pequeños y testeables
-   - Mocks para datos
-   - Cobertura de tests alta
+1. **Single Source of Truth**: Todos los datos viven en PostgreSQL. Los archivos YAML son solo para carga inicial/backup.
+2. **Separación de Lógica**: El directorio `core/` no depende de Django ni de Streamlit, lo que permite su reutilización.
+3. **API First**: La comunicación entre Frontend y Backend es estrictamente vía API REST.
 
 ---
 
 ## 📈 Roadmap Técnico
 
-### Fase 1: MVP
-- [x] Estructura de datos YAML
-- [ ] Modelos básicos (Marca, Rubro)
-- [ ] Calculadora de nómina
-- [ ] Dashboard simple
+### Fase Actual (Híbrida)
+- [x] Migración de YAML a PostgreSQL
+- [x] Implementación de Django Admin
+- [x] Creación de API FastAPI
+- [x] Inicio de Frontend Next.js
 
-### Fase 2: Core
-- [ ] Motor de simulación completo
-- [ ] Asignador de prorrateos
-- [ ] Todos los paneles
-- [ ] Exportación Excel
-
-### Fase 3: Avanzado
-- [ ] Base de datos (SQLAlchemy + PostgreSQL)
-- [ ] API REST (FastAPI)
-- [ ] Autenticación (JWT)
-- [ ] Versionamiento de simulaciones
-
-### Fase 4: Producción
-- [ ] Docker + Docker Compose
-- [ ] CI/CD (GitHub Actions)
-- [ ] Monitoreo (Prometheus + Grafana)
-- [ ] Backups automatizados
+### Fase Futura
+- [ ] Retiro gradual de Streamlit
+- [ ] Autenticación unificada (JWT) para API y Frontend
+- [ ] Sistema de escenarios "What-If" persistentes en DB
+- [ ] Reportes PDF generados desde el Backend
 
 ---
 
-**Última actualización:** 2025-11-10
+**Última actualización:** Noviembre 2025
+

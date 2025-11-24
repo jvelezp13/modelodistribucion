@@ -41,43 +41,31 @@ El modelo se basa en la experiencia de distribución con Nutresa (archivo `Simul
 
 ## 🏗️ Arquitectura del Sistema
 
-El sistema está organizado en **7 capas**:
+El sistema ha evolucionado a una arquitectura híbrida moderna para soportar escalabilidad y una mejor experiencia de usuario:
 
 ```
 📦 Sistema de Distribución Multimarcas
-├── 1. CONFIGURACIÓN
-│   └── Parámetros macro, factores prestacionales, catálogos base
-├── 2. CATÁLOGOS
-│   └── Figuras comerciales, logísticas, administrativas, vehículos
-├── 3. MODELOS
-│   └── Lógica de negocio (cálculos de costos, nómina, vehículos)
-├── 4. DATOS
-│   └── Inputs por marca + recursos compartidos
-├── 5. PROCESAMIENTO
-│   └── Motor de simulación, asignador de gastos, validadores
-├── 6. VISUALIZACIÓN
-│   └── Dashboards interactivos (general, por marca, comparativos)
-└── 7. EXPORTACIÓN
-    └── Excel, PDF, CSV
+├── 1. BASE DE DATOS (PostgreSQL)
+│   └── Fuente única de verdad para configuraciones, marcas y simulaciones
+├── 2. BACKEND (Django + FastAPI)
+│   ├── Admin Panel (Django): Gestión de datos maestros y usuarios
+│   └── API (FastAPI): Lógica de simulación y servicios para el frontend
+├── 3. FRONTEND (Next.js)
+│   └── Nueva interfaz de usuario moderna y reactiva
+├── 4. LEGACY DASHBOARD (Streamlit)
+│   └── Dashboard original para visualización rápida (conectado a DB)
+└── 5. CORE (Python)
+    └── Motor de cálculo compartido entre todos los componentes
 ```
 
 ### Flujo de Funcionamiento
 
 ```
-Usuario Define Marcas → Asigna Recursos Individuales/Compartidos
-                            ↓
-                  Motor de Simulación
-                            ↓
-        ┌───────────────────┼───────────────────┐
-        ↓                   ↓                   ↓
- Costos Individuales  Costos Compartidos   Prorrateo
-        └───────────────────┼───────────────────┘
-                            ↓
-                  Totalización por Marca
-                            ↓
-                   Cálculo de Márgenes
-                            ↓
-                  Dashboards + Exportación
+Usuario (Admin) → Django Admin Panel → PostgreSQL
+                                        ↑
+Usuario (Simulador) → Next.js Frontend → API (FastAPI) → Motor de Simulación
+                                        ↓
+                                   Resultados
 ```
 
 ---
@@ -500,175 +488,75 @@ modelodistribucion/
 │
 ├── README.md                          # Este archivo
 ├── ARQUITECTURA.md                    # Documentación técnica detallada
+├── docker-compose.yml                 # 🐳 Orquestación de contenedores
 │
-├── config/                            # ⚙️ Configuraciones globales
-│   ├── parametros_macro.yaml          # IPC, IPT, incrementos salariales
-│   ├── factores_prestacionales.yaml   # Salud, pensión, ARL, etc.
-│   ├── marcas.yaml                    # Lista de marcas activas
-│   └── empresa.yaml                   # Datos de la razón social
+├── admin_panel/                       # ⚙️ Backend Django (Admin)
+│   ├── core/                          # Modelos y lógica de negocio
+│   ├── dxv_admin/                     # Configuración del proyecto
+│   └── manage.py
 │
-├── catalogos/                         # 📚 Catálogos maestros
-│   ├── figuras_comerciales.yaml       # Tipos de vendedores, supervisores
-│   ├── figuras_logisticas.yaml        # Conductores, auxiliares, operarios
-│   ├── figuras_administrativas.yaml   # Gerente, contador, aux. admin
-│   ├── tipos_vehiculos.yaml           # Especificaciones de vehículos
-│   └── rubros.yaml                    # Catálogo de todos los rubros
+├── frontend/                          # 💻 Frontend Next.js
+│   ├── src/app/                       # Páginas y componentes
+│   └── public/
 │
-├── models/                            # 🧮 Lógica de negocio (Python)
-│   ├── __init__.py
-│   ├── marca.py                       # Clase Marca
-│   ├── rama_comercial.py              # Cálculos rama comercial
-│   ├── rama_logistica.py              # Cálculos rama logística
-│   ├── rama_administrativa.py         # Cálculos rama administrativa
-│   ├── rubro.py                       # Clase Rubro (individual/compartido)
-│   ├── personal.py                    # Cálculo de nómina y prestaciones
-│   ├── vehiculo.py                    # Cálculo de costos de vehículos
-│   └── calculadora.py                 # Cálculos financieros generales
+├── api/                               # 🔌 API FastAPI
+│   └── main.py
 │
-├── data/                              # 📊 Datos de entrada
-│   ├── marcas/
-│   │   ├── marca_a/
-│   │   │   ├── comercial.yaml         # Recursos comerciales Marca A
-│   │   │   ├── logistica.yaml         # Recursos logísticos Marca A
-│   │   │   └── ventas.yaml            # Proyección de ventas Marca A
-│   │   ├── marca_b/
-│   │   │   └── ...
-│   │   └── marca_c/
-│   │       └── ...
-│   ├── compartidos/
-│   │   ├── administrativo.yaml        # Recursos admin compartidos
-│   │   ├── logistica.yaml             # Recursos logísticos compartidos
-│   │   └── prorrateos.yaml            # Reglas de prorrateo
-│   └── referencia/
-│       └── Simula DxV Nutresa 2025.xlsx  # Modelo de referencia
+├── panels/                            # 📊 Legacy Dashboard (Streamlit)
+│   ├── app.py
+│   └── ...
 │
-├── core/                              # ⚡ Motor de procesamiento
-│   ├── __init__.py
-│   ├── simulator.py                   # Motor principal de simulación
-│   ├── allocator.py                   # Asignador de gastos compartidos
-│   ├── calculator_nomina.py           # Calculadora de nómina
-│   ├── calculator_vehiculos.py        # Calculadora de vehículos
-│   └── validator.py                   # Validador de datos
+├── core/                              # 🧠 Motor de cálculo (Python puro)
+│   ├── simulator.py
+│   ├── allocator.py
+│   └── ...
 │
-├── panels/                            # 🎨 Dashboards (Streamlit)
-│   ├── app.py                         # Aplicación principal
-│   ├── dashboard_general.py           # Dashboard consolidado
-│   ├── panel_marca.py                 # Panel individual por marca
-│   ├── panel_comparativo.py           # Comparación entre marcas
-│   ├── panel_comercial.py             # Detalle rama comercial
-│   ├── panel_logistica.py             # Detalle rama logística
-│   ├── panel_administrativa.py        # Detalle rama administrativa
-│   └── simulador_escenarios.py        # Simulador "what-if"
+├── config/                            # 📝 Configuración YAML (Seed data)
+│   └── ...
 │
-├── output/                            # 📤 Exportación
-│   ├── exportadores/
-│   │   ├── excel_exporter.py          # Exportar a Excel
-│   │   ├── pdf_exporter.py            # Exportar a PDF
-│   │   └── csv_exporter.py            # Exportar a CSV
-│   ├── templates/
-│   │   ├── template_simulacion.xlsx   # Template Excel
-│   │   └── template_reporte.html      # Template HTML
-│   └── resultados/                    # Archivos generados
-│
-├── utils/                             # 🛠️ Utilidades
-│   ├── loaders.py                     # Carga de archivos YAML
-│   ├── formatters.py                  # Formateo de números, fechas
-│   └── helpers.py                     # Funciones auxiliares
-│
-├── tests/                             # 🧪 Tests
-│   ├── test_calculadora.py
-│   ├── test_prorrateo.py
-│   └── test_simulador.py
-│
-├── requirements.txt                   # Dependencias Python
-├── .gitignore
-└── LICENSE
+└── data/                              # 💾 Datos YAML (Seed data)
+    └── ...
 ```
 
 ---
 
 ## 🚀 Guía de Uso
 
-### Instalación
+### Requisitos
+- Docker y Docker Compose
+
+### Instalación y Ejecución
+
+La forma más sencilla de iniciar todo el sistema es usando Docker Compose:
 
 ```bash
 # Clonar el repositorio
 git clone https://github.com/jvelezp13/modelodistribucion.git
 cd modelodistribucion
 
-# Crear entorno virtual
-python3 -m venv venv
-source venv/bin/activate  # En Windows: venv\Scripts\activate
-
-# Instalar dependencias
-pip install -r requirements.txt
+# Iniciar todos los servicios
+docker-compose up --build
 ```
 
-### Configuración Inicial
+Esto levantará:
+1. **Base de Datos** (PostgreSQL): `localhost:5432`
+2. **Admin Panel** (Django): `http://localhost:8000/admin`
+3. **Frontend** (Next.js): `http://localhost:3000`
+4. **API** (FastAPI): `http://localhost:8001`
+5. **Legacy Dashboard** (Streamlit): `http://localhost:8501`
 
-1. **Configurar parámetros macroeconómicos:**
-   - Editar `config/parametros_macro.yaml`
-   - Actualizar IPC, IPT, incrementos salariales
+### Carga Inicial de Datos
 
-2. **Definir marcas:**
-   - Editar `config/marcas.yaml`
-   - Agregar las marcas que vas a simular
-
-3. **Configurar recursos por marca:**
-   - Crear carpeta en `data/marcas/tu_marca/`
-   - Crear archivos `comercial.yaml`, `logistica.yaml`, `ventas.yaml`
-
-4. **Configurar recursos compartidos:**
-   - Editar `data/compartidos/administrativo.yaml`
-   - Editar `data/compartidos/logistica.yaml`
-   - Definir criterios de prorrateo en `data/compartidos/prorrateos.yaml`
-
-### Ejecutar la Aplicación
+La primera vez que inicies el sistema, la base de datos estará vacía. El contenedor de Django ejecutará automáticamente las migraciones. Para cargar los datos iniciales desde los archivos YAML:
 
 ```bash
-# Iniciar el dashboard interactivo
-streamlit run panels/app.py
+# Ejecutar comando de importación dentro del contenedor de Django
+docker-compose exec django_admin python manage.py import_from_yaml
 ```
 
-La aplicación se abrirá en tu navegador en `http://localhost:8501`
+### Desarrollo Local (Sin Docker)
 
-### Ejemplo: Agregar una Nueva Marca
-
-1. Crear carpeta:
-```bash
-mkdir -p data/marcas/nueva_marca
-```
-
-2. Crear `data/marcas/nueva_marca/comercial.yaml`:
-```yaml
-marca_id: nueva_marca
-nombre: "Nueva Marca S.A."
-proyeccion_ventas_mensual: 80000000
-
-recursos_comerciales:
-  vendedores:
-    - tipo: vendedor_geografico
-      cantidad: 3
-      salario_base: 2150000
-      asignacion: individual
-
-  supervisores:
-    - cantidad: 1
-      salario_base: 3500000
-      asignacion: compartido
-      criterio_prorrateo: ventas
-      porcentaje_dedicacion: 0.3
-
-costos_adicionales:
-  plan_datos: 35000
-  uniformes: 150000
-  gps: 45000
-```
-
-3. Crear `data/marcas/nueva_marca/logistica.yaml`
-4. Crear `data/marcas/nueva_marca/ventas.yaml`
-5. Actualizar `config/marcas.yaml` para incluir la nueva marca
-6. Ejecutar la simulación
+Si deseas ejecutar componentes individualmente para desarrollo, consulta `INICIO_RAPIDO.md` para instrucciones detalladas de configuración de entorno virtual y conexión a base de datos.
 
 ---
 
