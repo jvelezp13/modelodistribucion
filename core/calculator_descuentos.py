@@ -164,26 +164,34 @@ class CalculadoraDescuentos:
 
         config = self._configuraciones[marca_id]
 
-        # 1. Calcular descuento a pie de factura
+        # 1. Calcular descuento a pie de factura (sobre Ventas Brutas / Sell In teórico)
         descuento_pie_factura = self._calcular_descuento_pie_factura(
             ventas_brutas, config.tramos
         )
-        ventas_post_descuento = ventas_brutas - descuento_pie_factura
+        
+        # Base para financiero: Lo que se paga en factura (Ventas - Pie de Factura)
+        monto_factura = ventas_brutas - descuento_pie_factura
 
-        # 2. Calcular rebate (sobre ventas post-descuento)
-        rebate = ventas_post_descuento * (float(config.porcentaje_rebate) / 100.0)
-        ventas_post_rebate = ventas_post_descuento - rebate
-
-        # 3. Calcular descuento financiero (sobre ventas post-rebate)
+        # 2. Calcular descuento financiero (sobre monto factura)
         descuento_financiero = 0.0
         if config.aplica_descuento_financiero:
-            descuento_financiero = ventas_post_rebate * (
+            descuento_financiero = monto_factura * (
                 float(config.porcentaje_descuento_financiero) / 100.0
             )
 
-        ventas_netas = ventas_post_rebate - descuento_financiero
+        # 3. Calcular rebate / RxP (sobre Sell Out / Ventas Brutas)
+        # "RxP aplica sobre el Sell Out"
+        rebate = ventas_brutas * (float(config.porcentaje_rebate) / 100.0)
 
-        # Calcular porcentaje total de descuento
+        # Ventas Netas ahora es igual a Ventas Brutas (Sell Out)
+        # Los descuentos son ingresos, no reducciones de venta
+        ventas_netas = ventas_brutas
+        
+        # Variables auxiliares para compatibilidad (aunque ya no se restan en cascada)
+        ventas_post_descuento = ventas_brutas  
+        ventas_post_rebate = ventas_brutas
+
+        # Calcular porcentaje total de descuento (Ingreso total / Venta)
         total_descuentos = descuento_pie_factura + rebate + descuento_financiero
         porcentaje_descuento_total = (
             (total_descuentos / ventas_brutas * 100.0) if ventas_brutas > 0 else 0.0

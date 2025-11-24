@@ -77,10 +77,24 @@ class Marca:
         Returns:
             Margen como decimal (0.0 - 1.0)
         """
-        ventas_base = self.ventas_netas_mensuales if self.ventas_netas_mensuales > 0 else self.ventas_mensuales
+        """
+        ventas_base = self.ventas_mensuales
         if ventas_base == 0:
             return 0.0
-        return (ventas_base - self.costo_total) / ventas_base
+            
+        # Ingresos del distribuidor = Descuentos totales
+        # (Pie de factura + Rebate + Financiero)
+        ingresos_distribuidor = (
+            self.descuento_pie_factura + 
+            self.rebate + 
+            self.descuento_financiero
+        )
+        
+        # Utilidad = Ingresos - Costos Operativos
+        utilidad = ingresos_distribuidor - self.costo_total
+        
+        # Margen = Utilidad / Ventas (Sell Out)
+        return utilidad / ventas_base
 
     @property
     def margen_porcentaje(self) -> float:

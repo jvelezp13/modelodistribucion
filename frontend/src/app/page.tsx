@@ -150,10 +150,9 @@ export default function DashboardPage() {
                     onClick={() => setActiveTab(tab.id as any)}
                     className={`
                       px-4 py-3 font-semibold border-b-2 transition-all duration-200
-                      ${
-                        activeTab === tab.id
-                          ? 'border-primary-500 text-primary-600'
-                          : 'border-transparent text-secondary-600 hover:text-secondary-900 hover:border-secondary-300'
+                      ${activeTab === tab.id
+                        ? 'border-primary-500 text-primary-600'
+                        : 'border-transparent text-secondary-600 hover:text-secondary-900 hover:border-secondary-300'
                       }
                     `}
                   >
@@ -169,14 +168,10 @@ export default function DashboardPage() {
                 {/* Métricas principales */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                   <MetricCard
-                    label={resultado.consolidado.total_ventas_netas_mensuales ? "Ventas Netas" : "Ventas Mensuales"}
-                    value={formatearMoneda(
-                      resultado.consolidado.total_ventas_netas_mensuales ??
-                      resultado.consolidado.total_ventas_brutas_mensuales ??
-                      resultado.consolidado.total_ventas_mensuales ?? 0
-                    )}
+                    label="Ventas Mensuales (Sell Out)"
+                    value={formatearMoneda(resultado.consolidado.total_ventas_mensuales ?? 0)}
                     subtitle={resultado.consolidado.total_descuentos_mensuales ?
-                      `Brutas: ${formatearMoneda(resultado.consolidado.total_ventas_brutas_mensuales ?? 0)} (-${formatearPorcentaje(resultado.consolidado.porcentaje_descuento_promedio ?? 0)})` :
+                      `Ingresos Extra: ${formatearMoneda(resultado.consolidado.total_descuentos_mensuales)}` :
                       `${formatearMoneda(resultado.consolidado.total_ventas_anuales)} anuales`
                     }
                     icon={<DollarSign className="h-6 w-6" />}
@@ -192,9 +187,7 @@ export default function DashboardPage() {
                   <MetricCard
                     label="Margen Consolidado"
                     value={formatearPorcentaje(resultado.consolidado.margen_consolidado * 100)}
-                    subtitle={resultado.consolidado.total_descuentos_mensuales ?
-                      `Desc: ${formatearMoneda(resultado.consolidado.total_descuentos_mensuales)}` : undefined
-                    }
+                    subtitle="Incluye Descuentos como Ingreso"
                     variant={resultado.consolidado.margen_consolidado > 0.1 ? 'success' : 'danger'}
                     icon={<PieChart className="h-6 w-6" />}
                   />
@@ -251,31 +244,27 @@ export default function DashboardPage() {
                         <thead>
                           <tr className="border-b border-secondary-200">
                             <th className="text-left py-3 px-4 font-semibold text-secondary-700">Marca</th>
-                            <th className="text-right py-3 px-4 font-semibold text-secondary-700">Ventas Netas</th>
-                            <th className="text-right py-3 px-4 font-semibold text-secondary-700">Descuentos</th>
+                            <th className="text-right py-3 px-4 font-semibold text-secondary-700">Sell Out</th>
+                            <th className="text-right py-3 px-4 font-semibold text-secondary-700">Ingresos Extra</th>
                             <th className="text-right py-3 px-4 font-semibold text-secondary-700">Costos</th>
-                            <th className="text-right py-3 px-4 font-semibold text-secondary-700">Margen %</th>
+                            <th className="text-right py-3 px-4 font-semibold text-secondary-700">Margen Neto %</th>
                             <th className="text-right py-3 px-4 font-semibold text-secondary-700">Empleados</th>
                           </tr>
                         </thead>
                         <tbody>
                           {resultado.marcas.map((marca) => {
                             const tieneDescuentos = (marca.porcentaje_descuento_total ?? 0) > 0;
+                            const totalIngresosExtra = (marca.descuento_pie_factura ?? 0) + (marca.rebate ?? 0) + (marca.descuento_financiero ?? 0);
                             return (
                               <tr key={marca.marca_id} className="border-b border-secondary-100 hover:bg-primary-50 transition-colors">
                                 <td className="py-3 px-4 font-medium text-secondary-900">{marca.nombre}</td>
-                                <td className="py-3 px-4 text-right text-success font-semibold">
-                                  {formatearMoneda(marca.ventas_netas_mensuales ?? marca.ventas_mensuales)}
-                                  {tieneDescuentos && (
-                                    <div className="text-xs text-secondary-500 font-normal">
-                                      Brutas: {formatearMoneda(marca.ventas_mensuales)}
-                                    </div>
-                                  )}
+                                <td className="py-3 px-4 text-right text-secondary-900 font-semibold">
+                                  {formatearMoneda(marca.ventas_mensuales)}
                                 </td>
                                 <td className="py-3 px-4 text-right">
                                   {tieneDescuentos ? (
-                                    <span className="text-orange-600 font-medium">
-                                      -{formatearPorcentaje(marca.porcentaje_descuento_total ?? 0)}
+                                    <span className="text-success font-medium">
+                                      +{formatearMoneda(totalIngresosExtra)}
                                     </span>
                                   ) : (
                                     <span className="text-secondary-400">-</span>
@@ -310,10 +299,10 @@ export default function DashboardPage() {
                       {/* Métricas de la marca */}
                       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                         <MetricCard
-                          label={marca.ventas_netas_mensuales && marca.ventas_netas_mensuales !== marca.ventas_mensuales ? "Ventas Netas" : "Ventas Mensuales"}
-                          value={formatearMoneda(marca.ventas_netas_mensuales ?? marca.ventas_mensuales)}
+                          label="Ventas Mensuales (Sell Out)"
+                          value={formatearMoneda(marca.ventas_mensuales)}
                           subtitle={(marca.porcentaje_descuento_total ?? 0) > 0 ?
-                            `Brutas: ${formatearMoneda(marca.ventas_mensuales)} (-${formatearPorcentaje(marca.porcentaje_descuento_total ?? 0)})` :
+                            `Ingresos Extra: ${formatearMoneda((marca.descuento_pie_factura ?? 0) + (marca.rebate ?? 0) + (marca.descuento_financiero ?? 0))}` :
                             undefined
                           }
                           variant="success"
@@ -324,12 +313,9 @@ export default function DashboardPage() {
                           variant="warning"
                         />
                         <MetricCard
-                          label="Margen"
+                          label="Margen Neto"
                           value={formatearPorcentaje(marca.margen_porcentaje)}
-                          subtitle={(marca.porcentaje_descuento_total ?? 0) > 0 ?
-                            `Desc: ${formatearMoneda((marca.descuento_pie_factura ?? 0) + (marca.rebate ?? 0) + (marca.descuento_financiero ?? 0))}` :
-                            undefined
-                          }
+                          subtitle="Incluye Descuentos como Ingreso"
                           variant={marca.margen_porcentaje > 10 ? 'success' : 'danger'}
                         />
                         <MetricCard
