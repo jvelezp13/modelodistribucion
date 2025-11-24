@@ -151,23 +151,33 @@ def serializar_resultado(resultado) -> Dict[str, Any]:
     Returns:
         Diccionario con los datos de la simulación
     """
+    consolidado = resultado.consolidado
+
     return {
         'consolidado': {
-            'total_ventas_mensuales': float(resultado.consolidado['total_ventas_mensuales']),
-            'total_ventas_anuales': float(resultado.consolidado['total_ventas_anuales']),
-            'total_costos_mensuales': float(resultado.consolidado['total_costos_mensuales']),
-            'total_costos_anuales': float(resultado.consolidado['total_costos_anuales']),
-            'margen_consolidado': float(resultado.consolidado['margen_consolidado']),
-            'total_empleados': int(resultado.consolidado['total_empleados']),
-            'costo_comercial_total': float(resultado.consolidado['costo_comercial_total']),
-            'costo_logistico_total': float(resultado.consolidado['costo_logistico_total']),
-            'costo_administrativo_total': float(resultado.consolidado['costo_administrativo_total']),
+            'total_ventas_brutas_mensuales': float(consolidado.get('total_ventas_brutas_mensuales', consolidado.get('total_ventas_mensuales', 0))),
+            'total_ventas_netas_mensuales': float(consolidado.get('total_ventas_netas_mensuales', consolidado.get('total_ventas_mensuales', 0))),
+            'total_descuentos_mensuales': float(consolidado.get('total_descuentos_mensuales', 0)),
+            'total_ventas_anuales': float(consolidado['total_ventas_anuales']),
+            'total_costos_mensuales': float(consolidado['total_costos_mensuales']),
+            'total_costos_anuales': float(consolidado['total_costos_anuales']),
+            'margen_consolidado': float(consolidado['margen_consolidado']),
+            'porcentaje_descuento_promedio': float(consolidado.get('porcentaje_descuento_promedio', 0)),
+            'total_empleados': int(consolidado['total_empleados']),
+            'costo_comercial_total': float(consolidado['costo_comercial_total']),
+            'costo_logistico_total': float(consolidado['costo_logistico_total']),
+            'costo_administrativo_total': float(consolidado['costo_administrativo_total']),
         },
         'marcas': [
             {
                 'marca_id': m.marca_id,
                 'nombre': m.nombre,
                 'ventas_mensuales': float(m.ventas_mensuales),
+                'ventas_netas_mensuales': float(m.ventas_netas_mensuales) if m.ventas_netas_mensuales > 0 else float(m.ventas_mensuales),
+                'descuento_pie_factura': float(m.descuento_pie_factura),
+                'rebate': float(m.rebate),
+                'descuento_financiero': float(m.descuento_financiero),
+                'porcentaje_descuento_total': float(m.porcentaje_descuento_total),
                 'costo_total': float(m.costo_total),
                 'costo_comercial': float(m.costo_comercial),
                 'costo_logistico': float(m.costo_logistico),
