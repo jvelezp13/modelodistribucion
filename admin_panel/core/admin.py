@@ -229,7 +229,7 @@ class ParametrosMacroAdmin(admin.ModelAdmin):
 class FactorPrestacionalAdmin(admin.ModelAdmin):
     list_display = ('perfil', 'factor_total_percent', 'pension_percent', 'salud_percent', 'fecha_modificacion')
     list_filter = ('perfil',)
-    readonly_fields = ('factor_total', 'fecha_creacion', 'fecha_modificacion')
+    readonly_fields = ('factor_total_display', 'fecha_creacion', 'fecha_modificacion')
 
     fieldsets = (
         ('Perfil', {
@@ -241,8 +241,9 @@ class FactorPrestacionalAdmin(admin.ModelAdmin):
         ('Prestaciones', {
             'fields': ('cesantias', 'intereses_cesantias', 'prima', 'vacaciones')
         }),
-        ('Total', {
-            'fields': ('factor_total',)
+        ('Total Calculado', {
+            'fields': ('factor_total_display',),
+            'description': 'El factor total se calcula automáticamente sumando todos los componentes'
         }),
         ('Metadata', {
             'fields': ('fecha_creacion', 'fecha_modificacion'),
@@ -250,10 +251,16 @@ class FactorPrestacionalAdmin(admin.ModelAdmin):
         }),
     )
 
+    def factor_total_display(self, obj):
+        """Muestra el factor total calculado (solo para objetos guardados)"""
+        if obj and obj.pk:
+            return f"{obj.factor_total * 100:.2f}%"
+        return "Se calculará al guardar"
+    factor_total_display.short_description = 'Factor Total'
+
     def factor_total_percent(self, obj):
         return f"{obj.factor_total * 100:.2f}%"
     factor_total_percent.short_description = 'Factor Total'
-    factor_total_percent.admin_order_field = 'factor_total'
 
     def pension_percent(self, obj):
         return f"{obj.pension * 100:.2f}%"
