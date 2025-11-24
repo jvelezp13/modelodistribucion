@@ -275,12 +275,16 @@ class FactorPrestacionalAdmin(admin.ModelAdmin):
 
 @admin.register(PersonalAdministrativo)
 class PersonalAdministrativoAdmin(admin.ModelAdmin):
-    list_display = ('tipo', 'cantidad', 'tipo_contrato', 'valor_mensual', 'criterio_prorrateo')
-    list_filter = ('tipo', 'tipo_contrato', 'criterio_prorrateo')
+    list_display = ('nombre', 'marca', 'tipo', 'cantidad', 'asignacion', 'tipo_contrato', 'valor_mensual')
+    list_filter = ('marca', 'tipo', 'asignacion', 'tipo_contrato')
     search_fields = ('nombre',)
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
 
     fieldsets = (
+        ('Asignación', {
+            'fields': ('marca', 'asignacion'),
+            'description': 'Si asignas a una marca específica, será individual. Si dejas marca vacía, será compartido.'
+        }),
         ('Información Básica', {
             'fields': ('nombre', 'tipo', 'cantidad', 'tipo_contrato')
         }),
@@ -292,8 +296,9 @@ class PersonalAdministrativoAdmin(admin.ModelAdmin):
             'fields': ('honorarios_mensuales',),
             'classes': ('collapse',)
         }),
-        ('Prorrateo', {
-            'fields': ('asignacion', 'criterio_prorrateo')
+        ('Prorrateo (Solo Compartidos)', {
+            'fields': ('criterio_prorrateo',),
+            'description': 'Solo aplica si no tiene marca asignada'
         }),
         ('Metadata', {
             'fields': ('fecha_creacion', 'fecha_modificacion'),
@@ -312,17 +317,22 @@ class PersonalAdministrativoAdmin(admin.ModelAdmin):
 
 @admin.register(GastoAdministrativo)
 class GastoAdministrativoAdmin(admin.ModelAdmin):
-    list_display = ('nombre', 'tipo', 'valor_mensual_formateado', 'criterio_prorrateo')
-    list_filter = ('tipo', 'criterio_prorrateo')
+    list_display = ('nombre', 'marca', 'tipo', 'asignacion', 'valor_mensual_formateado', 'criterio_prorrateo')
+    list_filter = ('marca', 'tipo', 'asignacion', 'criterio_prorrateo')
     search_fields = ('nombre', 'notas')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
 
     fieldsets = (
+        ('Asignación', {
+            'fields': ('marca', 'asignacion'),
+            'description': 'Si asignas a una marca específica, será individual. Si dejas marca vacía, será compartido.'
+        }),
         ('Información Básica', {
             'fields': ('nombre', 'tipo', 'valor_mensual')
         }),
-        ('Prorrateo', {
-            'fields': ('criterio_prorrateo',)
+        ('Prorrateo (Solo Compartidos)', {
+            'fields': ('criterio_prorrateo',),
+            'description': 'Solo aplica si no tiene marca asignada'
         }),
         ('Notas', {
             'fields': ('notas',),

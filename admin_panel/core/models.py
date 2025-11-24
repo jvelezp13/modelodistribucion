@@ -364,9 +364,19 @@ class PersonalAdministrativo(models.Model):
     ]
 
     ASIGNACION_CHOICES = [
+        ('individual', 'Individual (asignado a una marca)'),
         ('compartido', 'Compartido entre marcas'),
     ]
 
+    marca = models.ForeignKey(
+        Marca,
+        on_delete=models.CASCADE,
+        related_name='personal_administrativo',
+        null=True,
+        blank=True,
+        verbose_name="Marca",
+        help_text="Dejar vacío si es compartido entre todas las marcas"
+    )
     nombre = models.CharField(max_length=200, verbose_name="Nombre/Descripción")
     tipo = models.CharField(max_length=50, choices=TIPO_CHOICES, verbose_name="Tipo de Personal")
     cantidad = models.IntegerField(validators=[MinValueValidator(1)], verbose_name="Cantidad")
@@ -387,7 +397,10 @@ class PersonalAdministrativo(models.Model):
             ('headcount', 'Por Headcount'),
             ('equitativo', 'Equitativo'),
         ],
-        default='equitativo'
+        default='equitativo',
+        null=True,
+        blank=True,
+        help_text="Solo aplica para asignación compartida"
     )
 
     fecha_creacion = models.DateTimeField(auto_now_add=True)
@@ -400,11 +413,13 @@ class PersonalAdministrativo(models.Model):
         ordering = ['tipo']
 
     def __str__(self):
-        return f"{self.get_tipo_display()} ({self.cantidad})"
+        if self.marca:
+            return f"{self.marca.nombre} - {self.get_tipo_display()} ({self.cantidad})"
+        return f"{self.get_tipo_display()} - Compartido ({self.cantidad})"
 
 
 class GastoAdministrativo(models.Model):
-    """Gastos administrativos generales (compartidos)"""
+    """Gastos administrativos generales (pueden ser compartidos o individuales)"""
 
     TIPO_CHOICES = [
         ('arriendo_oficina', 'Arriendo de Oficina'),
@@ -419,9 +434,24 @@ class GastoAdministrativo(models.Model):
         ('otros', 'Otros Gastos Administrativos'),
     ]
 
+    ASIGNACION_CHOICES = [
+        ('individual', 'Individual (asignado a una marca)'),
+        ('compartido', 'Compartido entre marcas'),
+    ]
+
+    marca = models.ForeignKey(
+        Marca,
+        on_delete=models.CASCADE,
+        related_name='gastos_administrativos',
+        null=True,
+        blank=True,
+        verbose_name="Marca",
+        help_text="Dejar vacío si es compartido entre todas las marcas"
+    )
     nombre = models.CharField(max_length=200, verbose_name="Nombre/Descripción")
     tipo = models.CharField(max_length=50, choices=TIPO_CHOICES, verbose_name="Tipo de Gasto")
     valor_mensual = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Valor Mensual")
+    asignacion = models.CharField(max_length=20, choices=ASIGNACION_CHOICES, default='compartido')
     criterio_prorrateo = models.CharField(
         max_length=20,
         choices=[
@@ -429,7 +459,10 @@ class GastoAdministrativo(models.Model):
             ('headcount', 'Por Headcount'),
             ('equitativo', 'Equitativo'),
         ],
-        default='ventas'
+        default='ventas',
+        null=True,
+        blank=True,
+        help_text="Solo aplica para asignación compartida"
     )
     notas = models.TextField(blank=True, verbose_name="Notas")
 
@@ -443,7 +476,9 @@ class GastoAdministrativo(models.Model):
         ordering = ['tipo', 'nombre']
 
     def __str__(self):
-        return f"{self.get_tipo_display()} - ${self.valor_mensual:,.0f}"
+        if self.marca:
+            return f"{self.marca.nombre} - {self.get_tipo_display()} - ${self.valor_mensual:,.0f}"
+        return f"{self.get_tipo_display()} - Compartido - ${self.valor_mensual:,.0f}"
 
 
 class GastoComercial(models.Model):
