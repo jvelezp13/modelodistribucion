@@ -27,8 +27,15 @@ class Marca:
     nombre: str
 
     # Ventas
-    ventas_mensuales: float = 0.0
-    ventas_anuales: float = 0.0
+    ventas_mensuales: float = 0.0  # Ventas brutas
+    ventas_anuales: float = 0.0     # Ventas brutas anuales
+
+    # Descuentos e Incentivos
+    descuento_pie_factura: float = 0.0
+    rebate: float = 0.0
+    descuento_financiero: float = 0.0
+    ventas_netas_mensuales: float = 0.0  # Ventas después de todos los descuentos
+    porcentaje_descuento_total: float = 0.0
 
     # Volumen (para prorrateos)
     volumen_m3_mensual: float = 0.0
@@ -65,14 +72,15 @@ class Marca:
     @property
     def margen(self) -> float:
         """
-        Calcula el margen de la marca.
+        Calcula el margen de la marca usando ventas netas.
 
         Returns:
             Margen como decimal (0.0 - 1.0)
         """
-        if self.ventas_mensuales == 0:
+        ventas_base = self.ventas_netas_mensuales if self.ventas_netas_mensuales > 0 else self.ventas_mensuales
+        if ventas_base == 0:
             return 0.0
-        return (self.ventas_mensuales - self.costo_total) / self.ventas_mensuales
+        return (ventas_base - self.costo_total) / ventas_base
 
     @property
     def margen_porcentaje(self) -> float:
@@ -143,6 +151,30 @@ class Marca:
         elif rubro.categoria == 'administrativa':
             self.costo_administrativo += rubro.valor_total
 
+    def aplicar_descuentos(
+        self,
+        descuento_pie_factura: float,
+        rebate: float,
+        descuento_financiero: float,
+        ventas_netas: float,
+        porcentaje_descuento_total: float
+    ):
+        """
+        Aplica los descuentos calculados a la marca.
+
+        Args:
+            descuento_pie_factura: Monto de descuento a pie de factura
+            rebate: Monto de rebate/RxP
+            descuento_financiero: Monto de descuento financiero
+            ventas_netas: Ventas netas después de todos los descuentos
+            porcentaje_descuento_total: Porcentaje total de descuento
+        """
+        self.descuento_pie_factura = descuento_pie_factura
+        self.rebate = rebate
+        self.descuento_financiero = descuento_financiero
+        self.ventas_netas_mensuales = ventas_netas
+        self.porcentaje_descuento_total = porcentaje_descuento_total
+
     def get_rubros_por_categoria(self, categoria: str) -> List[Rubro]:
         """
         Obtiene todos los rubros de una categoría específica.
@@ -193,6 +225,11 @@ class Marca:
             'nombre': self.nombre,
             'ventas_mensuales': self.ventas_mensuales,
             'ventas_anuales': self.ventas_anuales,
+            'descuento_pie_factura': self.descuento_pie_factura,
+            'rebate': self.rebate,
+            'descuento_financiero': self.descuento_financiero,
+            'ventas_netas_mensuales': self.ventas_netas_mensuales,
+            'porcentaje_descuento_total': self.porcentaje_descuento_total,
             'volumen_m3_mensual': self.volumen_m3_mensual,
             'volumen_ton_mensual': self.volumen_ton_mensual,
             'pallets_mensuales': self.pallets_mensuales,

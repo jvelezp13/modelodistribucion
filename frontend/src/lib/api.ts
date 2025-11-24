@@ -14,6 +14,11 @@ export interface Marca {
   marca_id: string;
   nombre: string;
   ventas_mensuales: number;
+  ventas_netas_mensuales?: number;
+  descuento_pie_factura?: number;
+  rebate?: number;
+  descuento_financiero?: number;
+  porcentaje_descuento_total?: number;
   costo_total: number;
   costo_comercial: number;
   costo_logistico: number;
@@ -41,7 +46,11 @@ export interface Rubro {
 }
 
 export interface Consolidado {
-  total_ventas_mensuales: number;
+  total_ventas_mensuales?: number; // backward compatibility
+  total_ventas_brutas_mensuales?: number;
+  total_ventas_netas_mensuales?: number;
+  total_descuentos_mensuales?: number;
+  porcentaje_descuento_promedio?: number;
   total_ventas_anuales: number;
   total_costos_mensuales: number;
   total_costos_anuales: number;
