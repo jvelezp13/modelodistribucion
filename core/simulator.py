@@ -18,6 +18,7 @@ from models.rubro import Rubro, TipoAsignacion, CriterioProrrateo, RubroPersonal
 from core.allocator import Allocator
 from core.calculator_nomina import CalculadoraNomina
 from core.calculator_vehiculos import CalculadoraVehiculos
+from core.calculator_descuentos import CalculadoraDescuentos
 from utils.loaders import DataLoader
 
 logger = logging.getLogger(__name__)
@@ -61,6 +62,7 @@ class Simulator:
         self.loader = loader or DataLoader()
         self.calc_nomina = CalculadoraNomina(self.loader)
         self.calc_vehiculos = CalculadoraVehiculos(self.loader)
+        self.calc_descuentos = CalculadoraDescuentos()
 
         # Configuraciones
         self._config_empresa = None
@@ -406,6 +408,13 @@ class Simulator:
         # Procesar rubros compartidos administrativos
         self._procesar_rubros_compartidos_admin()
 
+        # Cargar configuraciones de descuentos
+        try:
+            self.calc_descuentos.cargar_configuraciones(marcas_ids)
+            logger.info("Configuraciones de descuentos cargadas")
+        except Exception as e:
+            logger.warning(f"No se pudieron cargar descuentos: {e}")
+
         logger.info(
             f"Cargadas {len(self.marcas)} marcas y "
             f"{len(self.rubros_compartidos)} rubros compartidos"
@@ -457,6 +466,31 @@ class Simulator:
 
                     marca.agregar_rubro_compartido(rubro_asignado)
 
+        # Aplicar descuentos a cada marca
+        for marca in self.marcas:
+            try:
+                resultado_descuentos = self.calc_descuentos.calcular_descuentos(
+                    marca.marca_id,
+                    marca.ventas_mensuales
+                )
+
+                marca.aplicar_descuentos(
+                    descuento_pie_factura=resultado_descuentos.descuento_pie_factura,
+                    rebate=resultado_descuentos.rebate,
+                    descuento_financiero=resultado_descuentos.descuento_financiero,
+                    ventas_netas=resultado_descuentos.ventas_netas,
+                    porcentaje_descuento_total=resultado_descuentos.porcentaje_descuento_total
+                )
+
+                if resultado_descuentos.porcentaje_descuento_total > 0:
+                    logger.info(
+                        f"Descuentos aplicados a {marca.nombre}: "
+                        f"{resultado_descuentos.porcentaje_descuento_total:.2f}% "
+                        f"(${resultado_descuentos.ventas_brutas - resultado_descuentos.ventas_netas:,.0f})"
+                    )
+            except Exception as e:
+                logger.warning(f"Error aplicando descuentos a {marca.nombre}: {e}")
+
         # Calcular consolidado
         consolidado = self._calcular_consolidado()
 
@@ -484,19 +518,30 @@ class Simulator:
         Returns:
             Dict con métricas consolidadas
         """
-        total_ventas = sum(m.ventas_mensuales for m in self.marcas)
+        total_ventas_brutas = sum(m.ventas_mensuales for m in self.marcas)
+        total_ventas_netas = sum(
+            m.ventas_netas_mensuales if m.ventas_netas_mensuales > 0 else m.ventas_mensuales
+            for m in self.marcas
+        )
+        total_descuentos = sum(
+            m.descuento_pie_factura + m.rebate + m.descuento_financiero
+            for m in self.marcas
+        )
         total_costos = sum(m.costo_total for m in self.marcas)
 
         return {
-            'total_ventas_mensuales': total_ventas,
-            'total_ventas_anuales': total_ventas * 12,
+            'total_ventas_brutas_mensuales': total_ventas_brutas,
+            'total_ventas_netas_mensuales': total_ventas_netas,
+            'total_descuentos_mensuales': total_descuentos,
+            'total_ventas_anuales': total_ventas_netas * 12,
             'total_costos_mensuales': total_costos,
             'total_costos_anuales': total_costos * 12,
-            'margen_consolidado': (total_ventas - total_costos) / total_ventas if total_ventas > 0 else 0,
+            'margen_consolidado': (total_ventas_netas - total_costos) / total_ventas_netas if total_ventas_netas > 0 else 0,
             'costo_comercial_total': sum(m.costo_comercial for m in self.marcas),
             'costo_logistico_total': sum(m.costo_logistico for m in self.marcas),
             'costo_administrativo_total': sum(m.costo_administrativo for m in self.marcas),
-            'total_empleados': sum(m.total_empleados for m in self.marcas)
+            'total_empleados': sum(m.total_empleados for m in self.marcas),
+            'porcentaje_descuento_promedio': (total_descuentos / total_ventas_brutas * 100) if total_ventas_brutas > 0 else 0
         }
 
 
