@@ -5,6 +5,20 @@ from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 
 
+# Choices globales para índices de incremento
+INDICE_INCREMENTO_CHOICES = [
+    ('salarios', 'Incremento Salarios General'),
+    ('salario_minimo', 'Incremento Salario Mínimo'),
+    ('ipc', 'IPC (Índice de Precios al Consumidor)'),
+    ('ipt', 'IPT (Índice de Precios al Transportador)'),
+    ('combustible', 'Incremento Combustible'),
+    ('arriendos', 'Incremento Arriendos'),
+    ('personalizado_1', 'Índice Personalizado 1'),
+    ('personalizado_2', 'Índice Personalizado 2'),
+    ('fijo', 'Sin Incremento (Valor Fijo)'),
+]
+
+
 class Marca(models.Model):
     """Modelo para las marcas del sistema"""
     marca_id = models.CharField(max_length=100, unique=True, verbose_name="ID Marca")
@@ -55,6 +69,15 @@ class PersonalComercial(models.Model):
     perfil_prestacional = models.CharField(max_length=20, choices=PERFIL_CHOICES, default='comercial')
     asignacion = models.CharField(max_length=20, choices=ASIGNACION_CHOICES, default='individual')
     auxilio_adicional = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Auxilio Adicional")
+    
+    # Índice de incremento para proyecciones
+    indice_incremento = models.CharField(
+        max_length=20,
+        choices=INDICE_INCREMENTO_CHOICES,
+        default='salarios',
+        verbose_name="Índice de Incremento",
+        help_text="Índice a usar para proyecciones de años futuros"
+    )
 
     # Campos para compartidos
     porcentaje_dedicacion = models.DecimalField(
@@ -119,6 +142,15 @@ class PersonalLogistico(models.Model):
     salario_base = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Salario Base")
     perfil_prestacional = models.CharField(max_length=20, choices=PERFIL_CHOICES, default='logistico')
     asignacion = models.CharField(max_length=20, choices=ASIGNACION_CHOICES, default='individual')
+    
+    # Índice de incremento para proyecciones
+    indice_incremento = models.CharField(
+        max_length=20,
+        choices=INDICE_INCREMENTO_CHOICES,
+        default='salarios',
+        verbose_name="Índice de Incremento",
+        help_text="Índice a usar para proyecciones de años futuros"
+    )
 
     # Campos para compartidos
     porcentaje_dedicacion = models.DecimalField(
@@ -182,6 +214,15 @@ class Vehiculo(models.Model):
     cantidad = models.IntegerField(validators=[MinValueValidator(1)], verbose_name="Cantidad")
     asignacion = models.CharField(max_length=20, choices=ASIGNACION_CHOICES, default='individual')
     kilometraje_promedio_mensual = models.IntegerField(default=3000, verbose_name="Km Promedio Mensual")
+    
+    # Índice de incremento para proyecciones
+    indice_incremento = models.CharField(
+        max_length=20,
+        choices=INDICE_INCREMENTO_CHOICES,
+        default='combustible',
+        verbose_name="Índice de Incremento",
+        help_text="Índice a usar para proyecciones de años futuros"
+    )
 
     # Campos para compartidos
     porcentaje_uso = models.DecimalField(
@@ -280,11 +321,58 @@ class ParametrosMacro(models.Model):
     """Parámetros macroeconómicos del sistema"""
 
     anio = models.IntegerField(unique=True, verbose_name="Año")
-    ipc = models.DecimalField(max_digits=5, decimal_places=4, verbose_name="IPC (%)")
-    ipt = models.DecimalField(max_digits=5, decimal_places=4, verbose_name="IPT (%)")
+    ipc = models.DecimalField(max_digits=6, decimal_places=5, verbose_name="IPC (%)", help_text="Índice de Precios al Consumidor")
+    ipt = models.DecimalField(max_digits=6, decimal_places=5, verbose_name="IPT (%)", help_text="Índice de Precios al Transportador")
     salario_minimo_legal = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Salario Mínimo Legal")
     subsidio_transporte = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Subsidio de Transporte")
-    incremento_salarios = models.DecimalField(max_digits=5, decimal_places=4, verbose_name="Incremento Salarios (%)")
+    incremento_salarios = models.DecimalField(max_digits=6, decimal_places=5, verbose_name="Incremento Salarios General (%)", help_text="Incremento general de salarios")
+    
+    # Nuevos índices para proyecciones
+    incremento_salario_minimo = models.DecimalField(
+        max_digits=6,
+        decimal_places=5,
+        default=0,
+        verbose_name="Incremento Salario Mínimo (%)",
+        help_text="Incremento específico del salario mínimo (puede diferir del general)"
+    )
+    incremento_combustible = models.DecimalField(
+        max_digits=6,
+        decimal_places=5,
+        default=0,
+        verbose_name="Incremento Combustible (%)",
+        help_text="Índice de incremento de combustibles"
+    )
+    incremento_arriendos = models.DecimalField(
+        max_digits=6,
+        decimal_places=5,
+        default=0,
+        verbose_name="Incremento Arriendos (%)",
+        help_text="Usualmente igual al IPC"
+    )
+    incremento_personalizado_1 = models.DecimalField(
+        max_digits=6,
+        decimal_places=5,
+        default=0,
+        verbose_name="Índice Personalizado 1 (%)"
+    )
+    nombre_personalizado_1 = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name="Nombre Índice Personalizado 1",
+        help_text="Ej: 'Incremento Tecnología', 'Incremento Servicios Públicos'"
+    )
+    incremento_personalizado_2 = models.DecimalField(
+        max_digits=6,
+        decimal_places=5,
+        default=0,
+        verbose_name="Índice Personalizado 2 (%)"
+    )
+    nombre_personalizado_2 = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name="Nombre Índice Personalizado 2",
+        help_text="Ej: 'Incremento Seguros', 'Incremento Mantenimiento'"
+    )
 
     activo = models.BooleanField(default=True, verbose_name="Activo")
     fecha_creacion = models.DateTimeField(auto_now_add=True)
@@ -388,6 +476,15 @@ class PersonalAdministrativo(models.Model):
 
     # Para honorarios
     honorarios_mensuales = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, verbose_name="Honorarios Mensuales")
+    
+    # Índice de incremento para proyecciones
+    indice_incremento = models.CharField(
+        max_length=20,
+        choices=INDICE_INCREMENTO_CHOICES,
+        default='salarios',
+        verbose_name="Índice de Incremento",
+        help_text="Índice a usar para proyecciones de años futuros"
+    )
 
     asignacion = models.CharField(max_length=20, choices=ASIGNACION_CHOICES, default='compartido')
     criterio_prorrateo = models.CharField(
@@ -452,6 +549,16 @@ class GastoAdministrativo(models.Model):
     tipo = models.CharField(max_length=50, choices=TIPO_CHOICES, verbose_name="Tipo de Gasto")
     valor_mensual = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Valor Mensual")
     asignacion = models.CharField(max_length=20, choices=ASIGNACION_CHOICES, default='compartido')
+    
+    # Índice de incremento para proyecciones
+    indice_incremento = models.CharField(
+        max_length=20,
+        choices=INDICE_INCREMENTO_CHOICES,
+        default='arriendos',
+        verbose_name="Índice de Incremento",
+        help_text="Índice a usar para proyecciones de años futuros. Usar 'arriendos' para arriendos, 'ipc' para otros gastos"
+    )
+    
     criterio_prorrateo = models.CharField(
         max_length=20,
         choices=[
@@ -501,6 +608,16 @@ class GastoComercial(models.Model):
     nombre = models.CharField(max_length=200, verbose_name="Nombre/Descripción")
     tipo = models.CharField(max_length=50, choices=TIPO_CHOICES, verbose_name="Tipo de Gasto")
     valor_mensual = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Valor Mensual")
+    
+    # Índice de incremento para proyecciones
+    indice_incremento = models.CharField(
+        max_length=20,
+        choices=INDICE_INCREMENTO_CHOICES,
+        default='ipc',
+        verbose_name="Índice de Incremento",
+        help_text="Índice a usar para proyecciones de años futuros"
+    )
+    
     notas = models.TextField(blank=True, verbose_name="Notas")
 
     fecha_creacion = models.DateTimeField(auto_now_add=True)
@@ -536,6 +653,16 @@ class GastoLogistico(models.Model):
     nombre = models.CharField(max_length=200, verbose_name="Nombre/Descripción")
     tipo = models.CharField(max_length=50, choices=TIPO_CHOICES, verbose_name="Tipo de Gasto")
     valor_mensual = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Valor Mensual")
+    
+    # Índice de incremento para proyecciones
+    indice_incremento = models.CharField(
+        max_length=20,
+        choices=INDICE_INCREMENTO_CHOICES,
+        default='combustible',
+        verbose_name="Índice de Incremento",
+        help_text="Índice a usar para proyecciones de años futuros. Usar 'combustible' para gastos de vehículos"
+    )
+    
     notas = models.TextField(blank=True, verbose_name="Notas")
 
     fecha_creacion = models.DateTimeField(auto_now_add=True)
