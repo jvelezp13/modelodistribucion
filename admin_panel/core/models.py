@@ -323,7 +323,6 @@ class FactorPrestacional(models.Model):
     intereses_cesantias = models.DecimalField(max_digits=6, decimal_places=5, verbose_name="Int. Cesantías (%)")
     prima = models.DecimalField(max_digits=6, decimal_places=5, verbose_name="Prima (%)")
     vacaciones = models.DecimalField(max_digits=6, decimal_places=5, verbose_name="Vacaciones (%)")
-    factor_total = models.DecimalField(max_digits=6, decimal_places=5, verbose_name="Factor Total (%)")
 
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_modificacion = models.DateTimeField(auto_now=True)
@@ -333,6 +332,15 @@ class FactorPrestacional(models.Model):
         verbose_name = "Factor Prestacional"
         verbose_name_plural = "Factores Prestacionales"
         ordering = ['perfil']
+
+    @property
+    def factor_total(self):
+        """Calcula automáticamente el factor total sumando todos los componentes"""
+        return (
+            self.salud + self.pension + self.arl + self.caja_compensacion +
+            self.icbf + self.sena + self.cesantias + self.intereses_cesantias +
+            self.prima + self.vacaciones
+        )
 
     def __str__(self):
         return f"{self.get_perfil_display()} - {self.factor_total * 100:.2f}%"

@@ -229,7 +229,7 @@ class ParametrosMacroAdmin(admin.ModelAdmin):
 class FactorPrestacionalAdmin(admin.ModelAdmin):
     list_display = ('perfil', 'factor_total_percent', 'pension_percent', 'salud_percent', 'fecha_modificacion')
     list_filter = ('perfil',)
-    readonly_fields = ('fecha_creacion', 'fecha_modificacion')
+    readonly_fields = ('factor_total', 'fecha_creacion', 'fecha_modificacion')
 
     fieldsets = (
         ('Perfil', {
