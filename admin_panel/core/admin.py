@@ -197,11 +197,28 @@ class ParametrosMacroAdmin(admin.ModelAdmin):
         ('Año', {
             'fields': ('anio', 'activo')
         }),
-        ('Índices', {
-            'fields': ('ipc', 'ipt', 'incremento_salarios')
+        ('Índices Generales', {
+            'fields': ('ipc', 'ipt')
         }),
         ('Salarios y Subsidios', {
             'fields': ('salario_minimo_legal', 'subsidio_transporte')
+        }),
+        ('Índices de Incremento para Proyecciones', {
+            'fields': (
+                'incremento_salarios',
+                'incremento_salario_minimo',
+                'incremento_combustible',
+                'incremento_arriendos',
+            ),
+            'description': 'Índices a usar para proyectar valores de años futuros'
+        }),
+        ('Índices Personalizados', {
+            'fields': (
+                ('nombre_personalizado_1', 'incremento_personalizado_1'),
+                ('nombre_personalizado_2', 'incremento_personalizado_2'),
+            ),
+            'classes': ('collapse',),
+            'description': 'Índices configurables para casos específicos'
         }),
         ('Metadata', {
             'fields': ('fecha_creacion', 'fecha_modificacion'),
