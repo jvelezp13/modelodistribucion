@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Any
 from decimal import Decimal
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -79,19 +80,8 @@ class CalculadoraDescuentos:
             return
 
         try:
-            import django
-            from django.conf import settings
-
-            if not settings.configured:
-                # Intentar usar el init existente
-                try:
-                    from utils.django_init import setup_django
-                    setup_django()
-                except ImportError:
-                    # Fallback: configurar directamente
-                    import os
-                    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'dxv_admin.settings')
-                    django.setup()
+            # Usar el mismo método que loaders_db.py
+            from utils import django_init
 
             self._django_inicializado = True
             logger.info("Django inicializado para calculadora de descuentos")
@@ -110,7 +100,8 @@ class CalculadoraDescuentos:
         self._inicializar_django()
 
         try:
-            from admin_panel.core.models import ConfiguracionDescuentos, Marca as MarcaDjango
+            # Importar DESPUÉS de inicializar Django
+            from core.models import ConfiguracionDescuentos
 
             # Construir query
             query = ConfiguracionDescuentos.objects.filter(activa=True)
