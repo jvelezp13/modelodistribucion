@@ -103,6 +103,8 @@ class PersonalLogistico(models.Model):
 
     PERFIL_CHOICES = [
         ('logistico', 'Logístico'),
+        ('logistico_bodega', 'Logístico Bodega'),
+        ('logistico_calle', 'Logístico Calle'),
         ('administrativo', 'Administrativo'),
     ]
 
@@ -305,6 +307,8 @@ class FactorPrestacional(models.Model):
         ('comercial', 'Comercial'),
         ('administrativo', 'Administrativo'),
         ('logistico', 'Logístico'),
+        ('logistico_bodega', 'Logístico Bodega'),
+        ('logistico_calle', 'Logístico Calle'),
         ('aprendiz_sena', 'Aprendiz SENA'),
     ]
 
