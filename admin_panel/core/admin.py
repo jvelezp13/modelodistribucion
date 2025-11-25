@@ -149,6 +149,16 @@ class PersonalComercialAdmin(admin.ModelAdmin):
         try:
             factor = FactorPrestacional.objects.get(perfil=obj.perfil_prestacional)
             total = obj.salario_base * (1 + factor.factor_total)
+            
+            # Sumar auxilio de transporte si aplica (<= 2 SMLV)
+            if obj.escenario:
+                try:
+                    macro = ParametrosMacro.objects.get(anio=obj.escenario.anio, activo=True)
+                    if obj.salario_base <= (macro.salario_minimo_legal * 2):
+                        total += macro.subsidio_transporte
+                except ParametrosMacro.DoesNotExist:
+                    pass
+
             return f"${total:,.0f}"
         except FactorPrestacional.DoesNotExist:
             return f"${obj.salario_base:,.0f} (Sin Factor)"
@@ -181,6 +191,16 @@ class PersonalLogisticoAdmin(admin.ModelAdmin):
         try:
             factor = FactorPrestacional.objects.get(perfil=obj.perfil_prestacional)
             total = obj.salario_base * (1 + factor.factor_total)
+            
+            # Sumar auxilio de transporte si aplica (<= 2 SMLV)
+            if obj.escenario:
+                try:
+                    macro = ParametrosMacro.objects.get(anio=obj.escenario.anio, activo=True)
+                    if obj.salario_base <= (macro.salario_minimo_legal * 2):
+                        total += macro.subsidio_transporte
+                except ParametrosMacro.DoesNotExist:
+                    pass
+
             return f"${total:,.0f}"
         except FactorPrestacional.DoesNotExist:
             return f"${obj.salario_base:,.0f} (Sin Factor)"
@@ -433,6 +453,16 @@ class PersonalAdministrativoAdmin(admin.ModelAdmin):
         try:
             factor = FactorPrestacional.objects.get(perfil=obj.perfil_prestacional)
             total = obj.salario_base * (1 + factor.factor_total)
+
+            # Sumar auxilio de transporte si aplica (<= 2 SMLV)
+            if obj.escenario:
+                try:
+                    macro = ParametrosMacro.objects.get(anio=obj.escenario.anio, activo=True)
+                    if obj.salario_base <= (macro.salario_minimo_legal * 2):
+                        total += macro.subsidio_transporte
+                except ParametrosMacro.DoesNotExist:
+                    pass
+
             return f"${total:,.0f}"
         except FactorPrestacional.DoesNotExist:
             return f"${obj.salario_base:,.0f} (Sin Factor)"
