@@ -656,7 +656,8 @@ class PoliticaRecursosHumanosAdmin(admin.ModelAdmin):
         'anio', 
         'valor_dotacion_formateado', 
         'frecuencia_dotacion_anual', 
-        'costo_examen_ingreso_formateado',
+        'costo_examen_ingreso_comercial_formateado',
+        'costo_examen_ingreso_operativo_formateado',
         'tasa_rotacion_percent',
         'activo'
     )
@@ -672,7 +673,11 @@ class PoliticaRecursosHumanosAdmin(admin.ModelAdmin):
             'description': 'Configuración para cálculo automático de dotación'
         }),
         ('Exámenes Médicos', {
-            'fields': ('costo_examen_ingreso', 'costo_examen_periodico', 'tasa_rotacion_anual'),
+            'fields': (
+                ('costo_examen_ingreso_comercial', 'costo_examen_ingreso_operativo'),
+                ('costo_examen_periodico_comercial', 'costo_examen_periodico_operativo'),
+                'tasa_rotacion_anual'
+            ),
             'description': 'Configuración para cálculo de exámenes según rotación y planta'
         }),
         ('Metadata', {
@@ -685,9 +690,13 @@ class PoliticaRecursosHumanosAdmin(admin.ModelAdmin):
         return f"${obj.valor_dotacion_completa:,.0f}"
     valor_dotacion_formateado.short_description = 'Valor Dotación'
 
-    def costo_examen_ingreso_formateado(self, obj):
-        return f"${obj.costo_examen_ingreso:,.0f}"
-    costo_examen_ingreso_formateado.short_description = 'Costo Ex. Ingreso'
+    def costo_examen_ingreso_comercial_formateado(self, obj):
+        return f"${obj.costo_examen_ingreso_comercial:,.0f}"
+    costo_examen_ingreso_comercial_formateado.short_description = 'Ex. Ingreso (Com)'
+
+    def costo_examen_ingreso_operativo_formateado(self, obj):
+        return f"${obj.costo_examen_ingreso_operativo:,.0f}"
+    costo_examen_ingreso_operativo_formateado.short_description = 'Ex. Ingreso (Otros)'
 
     def tasa_rotacion_percent(self, obj):
         return f"{obj.tasa_rotacion_anual:.1f}%"

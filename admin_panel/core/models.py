@@ -1033,15 +1033,32 @@ class PoliticaRecursosHumanos(models.Model):
     )
 
     # Exámenes Médicos
-    costo_examen_ingreso = models.DecimalField(
+    costo_examen_ingreso_comercial = models.DecimalField(
         max_digits=12,
         decimal_places=2,
-        verbose_name="Costo Examen Ingreso"
+        default=0,
+        verbose_name="Costo Examen Ingreso (Comercial)",
+        help_text="Para vendedores, supervisores, etc."
     )
-    costo_examen_periodico = models.DecimalField(
+    costo_examen_ingreso_operativo = models.DecimalField(
         max_digits=12,
         decimal_places=2,
-        verbose_name="Costo Examen Periódico"
+        default=0,
+        verbose_name="Costo Examen Ingreso (Otros)",
+        help_text="Para administrativos, logísticos, etc."
+    )
+    
+    costo_examen_periodico_comercial = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        verbose_name="Costo Examen Periódico (Comercial)"
+    )
+    costo_examen_periodico_operativo = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        verbose_name="Costo Examen Periódico (Otros)"
     )
     tasa_rotacion_anual = models.DecimalField(
         max_digits=5,
