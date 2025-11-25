@@ -218,8 +218,29 @@ class VehiculoAdmin(admin.ModelAdmin):
         ('Información Básica', {
             'fields': ('marca', 'escenario', 'tipo_vehiculo', 'esquema', 'cantidad', 'kilometraje_promedio_mensual')
         }),
-        ('Asignación', {
-            'fields': ('asignacion', 'porcentaje_uso', 'criterio_prorrateo')
+        ('Esquema: Tercero', {
+            'fields': ('valor_flete_mensual',),
+            'description': 'Diligenciar solo si el esquema es "Tercero"',
+            'classes': ('collapse',)
+        }),
+        ('Esquema: Renting', {
+            'fields': ('canon_renting',),
+            'description': 'Diligenciar solo si el esquema es "Renting"',
+            'classes': ('collapse',)
+        }),
+        ('Esquema: Propio', {
+            'fields': ('costo_compra', 'vida_util_anios', 'valor_residual', 'costo_mantenimiento_mensual', 'costo_seguro_mensual'),
+            'description': 'Diligenciar solo si el esquema es "Tradicional (Propio)"',
+            'classes': ('collapse',)
+        }),
+        ('Consumo de Combustible (Propio/Renting)', {
+            'fields': ('consumo_galon_km',),
+            'description': 'Diligenciar para esquemas Propio y Renting',
+            'classes': ('collapse',)
+        }),
+        ('Asignación y Proyecciones', {
+            'fields': ('asignacion', 'porcentaje_uso', 'criterio_prorrateo', 'indice_incremento'),
+            'classes': ('collapse',)
         }),
         ('Metadata', {
             'fields': ('fecha_creacion', 'fecha_modificacion'),
