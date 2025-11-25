@@ -49,6 +49,39 @@ class EscenarioAdmin(admin.ModelAdmin):
         return obj.periodo_tipo
     periodo_display.short_description = 'Periodo'
 
+    actions = ['proyectar_escenario']
+
+    def proyectar_escenario(self, request, queryset):
+        from .services import EscenarioService
+        from django.contrib import messages
+        
+        if queryset.count() != 1:
+            self.message_user(
+                request,
+                "Por favor selecciona solo un escenario para proyectar.",
+                level=messages.WARNING
+            )
+            return
+            
+        escenario_base = queryset.first()
+        nuevo_anio = escenario_base.anio + 1
+        
+        try:
+            nuevo_escenario = EscenarioService.proyectar_escenario(escenario_base.pk, nuevo_anio)
+            self.message_user(
+                request,
+                f"Escenario proyectado exitosamente: {nuevo_escenario.nombre}",
+                level=messages.SUCCESS
+            )
+        except Exception as e:
+            self.message_user(
+                request,
+                f"Error al proyectar escenario: {str(e)}",
+                level=messages.ERROR
+            )
+            
+    proyectar_escenario.short_description = "Proyectar al Siguiente Año"
+
 
 @admin.register(Marca)
 class MarcaAdmin(admin.ModelAdmin):
