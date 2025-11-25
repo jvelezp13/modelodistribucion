@@ -631,8 +631,11 @@ class GastoAdministrativo(models.Model):
         ('aseo_cafeteria', 'Aseo y Cafetería'),
         ('papeleria', 'Papelería y Útiles'),
         ('software_licencias', 'Software y Licencias'),
+        ('facturacion_electronica', 'Facturación Electrónica'),
         ('seguros', 'Seguros'),
-        ('impuestos_predial', 'Impuestos Prediales'),
+        ('impuestos_tasas', 'Impuestos y Tasas'),
+        ('servicios_legales', 'Servicios Jurídicos y Legales'),
+        ('mantenimiento_locativo', 'Mantenimiento Locativo'),
         ('otros', 'Otros Gastos Administrativos'),
     ]
 
