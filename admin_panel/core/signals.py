@@ -5,7 +5,7 @@ from .models import (
     PersonalComercial, PersonalLogistico, PersonalAdministrativo,
     PoliticaRecursosHumanos, ParametrosMacro,
     GastoComercial, GastoLogistico, GastoAdministrativo,
-    Escenario, Marca
+    Escenario, Marca, Vehiculo
 )
 
 def calculate_hr_expenses(escenario):
@@ -129,6 +129,103 @@ def update_expenses_on_personnel_change(sender, instance, **kwargs):
 
 @receiver(post_save, sender=PoliticaRecursosHumanos)
 def update_expenses_on_policy_change(sender, instance, **kwargs):
+    for escenario in escenarios:
+        calculate_hr_expenses(escenario)
+
+def calculate_logistic_expenses(escenario):
+    """
+    Recalcula los gastos logísticos automáticos basados en la flota de vehículos.
+    """
+    if not escenario:
+        return
+
+    try:
+        macro = ParametrosMacro.objects.get(anio=escenario.anio, activo=True)
+        precio_galon = macro.precio_galon_combustible
+    except ParametrosMacro.DoesNotExist:
+        precio_galon = 0
+
+    # Obtener todas las marcas con vehículos en este escenario
+    qs_vehiculos = Vehiculo.objects.filter(escenario=escenario)
+    marcas_ids = set(qs_vehiculos.values_list('marca', flat=True))
+
+    for marca_id in marcas_ids:
+        marca_obj = Marca.objects.get(pk=marca_id)
+        vehiculos_marca = qs_vehiculos.filter(marca=marca_obj)
+        
+        # Inicializar acumuladores por tipo de gasto
+        total_flete = 0
+        total_renting = 0
+        total_depreciacion = 0
+        total_mantenimiento = 0
+        total_seguros = 0
+        total_combustible = 0
+
+        for v in vehiculos_marca:
+            if v.esquema == 'tercero':
+                # Flete: Valor Flete * Cantidad
+                total_flete += v.valor_flete_mensual * v.cantidad
+            
+            elif v.esquema == 'renting':
+                # Renting: Canon * Cantidad
+                total_renting += v.canon_renting * v.cantidad
+                
+                # Combustible: (Km / Rendimiento) * Precio Galón * Cantidad
+                if v.consumo_galon_km > 0:
+                    galones = v.kilometraje_promedio_mensual / v.consumo_galon_km
+                    total_combustible += galones * precio_galon * v.cantidad
+
+            elif v.esquema == 'tradicional': # Propio
+                # Depreciación: (Costo - Residual) / (Vida Util * 12) * Cantidad
+                if v.vida_util_anios > 0:
+                    depreciacion_mensual = (v.costo_compra - v.valor_residual) / (v.vida_util_anios * 12)
+                    total_depreciacion += depreciacion_mensual * v.cantidad
+                
+                # Mantenimiento
+                total_mantenimiento += v.costo_mantenimiento_mensual * v.cantidad
+                
+                # Seguros
+                total_seguros += v.costo_seguro_mensual * v.cantidad
+                
+                # Combustible
+                if v.consumo_galon_km > 0:
+                    galones = v.kilometraje_promedio_mensual / v.consumo_galon_km
+                    total_combustible += galones * precio_galon * v.cantidad
+
+        # Función helper para actualizar/borrar gasto
+        def update_gasto(tipo, nombre, valor):
+            if valor > 0:
+                GastoLogistico.objects.update_or_create(
+                    escenario=escenario,
+                    tipo=tipo,
+                    marca=marca_obj,
+                    defaults={
+                        'nombre': nombre,
+                        'valor_mensual': valor,
+                        'asignacion': 'individual'
+                    }
+                )
+            else:
+                GastoLogistico.objects.filter(escenario=escenario, tipo=tipo, marca=marca_obj).delete()
+
+        # Actualizar cada rubro
+        update_gasto('flete_tercero', 'Flete Transporte (Tercero)', total_flete)
+        update_gasto('canon_renting', 'Canon Renting Flota', total_renting)
+        update_gasto('depreciacion_vehiculo', 'Depreciación Flota Propia', total_depreciacion)
+        update_gasto('mantenimiento_vehiculos', 'Mantenimiento Flota Propia', total_mantenimiento)
+        update_gasto('seguros_carga', 'Seguros Flota Propia', total_seguros) # Usamos seguros_carga o creamos uno nuevo? Reutilicemos por ahora o 'otros'
+        update_gasto('combustible', 'Combustible Flota', total_combustible)
+
+
+@receiver([post_save, post_delete], sender=Vehiculo)
+def update_logistic_expenses_on_vehicle_change(sender, instance, **kwargs):
+    if instance.escenario:
+        calculate_logistic_expenses(instance.escenario)
+
+@receiver(post_save, sender=ParametrosMacro)
+def update_expenses_on_macro_change(sender, instance, **kwargs):
+    # Actualizar gastos logísticos (por precio combustible) y RRHH (por SMLV)
     escenarios = Escenario.objects.filter(anio=instance.anio)
     for escenario in escenarios:
         calculate_hr_expenses(escenario)
+        calculate_logistic_expenses(escenario)

@@ -270,6 +270,7 @@ class Vehiculo(models.Model):
     ESQUEMA_CHOICES = [
         ('renting', 'Renting'),
         ('tradicional', 'Tradicional (Propio)'),
+        ('tercero', 'Tercero (Flete)'),
     ]
 
     ASIGNACION_CHOICES = [
@@ -292,6 +293,22 @@ class Vehiculo(models.Model):
     cantidad = models.IntegerField(validators=[MinValueValidator(1)], verbose_name="Cantidad")
     asignacion = models.CharField(max_length=20, choices=ASIGNACION_CHOICES, default='individual')
     kilometraje_promedio_mensual = models.IntegerField(default=3000, verbose_name="Km Promedio Mensual")
+    
+    # Campos para esquema Tercero
+    valor_flete_mensual = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Valor Flete Mensual", help_text="Costo total mensual si es esquema Tercero")
+
+    # Campos para esquema Renting
+    canon_renting = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Canon Renting Mensual")
+
+    # Campos para esquema Propio
+    costo_compra = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Costo Compra Vehículo")
+    vida_util_anios = models.IntegerField(default=5, verbose_name="Vida Útil (Años)")
+    valor_residual = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Valor Residual", help_text="Valor estimado al final de la vida útil")
+    costo_mantenimiento_mensual = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Mantenimiento Mensual")
+    costo_seguro_mensual = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Seguro Mensual")
+    
+    # Campos para consumo (Propio y Renting)
+    consumo_galon_km = models.DecimalField(max_digits=5, decimal_places=2, default=30, verbose_name="Km por Galón", help_text="Rendimiento del vehículo")
     
     # Índice de incremento para proyecciones
     indice_incremento = models.CharField(
@@ -412,7 +429,9 @@ class ParametrosMacro(models.Model):
     ipc = models.DecimalField(max_digits=6, decimal_places=5, verbose_name="IPC (%)", help_text="Índice de Precios al Consumidor")
     ipt = models.DecimalField(max_digits=6, decimal_places=5, verbose_name="IPT (%)", help_text="Índice de Precios al Transportador")
     salario_minimo_legal = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Salario Mínimo Legal")
+    salario_minimo_legal = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Salario Mínimo Legal")
     subsidio_transporte = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Subsidio de Transporte")
+    precio_galon_combustible = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="Precio Galón Combustible")
     incremento_salarios = models.DecimalField(max_digits=6, decimal_places=5, verbose_name="Incremento Salarios General (%)", help_text="Incremento general de salarios")
     
     # Nuevos índices para proyecciones
@@ -790,8 +809,12 @@ class GastoLogistico(models.Model):
         ('seguros_carga', 'Seguros de Carga'),
         ('peajes', 'Peajes y Parqueaderos'),
         ('equipos_carga', 'Equipos de Carga (Estibas, Carretas)'),
-        ('combustible_adicional', 'Combustible Adicional'),
+        ('equipos_carga', 'Equipos de Carga (Estibas, Carretas)'),
+        ('combustible', 'Combustible'),
         ('neumaticos', 'Neumáticos y Repuestos'),
+        ('flete_tercero', 'Flete Transporte (Tercero)'),
+        ('canon_renting', 'Canon Renting'),
+        ('depreciacion_vehiculo', 'Depreciación Vehículos'),
         ('bodegaje', 'Bodegaje Externo'),
         ('equipos_bodega', 'Equipos de Bodega'),
         ('embalaje', 'Material de Embalaje'),
