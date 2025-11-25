@@ -11,7 +11,8 @@ from . import django_init
 from core.models import (
     Marca, PersonalComercial, PersonalLogistico,
     Vehiculo, ProyeccionVentas, VolumenOperacion,
-    ParametrosMacro, FactorPrestacional
+    Vehiculo, ProyeccionVentas, VolumenOperacion,
+    ParametrosMacro, FactorPrestacional, Escenario
 )
 
 logger = logging.getLogger(__name__)
@@ -25,17 +26,56 @@ class DataLoaderDB:
     pero lee desde la base de datos en lugar de YAMLs.
     """
 
-    def __init__(self):
-        logger.info("DataLoaderDB inicializado (PostgreSQL)")
+    def __init__(self, escenario_id: Optional[int] = None):
+        logger.info(f"DataLoaderDB inicializado (PostgreSQL) - Escenario ID: {escenario_id}")
+        self.escenario_id = escenario_id
+        self._escenario_cache = None
+
+    def _get_escenario(self):
+        """Obtiene el escenario activo o el solicitado"""
+        if self._escenario_cache:
+            return self._escenario_cache
+            
+        if self.escenario_id:
+            try:
+                self._escenario_cache = Escenario.objects.get(pk=self.escenario_id)
+            except Escenario.DoesNotExist:
+                logger.warning(f"Escenario {self.escenario_id} no encontrado, buscando activo")
+                self._escenario_cache = Escenario.objects.filter(activo=True).first()
+        else:
+            self._escenario_cache = Escenario.objects.filter(activo=True).first()
+            
+        if not self._escenario_cache:
+            # Fallback al último creado si no hay activos
+            self._escenario_cache = Escenario.objects.order_by('-id').first()
+            
+        return self._escenario_cache
+
+    def _get_filter_kwargs(self):
+        """Retorna los kwargs para filtrar por escenario"""
+        escenario = self._get_escenario()
+        if escenario:
+            return {'escenario': escenario}
+        return {}
 
     # =========================================================================
     # CONFIGURACIÓN
     # =========================================================================
 
     def cargar_parametros_macro(self) -> Dict[str, Any]:
-        """Carga los parámetros macroeconómicos activos"""
+        """Carga los parámetros macroeconómicos activos (o del año del escenario)"""
         try:
-            params = ParametrosMacro.objects.filter(activo=True).first()
+            escenario = self._get_escenario()
+            if escenario:
+                # Intentar cargar macros del año del escenario
+                params = ParametrosMacro.objects.filter(anio=escenario.anio).first()
+            else:
+                params = ParametrosMacro.objects.filter(activo=True).first()
+                
+            if not params:
+                # Fallback a cualquier activo
+                params = ParametrosMacro.objects.filter(activo=True).first()
+                
             if not params:
                 raise ValueError("No hay parámetros macro activos")
 
@@ -129,7 +169,7 @@ class DataLoaderDB:
             marca = Marca.objects.get(marca_id=marca_id)
 
             # IMPORTANTE: Forzar recarga desde DB (evitar caché de Django ORM)
-            personal = PersonalComercial.objects.filter(marca=marca).all()
+            personal = PersonalComercial.objects.filter(marca=marca, **self._get_filter_kwargs()).all()
 
             # DEBUG: Log para verificar qué se está leyendo
             logger.info(f"[DEBUG] Cargando personal comercial de {marca_id}")
@@ -137,12 +177,20 @@ class DataLoaderDB:
             for p in personal:
                 logger.info(f"[DEBUG] - Tipo: {p.tipo}, Cantidad: {p.cantidad}, ID: {p.id}")
 
-            # Calcular proyección de ventas mensual promedio
-            proyecciones = ProyeccionVentas.objects.filter(marca=marca)
+            # Cargar proyección de ventas
+            # Nota: ProyeccionVentas también tiene escenario ahora
+            proyecciones = ProyeccionVentas.objects.filter(marca=marca, **self._get_filter_kwargs())
+            
+            total_ventas_anuales = 0
             if proyecciones.exists():
-                ventas_promedio = sum(p.ventas for p in proyecciones) / proyecciones.count()
+                total_ventas_anuales = sum(p.ventas for p in proyecciones)
             else:
-                ventas_promedio = 0
+                # Fallback a lógica anterior si no hay proyecciones por escenario (aunque deberían haber)
+                # Si no hay proyecciones específicas del escenario, buscar cualquiera del año
+                escenario = self._get_escenario()
+                if escenario:
+                    proyecciones = ProyeccionVentas.objects.filter(marca=marca, anio=escenario.anio)
+                    total_ventas_anuales = sum(p.ventas for p in proyecciones)
 
             # Agrupar personal por tipo
             recursos_comerciales = {}
@@ -170,7 +218,14 @@ class DataLoaderDB:
             return {
                 'marca_id': marca.marca_id,
                 'nombre': marca.nombre,
-                'proyeccion_ventas_mensual': float(ventas_promedio),
+                'proyeccion_ventas': {
+                    'resumen_anual': {
+                        'total_ventas_anuales': float(total_ventas_anuales)
+                    },
+                    'proyeccion_mensual': {
+                        # Esto podría detallarse más si se necesita
+                    }
+                },
                 'recursos_comerciales': recursos_comerciales,
             }
 
@@ -187,10 +242,10 @@ class DataLoaderDB:
             marca = Marca.objects.get(marca_id=marca_id)
 
             # Cargar vehículos
-            vehiculos = Vehiculo.objects.filter(marca=marca)
+            vehiculos_qs = Vehiculo.objects.filter(marca=marca, **self._get_filter_kwargs())
             vehiculos_dict = {'renting': [], 'tradicional': []}
 
-            for v in vehiculos:
+            for v in vehiculos_qs:
                 vehiculo_data = {
                     'tipo': v.tipo_vehiculo,
                     'cantidad': v.cantidad,
@@ -202,10 +257,10 @@ class DataLoaderDB:
                 vehiculos_dict[v.esquema].append(vehiculo_data)
 
             # Cargar personal logístico
-            personal = PersonalLogistico.objects.filter(marca=marca)
+            personal_qs = PersonalLogistico.objects.filter(marca=marca, **self._get_filter_kwargs())
             personal_dict = {}
 
-            for p in personal:
+            for p in personal_qs:
                 tipo_key = p.tipo if not p.tipo.endswith('s') else p.tipo + 'es'
 
                 if tipo_key not in personal_dict:
@@ -250,7 +305,13 @@ class DataLoaderDB:
         """Carga las proyecciones de ventas de una marca desde PostgreSQL"""
         try:
             marca = Marca.objects.get(marca_id=marca_id)
-            proyecciones = ProyeccionVentas.objects.filter(marca=marca).order_by('mes')
+            proyecciones = ProyeccionVentas.objects.filter(marca=marca, **self._get_filter_kwargs()).order_by('mes')
+            
+            if not proyecciones.exists():
+                 # Fallback
+                escenario = self._get_escenario()
+                if escenario:
+                     proyecciones = ProyeccionVentas.objects.filter(marca=marca, anio=escenario.anio).order_by('mes')
 
             ventas_mensuales = {}
             for p in proyecciones:
@@ -288,6 +349,21 @@ class DataLoaderDB:
         """Lista todas las marcas activas"""
         return list(Marca.objects.filter(activa=True).values_list('marca_id', flat=True))
 
+    def listar_escenarios(self) -> List[Dict[str, Any]]:
+        """Lista todos los escenarios disponibles"""
+        escenarios = Escenario.objects.all().order_by('-anio', '-id')
+        return [
+            {
+                'id': e.id,
+                'nombre': e.nombre,
+                'anio': e.anio,
+                'tipo': e.tipo,
+                'activo': e.activo,
+                'periodo': f"{e.periodo_tipo} {e.periodo_numero or ''}".strip()
+            }
+            for e in escenarios
+        ]
+
     # =========================================================================
     # DATOS COMPARTIDOS
     # =========================================================================
@@ -310,6 +386,6 @@ class DataLoaderDB:
             return {}
 
 
-def get_loader_db():
+def get_loader_db(escenario_id: Optional[int] = None):
     """Factory function para obtener el loader de base de datos"""
-    return DataLoaderDB()
+    return DataLoaderDB(escenario_id=escenario_id)

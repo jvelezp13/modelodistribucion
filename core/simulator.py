@@ -546,16 +546,28 @@ class Simulator:
 
 
 # Función de conveniencia
-def simular_modelo_completo(marcas_ids: Optional[List[str]] = None) -> ResultadoSimulacion:
+def simular_modelo_completo(
+    marcas_ids: Optional[List[str]] = None,
+    escenario_id: Optional[int] = None
+) -> ResultadoSimulacion:
     """
     Función de conveniencia para ejecutar una simulación completa.
 
     Args:
         marcas_ids: IDs de marcas a simular. Si es None, simula todas.
+        escenario_id: ID del escenario a simular.
 
     Returns:
         ResultadoSimulacion
     """
-    simulator = Simulator()
+    # Intentar usar loader de BD por defecto si está disponible
+    try:
+        from utils.loaders_db import get_loader_db
+        loader = get_loader_db(escenario_id=escenario_id)
+    except (ImportError, Exception) as e:
+        logger.warning(f"No se pudo cargar DataLoaderDB, usando YAML: {e}")
+        loader = DataLoader()
+
+    simulator = Simulator(loader=loader)
     simulator.cargar_marcas(marcas_ids)
     return simulator.ejecutar_simulacion()

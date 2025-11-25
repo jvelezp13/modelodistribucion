@@ -63,8 +63,23 @@ def listar_marcas() -> List[str]:
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/escenarios")
+def listar_escenarios() -> List[Dict[str, Any]]:
+    """Lista todos los escenarios disponibles"""
+    try:
+        loader = get_loader()
+        escenarios = loader.listar_escenarios()
+        return escenarios
+    except Exception as e:
+        logger.error(f"Error listando escenarios: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/api/simulate")
-def ejecutar_simulacion(marcas_seleccionadas: List[str]) -> Dict[str, Any]:
+def ejecutar_simulacion(
+    marcas_seleccionadas: List[str],
+    escenario_id: Optional[int] = None
+) -> Dict[str, Any]:
     """
     Ejecuta la simulación para las marcas seleccionadas.
 
@@ -81,7 +96,7 @@ def ejecutar_simulacion(marcas_seleccionadas: List[str]) -> Dict[str, Any]:
         logger.info(f"Ejecutando simulación para marcas: {marcas_seleccionadas}")
 
         # Crear simulador con loader de BD
-        loader = get_loader()
+        loader = get_loader(escenario_id=escenario_id)
         simulator = Simulator(loader=loader)
         simulator.cargar_marcas(marcas_seleccionadas)
         resultado = simulator.ejecutar_simulacion()
