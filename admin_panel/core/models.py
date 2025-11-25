@@ -636,6 +636,7 @@ class GastoAdministrativo(models.Model):
         ('servicios_legales', 'Servicios Jurídicos y Legales'),
         ('mantenimiento_locativo', 'Mantenimiento Locativo'),
         ('gastos_financieros', 'Gastos Bancarios y Financieros'),
+        ('bienestar', 'Bienestar y Clima Laboral'),
         ('otros', 'Otros Gastos Administrativos'),
     ]
 
