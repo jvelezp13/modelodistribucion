@@ -60,7 +60,7 @@ def calculate_hr_expenses(escenario):
                     tipo='dotacion',
                     marca=marca_obj,
                     defaults={
-                        'nombre': 'Provisión Dotación y EPP',
+                        'nombre': 'Provisión Dotación',
                         'valor_mensual': valor_dotacion,
                         'asignacion': asignacion
                     }
