@@ -570,9 +570,14 @@ class PersonalAdministrativo(models.Model):
     cantidad = models.IntegerField(validators=[MinValueValidator(1)], verbose_name="Cantidad")
     tipo_contrato = models.CharField(max_length=20, choices=TIPO_CONTRATO_CHOICES, default='nomina')
 
+    PERFIL_CHOICES = [
+        ('administrativo', 'Administrativo'),
+        ('aprendiz_sena', 'Aprendiz SENA'),
+    ]
+
     # Para nómina
     salario_base = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, verbose_name="Salario Base")
-    perfil_prestacional = models.CharField(max_length=20, default='administrativo', verbose_name="Perfil")
+    perfil_prestacional = models.CharField(max_length=20, choices=PERFIL_CHOICES, default='administrativo', verbose_name="Perfil")
 
     # Para honorarios
     honorarios_mensuales = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, verbose_name="Honorarios Mensuales")
