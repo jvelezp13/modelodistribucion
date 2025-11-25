@@ -89,6 +89,14 @@ El modelo estructura los costos en tres grandes áreas:
 
 ---
 
+## 🛠️ Instalación y Despliegue
+
+Para instrucciones detalladas sobre cómo instalar el proyecto localmente (Docker) o desplegarlo en producción (Easypanel), consulta la:
+
+👉 **[Guía de Despliegue Completa (GUIA_DESPLIEGUE.md)](GUIA_DESPLIEGUE.md)**
+
+---
+
 ## 📚 Guía de Uso
 
 ### Paso 1: Configuración (Admin Panel)
