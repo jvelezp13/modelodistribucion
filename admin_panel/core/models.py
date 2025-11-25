@@ -1006,3 +1006,59 @@ class TramoDescuentoFactura(models.Model):
 
         if self.porcentaje_descuento < 0:
             raise ValidationError("El porcentaje de descuento no puede ser negativo")
+
+class PoliticaRecursosHumanos(models.Model):
+    """Políticas de RRHH (Dotación, Exámenes, etc.)"""
+
+    anio = models.IntegerField(unique=True, verbose_name="Año")
+    
+    # Dotación
+    valor_dotacion_completa = models.DecimalField(
+        max_digits=12, 
+        decimal_places=2, 
+        verbose_name="Valor Dotación Completa",
+        help_text="Costo unitario de una dotación completa"
+    )
+    frecuencia_dotacion_anual = models.IntegerField(
+        default=3,
+        verbose_name="Frecuencia Anual",
+        help_text="Cuántas veces al año se entrega dotación"
+    )
+    tope_smlv_dotacion = models.DecimalField(
+        max_digits=4,
+        decimal_places=2,
+        default=2.0,
+        verbose_name="Tope SMLV para Dotación",
+        help_text="Se entrega dotación a quienes ganen menos de X salarios mínimos"
+    )
+
+    # Exámenes Médicos
+    costo_examen_ingreso = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        verbose_name="Costo Examen Ingreso"
+    )
+    costo_examen_periodico = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        verbose_name="Costo Examen Periódico"
+    )
+    tasa_rotacion_anual = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        verbose_name="Tasa de Rotación Anual (%)",
+        help_text="Porcentaje de rotación estimado (para calcular exámenes de ingreso)"
+    )
+
+    activo = models.BooleanField(default=True, verbose_name="Activo")
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_modificacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'dxv_politica_rrhh'
+        verbose_name = "Política de RRHH"
+        verbose_name_plural = "Políticas de RRHH"
+        ordering = ['-anio']
+
+    def __str__(self):
+        return f"Políticas RRHH {self.anio}"

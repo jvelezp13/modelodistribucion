@@ -10,7 +10,7 @@ from .models import (
     PersonalAdministrativo, GastoAdministrativo,
     GastoComercial, GastoLogistico, Impuesto,
     ConfiguracionDescuentos, TramoDescuentoFactura,
-    Escenario
+    Escenario, PoliticaRecursosHumanos
 )
 
 
@@ -648,3 +648,48 @@ class TramoDescuentoFacturaAdmin(admin.ModelAdmin):
         return f"{obj.porcentaje_descuento:.2f}%"
     porcentaje_descuento_display.short_description = '% Descuento'
     porcentaje_descuento_display.admin_order_field = 'porcentaje_descuento'
+
+
+@admin.register(PoliticaRecursosHumanos)
+class PoliticaRecursosHumanosAdmin(admin.ModelAdmin):
+    list_display = (
+        'anio', 
+        'valor_dotacion_formateado', 
+        'frecuencia_dotacion_anual', 
+        'costo_examen_ingreso_formateado',
+        'tasa_rotacion_percent',
+        'activo'
+    )
+    list_filter = ('activo', 'anio')
+    readonly_fields = ('fecha_creacion', 'fecha_modificacion')
+
+    fieldsets = (
+        ('Año', {
+            'fields': ('anio', 'activo')
+        }),
+        ('Dotación', {
+            'fields': ('valor_dotacion_completa', 'frecuencia_dotacion_anual', 'tope_smlv_dotacion'),
+            'description': 'Configuración para cálculo automático de dotación'
+        }),
+        ('Exámenes Médicos', {
+            'fields': ('costo_examen_ingreso', 'costo_examen_periodico', 'tasa_rotacion_anual'),
+            'description': 'Configuración para cálculo de exámenes según rotación y planta'
+        }),
+        ('Metadata', {
+            'fields': ('fecha_creacion', 'fecha_modificacion'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def valor_dotacion_formateado(self, obj):
+        return f"${obj.valor_dotacion_completa:,.0f}"
+    valor_dotacion_formateado.short_description = 'Valor Dotación'
+
+    def costo_examen_ingreso_formateado(self, obj):
+        return f"${obj.costo_examen_ingreso:,.0f}"
+    costo_examen_ingreso_formateado.short_description = 'Costo Ex. Ingreso'
+
+    def tasa_rotacion_percent(self, obj):
+        return f"{obj.tasa_rotacion_anual:.1f}%"
+    tasa_rotacion_percent.short_description = 'Rotación'
+
