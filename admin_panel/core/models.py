@@ -527,10 +527,14 @@ class PersonalAdministrativo(models.Model):
     TIPO_CHOICES = [
         ('gerente_general', 'Gerente General'),
         ('contador', 'Contador'),
+        ('revisor_fiscal', 'Revisor Fiscal'),
+        ('sgsst', 'Seguridad y Salud en el Trabajo (SGSST)'),
+        ('pesv', 'Plan Estratégico de Seguridad Vial (PESV)'),
         ('auxiliar_administrativo', 'Auxiliar Administrativo'),
         ('servicios_generales', 'Servicios Generales'),
         ('practicante_sena', 'Practicante SENA'),
         ('asistente_gerencia', 'Asistente de Gerencia'),
+        ('desarrollador_talento', 'Desarrollador de Talento'),
     ]
 
     TIPO_CONTRATO_CHOICES = [
