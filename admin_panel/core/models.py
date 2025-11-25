@@ -40,6 +40,57 @@ class Marca(models.Model):
         return self.nombre
 
 
+class Escenario(models.Model):
+    """Representa una versión de presupuesto o datos reales"""
+    
+    TIPO_CHOICES = [
+        ('planeado', 'Planeado'),
+        ('sugerido_marca', 'Sugerido por Marca'),
+        ('real', 'Real Ejecutado'),
+    ]
+    
+    PERIODO_TIPO_CHOICES = [
+        ('anual', 'Anual'),
+        ('trimestral', 'Trimestral'),
+        ('mensual', 'Mensual'),
+    ]
+    
+    nombre = models.CharField(max_length=200, verbose_name="Nombre", help_text="Ej: 'Plan 2025', 'Real Q1 2025'")
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, verbose_name="Tipo de Escenario")
+    anio = models.IntegerField(verbose_name="Año")
+    periodo_tipo = models.CharField(max_length=20, choices=PERIODO_TIPO_CHOICES, default='anual', verbose_name="Tipo de Periodo")
+    periodo_numero = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name="Número de Periodo",
+        help_text="1-4 para trimestral, 1-12 para mensual. Dejar vacío para anual"
+    )
+    
+    activo = models.BooleanField(default=False, verbose_name="Activo", help_text="Escenario activo para simulación")
+    aprobado = models.BooleanField(default=False, verbose_name="Aprobado", help_text="Para workflow de aprobación")
+    
+    notas = models.TextField(blank=True, verbose_name="Notas")
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_modificacion = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'dxv_escenario'
+        verbose_name = "Escenario"
+        verbose_name_plural = "Escenarios"
+        ordering = ['-anio', '-periodo_numero', 'tipo']
+        unique_together = [['nombre', 'anio']]
+    
+    def __str__(self):
+        periodo_str = ""
+        if self.periodo_tipo == 'trimestral' and self.periodo_numero:
+            periodo_str = f" Q{self.periodo_numero}"
+        elif self.periodo_tipo == 'mensual' and self.periodo_numero:
+            meses = ['', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+            periodo_str = f" {meses[self.periodo_numero]}"
+        
+        return f"{self.nombre} ({self.anio}{periodo_str})"
+
+
 class PersonalComercial(models.Model):
     """Personal del área comercial"""
 
@@ -62,6 +113,15 @@ class PersonalComercial(models.Model):
         ('compartido', 'Compartido'),
     ]
 
+    escenario = models.ForeignKey(
+        'Escenario',
+        on_delete=models.CASCADE,
+        related_name='personal_comercial_items',
+        verbose_name="Escenario",
+        help_text="Escenario al que pertenece este registro",
+        null=True,
+        blank=True
+    )
     marca = models.ForeignKey(Marca, on_delete=models.CASCADE, related_name='personal_comercial')
     tipo = models.CharField(max_length=50, choices=TIPO_CHOICES, verbose_name="Tipo de Personal")
     cantidad = models.IntegerField(validators=[MinValueValidator(1)], verbose_name="Cantidad")
@@ -136,6 +196,15 @@ class PersonalLogistico(models.Model):
         ('compartido', 'Compartido'),
     ]
 
+    escenario = models.ForeignKey(
+        'Escenario',
+        on_delete=models.CASCADE,
+        related_name='personal_logistico_items',
+        verbose_name="Escenario",
+        help_text="Escenario al que pertenece este registro",
+        null=True,
+        blank=True
+    )
     marca = models.ForeignKey(Marca, on_delete=models.CASCADE, related_name='personal_logistico')
     tipo = models.CharField(max_length=50, choices=TIPO_CHOICES, verbose_name="Tipo de Personal")
     cantidad = models.IntegerField(validators=[MinValueValidator(1)], verbose_name="Cantidad")
@@ -209,6 +278,15 @@ class Vehiculo(models.Model):
     ]
 
     marca = models.ForeignKey(Marca, on_delete=models.CASCADE, related_name='vehiculos')
+    escenario = models.ForeignKey(
+        'Escenario',
+        on_delete=models.CASCADE,
+        related_name='vehiculo_items',
+        verbose_name="Escenario",
+        help_text="Escenario al que pertenece este registro",
+        null=True,
+        blank=True
+    )
     tipo_vehiculo = models.CharField(max_length=50, choices=TIPO_VEHICULO_CHOICES, verbose_name="Tipo de Vehículo")
     esquema = models.CharField(max_length=20, choices=ESQUEMA_CHOICES, verbose_name="Esquema")
     cantidad = models.IntegerField(validators=[MinValueValidator(1)], verbose_name="Cantidad")
@@ -276,6 +354,15 @@ class ProyeccionVentas(models.Model):
     ]
 
     marca = models.ForeignKey(Marca, on_delete=models.CASCADE, related_name='proyecciones_ventas')
+    escenario = models.ForeignKey(
+        'Escenario',
+        on_delete=models.CASCADE,
+        related_name='proyeccion_ventas_items',
+        verbose_name="Escenario",
+        help_text="Escenario al que pertenece este registro",
+        null=True,
+        blank=True
+    )
     anio = models.IntegerField(verbose_name="Año")
     mes = models.CharField(max_length=20, choices=MESES, verbose_name="Mes")
     ventas = models.DecimalField(max_digits=15, decimal_places=2, verbose_name="Ventas Proyectadas")
@@ -456,6 +543,15 @@ class PersonalAdministrativo(models.Model):
         ('compartido', 'Compartido entre marcas'),
     ]
 
+    escenario = models.ForeignKey(
+        'Escenario',
+        on_delete=models.CASCADE,
+        related_name='personal_administrativo_items',
+        verbose_name="Escenario",
+        help_text="Escenario al que pertenece este registro",
+        null=True,
+        blank=True
+    )
     marca = models.ForeignKey(
         Marca,
         on_delete=models.CASCADE,
@@ -545,6 +641,15 @@ class GastoAdministrativo(models.Model):
         verbose_name="Marca",
         help_text="Dejar vacío si es compartido entre todas las marcas"
     )
+    escenario = models.ForeignKey(
+        'Escenario',
+        on_delete=models.CASCADE,
+        related_name='gasto_administrativo_items',
+        verbose_name="Escenario",
+        help_text="Escenario al que pertenece este registro",
+        null=True,
+        blank=True
+    )
     nombre = models.CharField(max_length=200, verbose_name="Nombre/Descripción")
     tipo = models.CharField(max_length=50, choices=TIPO_CHOICES, verbose_name="Tipo de Gasto")
     valor_mensual = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Valor Mensual")
@@ -604,6 +709,15 @@ class GastoComercial(models.Model):
         ('otros', 'Otros Gastos Comerciales'),
     ]
 
+    escenario = models.ForeignKey(
+        'Escenario',
+        on_delete=models.CASCADE,
+        related_name='gasto_comercial_items',
+        verbose_name="Escenario",
+        help_text="Escenario al que pertenece este registro",
+        null=True,
+        blank=True
+    )
     marca = models.ForeignKey(Marca, on_delete=models.CASCADE, related_name='gastos_comerciales')
     nombre = models.CharField(max_length=200, verbose_name="Nombre/Descripción")
     tipo = models.CharField(max_length=50, choices=TIPO_CHOICES, verbose_name="Tipo de Gasto")
@@ -649,6 +763,15 @@ class GastoLogistico(models.Model):
         ('otros', 'Otros Gastos Logísticos'),
     ]
 
+    escenario = models.ForeignKey(
+        'Escenario',
+        on_delete=models.CASCADE,
+        related_name='gasto_logistico_items',
+        verbose_name="Escenario",
+        help_text="Escenario al que pertenece este registro",
+        null=True,
+        blank=True
+    )
     marca = models.ForeignKey(Marca, on_delete=models.CASCADE, related_name='gastos_logisticos')
     nombre = models.CharField(max_length=200, verbose_name="Nombre/Descripción")
     tipo = models.CharField(max_length=50, choices=TIPO_CHOICES, verbose_name="Tipo de Gasto")

@@ -9,8 +9,45 @@ from .models import (
     ParametrosMacro, FactorPrestacional,
     PersonalAdministrativo, GastoAdministrativo,
     GastoComercial, GastoLogistico, Impuesto,
-    ConfiguracionDescuentos, TramoDescuentoFactura
+    ConfiguracionDescuentos, TramoDescuentoFactura,
+    Escenario
 )
+
+
+@admin.register(Escenario)
+class EscenarioAdmin(admin.ModelAdmin):
+    list_display = ('nombre', 'tipo', 'anio', 'periodo_display', 'activo', 'aprobado', 'fecha_modificacion')
+    list_filter = ('tipo', 'anio', 'activo', 'aprobado')
+    search_fields = ('nombre', 'notas')
+    readonly_fields = ('fecha_creacion', 'fecha_modificacion')
+    
+    fieldsets = (
+        ('Información Básica', {
+            'fields': ('nombre', 'tipo', 'anio', 'activo', 'aprobado')
+        }),
+        ('Periodo', {
+            'fields': ('periodo_tipo', 'periodo_numero')
+        }),
+        ('Detalles', {
+            'fields': ('notas',)
+        }),
+        ('Metadata', {
+            'fields': ('fecha_creacion', 'fecha_modificacion'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def periodo_display(self, obj):
+        if obj.periodo_tipo == 'anual':
+            return "Anual"
+        elif obj.periodo_tipo == 'trimestral':
+            return f"Trimestral (Q{obj.periodo_numero})"
+        elif obj.periodo_tipo == 'mensual':
+            meses = ['', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+            mes_nombre = meses[obj.periodo_numero] if obj.periodo_numero else '?'
+            return f"Mensual ({mes_nombre})"
+        return obj.periodo_tipo
+    periodo_display.short_description = 'Periodo'
 
 
 @admin.register(Marca)
@@ -43,14 +80,14 @@ class MarcaAdmin(admin.ModelAdmin):
 
 @admin.register(PersonalComercial)
 class PersonalComercialAdmin(admin.ModelAdmin):
-    list_display = ('marca', 'tipo', 'cantidad', 'salario_base', 'asignacion', 'perfil_prestacional')
-    list_filter = ('marca', 'tipo', 'asignacion', 'perfil_prestacional')
+    list_display = ('marca', 'escenario', 'tipo', 'cantidad', 'salario_base', 'asignacion', 'perfil_prestacional')
+    list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'perfil_prestacional')
     search_fields = ('marca__nombre',)
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
 
     fieldsets = (
         ('Información Básica', {
-            'fields': ('marca', 'tipo', 'cantidad', 'salario_base', 'perfil_prestacional')
+            'fields': ('marca', 'escenario', 'tipo', 'cantidad', 'salario_base', 'perfil_prestacional')
         }),
         ('Asignación', {
             'fields': ('asignacion', 'porcentaje_dedicacion', 'criterio_prorrateo')
@@ -76,14 +113,14 @@ class PersonalComercialAdmin(admin.ModelAdmin):
 
 @admin.register(PersonalLogistico)
 class PersonalLogisticoAdmin(admin.ModelAdmin):
-    list_display = ('marca', 'tipo', 'cantidad', 'salario_base', 'asignacion', 'perfil_prestacional')
-    list_filter = ('marca', 'tipo', 'asignacion', 'perfil_prestacional')
+    list_display = ('marca', 'escenario', 'tipo', 'cantidad', 'salario_base', 'asignacion', 'perfil_prestacional')
+    list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'perfil_prestacional')
     search_fields = ('marca__nombre',)
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
 
     fieldsets = (
         ('Información Básica', {
-            'fields': ('marca', 'tipo', 'cantidad', 'salario_base', 'perfil_prestacional')
+            'fields': ('marca', 'escenario', 'tipo', 'cantidad', 'salario_base', 'perfil_prestacional')
         }),
         ('Asignación', {
             'fields': ('asignacion', 'porcentaje_dedicacion', 'criterio_prorrateo')
@@ -97,14 +134,14 @@ class PersonalLogisticoAdmin(admin.ModelAdmin):
 
 @admin.register(Vehiculo)
 class VehiculoAdmin(admin.ModelAdmin):
-    list_display = ('marca', 'tipo_vehiculo', 'esquema', 'cantidad', 'kilometraje_promedio_mensual', 'asignacion')
-    list_filter = ('marca', 'tipo_vehiculo', 'esquema', 'asignacion')
+    list_display = ('marca', 'escenario', 'tipo_vehiculo', 'esquema', 'cantidad', 'kilometraje_promedio_mensual', 'asignacion')
+    list_filter = ('escenario', 'marca', 'tipo_vehiculo', 'esquema', 'asignacion')
     search_fields = ('marca__nombre',)
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
 
     fieldsets = (
         ('Información Básica', {
-            'fields': ('marca', 'tipo_vehiculo', 'esquema', 'cantidad', 'kilometraje_promedio_mensual')
+            'fields': ('marca', 'escenario', 'tipo_vehiculo', 'esquema', 'cantidad', 'kilometraje_promedio_mensual')
         }),
         ('Asignación', {
             'fields': ('asignacion', 'porcentaje_uso', 'criterio_prorrateo')
@@ -124,14 +161,14 @@ class ProyeccionVentasInline(admin.TabularInline):
 
 @admin.register(ProyeccionVentas)
 class ProyeccionVentasAdmin(admin.ModelAdmin):
-    list_display = ('marca', 'anio', 'mes', 'ventas_formateadas', 'fecha_modificacion')
-    list_filter = ('marca', 'anio', 'mes')
+    list_display = ('marca', 'escenario', 'anio', 'mes', 'ventas_formateadas', 'fecha_modificacion')
+    list_filter = ('escenario', 'marca', 'anio', 'mes')
     search_fields = ('marca__nombre',)
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
 
     fieldsets = (
         ('Información Básica', {
-            'fields': ('marca', 'anio', 'mes', 'ventas')
+            'fields': ('marca', 'escenario', 'anio', 'mes', 'ventas')
         }),
         ('Metadata', {
             'fields': ('fecha_creacion', 'fecha_modificacion'),
@@ -292,14 +329,14 @@ class FactorPrestacionalAdmin(admin.ModelAdmin):
 
 @admin.register(PersonalAdministrativo)
 class PersonalAdministrativoAdmin(admin.ModelAdmin):
-    list_display = ('nombre', 'marca', 'tipo', 'cantidad', 'asignacion', 'tipo_contrato', 'valor_mensual')
-    list_filter = ('marca', 'tipo', 'asignacion', 'tipo_contrato')
+    list_display = ('nombre', 'marca', 'escenario', 'tipo', 'cantidad', 'asignacion', 'tipo_contrato', 'valor_mensual')
+    list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'tipo_contrato')
     search_fields = ('nombre',)
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
 
     fieldsets = (
         ('Asignación', {
-            'fields': ('marca', 'asignacion'),
+            'fields': ('marca', 'escenario', 'asignacion'),
             'description': 'Si asignas a una marca específica, será individual. Si dejas marca vacía, será compartido.'
         }),
         ('Información Básica', {
@@ -334,14 +371,14 @@ class PersonalAdministrativoAdmin(admin.ModelAdmin):
 
 @admin.register(GastoAdministrativo)
 class GastoAdministrativoAdmin(admin.ModelAdmin):
-    list_display = ('nombre', 'marca', 'tipo', 'asignacion', 'valor_mensual_formateado', 'criterio_prorrateo')
-    list_filter = ('marca', 'tipo', 'asignacion', 'criterio_prorrateo')
+    list_display = ('nombre', 'marca', 'escenario', 'tipo', 'asignacion', 'valor_mensual_formateado', 'criterio_prorrateo')
+    list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'criterio_prorrateo')
     search_fields = ('nombre', 'notas')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
 
     fieldsets = (
         ('Asignación', {
-            'fields': ('marca', 'asignacion'),
+            'fields': ('marca', 'escenario', 'asignacion'),
             'description': 'Si asignas a una marca específica, será individual. Si dejas marca vacía, será compartido.'
         }),
         ('Información Básica', {
@@ -369,14 +406,14 @@ class GastoAdministrativoAdmin(admin.ModelAdmin):
 
 @admin.register(GastoComercial)
 class GastoComercialAdmin(admin.ModelAdmin):
-    list_display = ('marca', 'nombre', 'tipo', 'valor_mensual_formateado', 'fecha_modificacion')
-    list_filter = ('marca', 'tipo')
+    list_display = ('marca', 'escenario', 'nombre', 'tipo', 'valor_mensual_formateado', 'fecha_modificacion')
+    list_filter = ('escenario', 'marca', 'tipo')
     search_fields = ('nombre', 'notas')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
 
     fieldsets = (
         ('Información Básica', {
-            'fields': ('marca', 'nombre', 'tipo', 'valor_mensual')
+            'fields': ('marca', 'escenario', 'nombre', 'tipo', 'valor_mensual')
         }),
         ('Notas', {
             'fields': ('notas',),
@@ -396,14 +433,14 @@ class GastoComercialAdmin(admin.ModelAdmin):
 
 @admin.register(GastoLogistico)
 class GastoLogisticoAdmin(admin.ModelAdmin):
-    list_display = ('marca', 'nombre', 'tipo', 'valor_mensual_formateado', 'fecha_modificacion')
-    list_filter = ('marca', 'tipo')
+    list_display = ('marca', 'escenario', 'nombre', 'tipo', 'valor_mensual_formateado', 'fecha_modificacion')
+    list_filter = ('escenario', 'marca', 'tipo')
     search_fields = ('nombre', 'notas')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
 
     fieldsets = (
         ('Información Básica', {
-            'fields': ('marca', 'nombre', 'tipo', 'valor_mensual')
+            'fields': ('marca', 'escenario', 'nombre', 'tipo', 'valor_mensual')
         }),
         ('Notas', {
             'fields': ('notas',),
