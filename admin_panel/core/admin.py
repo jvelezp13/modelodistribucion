@@ -113,7 +113,7 @@ class MarcaAdmin(admin.ModelAdmin):
 
 @admin.register(PersonalComercial)
 class PersonalComercialAdmin(admin.ModelAdmin):
-    list_display = ('marca', 'escenario', 'tipo', 'cantidad', 'salario_base', 'asignacion', 'perfil_prestacional')
+    list_display = ('marca', 'escenario', 'tipo', 'cantidad', 'salario_base', 'costo_total_estimado', 'asignacion', 'perfil_prestacional')
     list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'perfil_prestacional')
     search_fields = ('marca__nombre',)
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
@@ -143,10 +143,21 @@ class PersonalComercialAdmin(admin.ModelAdmin):
             form.base_fields['criterio_prorrateo'].required = False
         return form
 
+    def costo_total_estimado(self, obj):
+        if not obj.salario_base:
+            return "-"
+        try:
+            factor = FactorPrestacional.objects.get(perfil=obj.perfil_prestacional)
+            total = obj.salario_base * (1 + factor.factor_total)
+            return f"${total:,.0f}"
+        except FactorPrestacional.DoesNotExist:
+            return f"${obj.salario_base:,.0f} (Sin Factor)"
+    costo_total_estimado.short_description = 'Costo Total (Est.)'
+
 
 @admin.register(PersonalLogistico)
 class PersonalLogisticoAdmin(admin.ModelAdmin):
-    list_display = ('marca', 'escenario', 'tipo', 'cantidad', 'salario_base', 'asignacion', 'perfil_prestacional')
+    list_display = ('marca', 'escenario', 'tipo', 'cantidad', 'salario_base', 'costo_total_estimado', 'asignacion', 'perfil_prestacional')
     list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'perfil_prestacional')
     search_fields = ('marca__nombre',)
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
@@ -163,6 +174,17 @@ class PersonalLogisticoAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+
+    def costo_total_estimado(self, obj):
+        if not obj.salario_base:
+            return "-"
+        try:
+            factor = FactorPrestacional.objects.get(perfil=obj.perfil_prestacional)
+            total = obj.salario_base * (1 + factor.factor_total)
+            return f"${total:,.0f}"
+        except FactorPrestacional.DoesNotExist:
+            return f"${obj.salario_base:,.0f} (Sin Factor)"
+    costo_total_estimado.short_description = 'Costo Total (Est.)'
 
 
 @admin.register(Vehiculo)
@@ -362,7 +384,7 @@ class FactorPrestacionalAdmin(admin.ModelAdmin):
 
 @admin.register(PersonalAdministrativo)
 class PersonalAdministrativoAdmin(admin.ModelAdmin):
-    list_display = ('nombre', 'marca', 'escenario', 'tipo', 'cantidad', 'asignacion', 'tipo_contrato', 'valor_mensual')
+    list_display = ('nombre', 'marca', 'escenario', 'tipo', 'cantidad', 'asignacion', 'tipo_contrato', 'valor_mensual', 'costo_total_estimado')
     list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'tipo_contrato')
     search_fields = ('nombre',)
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
@@ -401,9 +423,25 @@ class PersonalAdministrativoAdmin(admin.ModelAdmin):
         return "-"
     valor_mensual.short_description = 'Valor Mensual'
 
+    def costo_total_estimado(self, obj):
+        if obj.tipo_contrato == 'honorarios':
+            return f"${obj.honorarios_mensuales:,.0f}" if obj.honorarios_mensuales else "-"
+        
+        if not obj.salario_base:
+            return "-"
+            
+        try:
+            factor = FactorPrestacional.objects.get(perfil=obj.perfil_prestacional)
+            total = obj.salario_base * (1 + factor.factor_total)
+            return f"${total:,.0f}"
+        except FactorPrestacional.DoesNotExist:
+            return f"${obj.salario_base:,.0f} (Sin Factor)"
+    costo_total_estimado.short_description = 'Costo Total (Est.)'
+
 
 @admin.register(GastoAdministrativo)
 class GastoAdministrativoAdmin(admin.ModelAdmin):
+    change_list_template = 'admin/core/change_list_with_total.html'
     list_display = ('nombre', 'marca', 'escenario', 'tipo', 'asignacion', 'valor_mensual_formateado', 'criterio_prorrateo')
     list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'criterio_prorrateo')
     search_fields = ('nombre', 'notas')
@@ -434,11 +472,23 @@ class GastoAdministrativoAdmin(admin.ModelAdmin):
     def valor_mensual_formateado(self, obj):
         return f"${obj.valor_mensual:,.0f}"
     valor_mensual_formateado.short_description = 'Valor Mensual'
+    valor_mensual_formateado.short_description = 'Valor Mensual'
     valor_mensual_formateado.admin_order_field = 'valor_mensual'
+
+    def changelist_view(self, request, extra_context=None):
+        response = super().changelist_view(request, extra_context)
+        try:
+            qs = response.context_data['cl'].queryset
+            total = qs.aggregate(total=Sum('valor_mensual'))['total'] or 0
+            response.context_data['total_valor_mensual'] = total
+        except (AttributeError, KeyError):
+            pass
+        return response
 
 
 @admin.register(GastoComercial)
 class GastoComercialAdmin(admin.ModelAdmin):
+    change_list_template = 'admin/core/change_list_with_total.html'
     list_display = ('marca', 'escenario', 'nombre', 'tipo', 'valor_mensual_formateado', 'fecha_modificacion')
     list_filter = ('escenario', 'marca', 'tipo')
     search_fields = ('nombre', 'notas')
@@ -461,11 +511,23 @@ class GastoComercialAdmin(admin.ModelAdmin):
     def valor_mensual_formateado(self, obj):
         return f"${obj.valor_mensual:,.0f}"
     valor_mensual_formateado.short_description = 'Valor Mensual'
+    valor_mensual_formateado.short_description = 'Valor Mensual'
     valor_mensual_formateado.admin_order_field = 'valor_mensual'
+
+    def changelist_view(self, request, extra_context=None):
+        response = super().changelist_view(request, extra_context)
+        try:
+            qs = response.context_data['cl'].queryset
+            total = qs.aggregate(total=Sum('valor_mensual'))['total'] or 0
+            response.context_data['total_valor_mensual'] = total
+        except (AttributeError, KeyError):
+            pass
+        return response
 
 
 @admin.register(GastoLogistico)
 class GastoLogisticoAdmin(admin.ModelAdmin):
+    change_list_template = 'admin/core/change_list_with_total.html'
     list_display = ('marca', 'escenario', 'nombre', 'tipo', 'valor_mensual_formateado', 'fecha_modificacion')
     list_filter = ('escenario', 'marca', 'tipo')
     search_fields = ('nombre', 'notas')
@@ -488,7 +550,18 @@ class GastoLogisticoAdmin(admin.ModelAdmin):
     def valor_mensual_formateado(self, obj):
         return f"${obj.valor_mensual:,.0f}"
     valor_mensual_formateado.short_description = 'Valor Mensual'
+    valor_mensual_formateado.short_description = 'Valor Mensual'
     valor_mensual_formateado.admin_order_field = 'valor_mensual'
+
+    def changelist_view(self, request, extra_context=None):
+        response = super().changelist_view(request, extra_context)
+        try:
+            qs = response.context_data['cl'].queryset
+            total = qs.aggregate(total=Sum('valor_mensual'))['total'] or 0
+            response.context_data['total_valor_mensual'] = total
+        except (AttributeError, KeyError):
+            pass
+        return response
 
 
 @admin.register(Impuesto)
