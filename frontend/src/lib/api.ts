@@ -10,6 +10,15 @@ if (typeof window !== 'undefined') {
   console.log('🔗 NEXT_PUBLIC_API_URL:', process.env.NEXT_PUBLIC_API_URL);
 }
 
+export interface Escenario {
+  id: number;
+  nombre: string;
+  anio: number;
+  tipo: string;
+  activo: boolean;
+  periodo: string;
+}
+
 export interface Marca {
   marca_id: string;
   nombre: string;
@@ -127,10 +136,21 @@ class APIClient {
   }
 
   /**
+   * Lista todos los escenarios disponibles
+   */
+  async listarEscenarios(): Promise<Escenario[]> {
+    return this.request<Escenario[]>('/api/escenarios');
+  }
+
+  /**
    * Ejecuta la simulación para las marcas seleccionadas
    */
-  async ejecutarSimulacion(marcas: string[]): Promise<SimulacionResult> {
-    return this.request<SimulacionResult>('/api/simulate', {
+  async ejecutarSimulacion(marcas: string[], escenarioId?: number): Promise<SimulacionResult> {
+    let url = '/api/simulate';
+    if (escenarioId) {
+      url += `?escenario_id=${escenarioId}`;
+    }
+    return this.request<SimulacionResult>(url, {
       method: 'POST',
       body: JSON.stringify(marcas),
     });

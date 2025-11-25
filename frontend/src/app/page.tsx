@@ -1,39 +1,52 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { apiClient, SimulacionResult } from '@/lib/api';
+import { apiClient, SimulacionResult, Escenario } from '@/lib/api';
 import { formatearMoneda, formatearPorcentaje } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { MetricCard } from '@/components/ui/MetricCard';
 import { LoadingOverlay } from '@/components/ui/LoadingSpinner';
 import { MultiSelect } from '@/components/ui/MultiSelect';
+import { ScenarioSelector } from '@/components/ui/ScenarioSelector';
 import { TrendingUp, DollarSign, Users, PieChart, RefreshCw, Play } from 'lucide-react';
 
 export default function DashboardPage() {
   const [marcasDisponibles, setMarcasDisponibles] = useState<string[]>([]);
   const [marcasSeleccionadas, setMarcasSeleccionadas] = useState<string[]>([]);
+  const [escenarios, setEscenarios] = useState<Escenario[]>([]);
+  const [selectedScenarioId, setSelectedScenarioId] = useState<number | null>(null);
   const [resultado, setResultado] = useState<SimulacionResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMarcas, setIsLoadingMarcas] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'consolidado' | 'marcas' | 'detalles'>('consolidado');
 
-  // Cargar marcas disponibles al montar el componente
+  // Cargar marcas y escenarios al montar
   useEffect(() => {
-    cargarMarcas();
+    cargarDatosIniciales();
   }, []);
 
-  const cargarMarcas = async () => {
+  const cargarDatosIniciales = async () => {
     setIsLoadingMarcas(true);
     setError(null);
     try {
-      const marcas = await apiClient.listarMarcas();
+      const [marcas, listaEscenarios] = await Promise.all([
+        apiClient.listarMarcas(),
+        apiClient.listarEscenarios()
+      ]);
+
       setMarcasDisponibles(marcas);
-      // Seleccionar todas las marcas por defecto
       setMarcasSeleccionadas(marcas);
+      setEscenarios(listaEscenarios);
+
+      // Seleccionar escenario activo o el primero
+      if (listaEscenarios.length > 0) {
+        const activo = listaEscenarios.find(e => e.activo) || listaEscenarios[0];
+        setSelectedScenarioId(activo.id);
+      }
     } catch (err) {
-      setError('Error al cargar las marcas disponibles');
+      setError('Error al cargar datos iniciales');
       console.error(err);
     } finally {
       setIsLoadingMarcas(false);
@@ -49,7 +62,7 @@ export default function DashboardPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const result = await apiClient.ejecutarSimulacion(marcasSeleccionadas);
+      const result = await apiClient.ejecutarSimulacion(marcasSeleccionadas, selectedScenarioId || undefined);
       setResultado(result);
     } catch (err) {
       setError('Error al ejecutar la simulación');
@@ -61,7 +74,7 @@ export default function DashboardPage() {
 
   const recargarDatos = async () => {
     setResultado(null);
-    await cargarMarcas();
+    await cargarDatosIniciales();
   };
 
   if (isLoadingMarcas) {
@@ -86,14 +99,24 @@ export default function DashboardPage() {
                 Modelo de Distribución y Ventas (DxV) - Simulación y Optimización
               </p>
             </div>
-            <Button
-              variant="outline"
-              onClick={recargarDatos}
-              className="gap-2"
-            >
-              <RefreshCw className="h-4 w-4" />
-              Recargar Datos
-            </Button>
+            <div className="flex items-center gap-4">
+              {escenarios.length > 0 && (
+                <ScenarioSelector
+                  escenarios={escenarios}
+                  selectedId={selectedScenarioId}
+                  onSelect={setSelectedScenarioId}
+                  isLoading={isLoading}
+                />
+              )}
+              <Button
+                variant="outline"
+                onClick={recargarDatos}
+                className="gap-2"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Recargar Datos
+              </Button>
+            </div>
           </div>
         </div>
       </header>
