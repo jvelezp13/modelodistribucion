@@ -730,6 +730,11 @@ class GastoComercial(models.Model):
         ('otros', 'Otros Gastos Comerciales'),
     ]
 
+    ASIGNACION_CHOICES = [
+        ('individual', 'Individual (asignado a una marca)'),
+        ('compartido', 'Compartido entre marcas'),
+    ]
+
     escenario = models.ForeignKey(
         'Escenario',
         on_delete=models.CASCADE,
@@ -739,10 +744,19 @@ class GastoComercial(models.Model):
         null=True,
         blank=True
     )
-    marca = models.ForeignKey(Marca, on_delete=models.CASCADE, related_name='gastos_comerciales')
+    marca = models.ForeignKey(
+        Marca, 
+        on_delete=models.CASCADE, 
+        related_name='gastos_comerciales',
+        null=True,
+        blank=True,
+        verbose_name="Marca",
+        help_text="Dejar vacío si es compartido"
+    )
     nombre = models.CharField(max_length=200, verbose_name="Nombre/Descripción")
     tipo = models.CharField(max_length=50, choices=TIPO_CHOICES, verbose_name="Tipo de Gasto")
     valor_mensual = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Valor Mensual")
+    asignacion = models.CharField(max_length=20, choices=ASIGNACION_CHOICES, default='individual')
     
     # Índice de incremento para proyecciones
     indice_incremento = models.CharField(
@@ -790,6 +804,11 @@ class GastoLogistico(models.Model):
         ('otros', 'Otros Gastos Logísticos'),
     ]
 
+    ASIGNACION_CHOICES = [
+        ('individual', 'Individual (asignado a una marca)'),
+        ('compartido', 'Compartido entre marcas'),
+    ]
+
     escenario = models.ForeignKey(
         'Escenario',
         on_delete=models.CASCADE,
@@ -799,10 +818,19 @@ class GastoLogistico(models.Model):
         null=True,
         blank=True
     )
-    marca = models.ForeignKey(Marca, on_delete=models.CASCADE, related_name='gastos_logisticos')
+    marca = models.ForeignKey(
+        Marca, 
+        on_delete=models.CASCADE, 
+        related_name='gastos_logisticos',
+        null=True,
+        blank=True,
+        verbose_name="Marca",
+        help_text="Dejar vacío si es compartido"
+    )
     nombre = models.CharField(max_length=200, verbose_name="Nombre/Descripción")
     tipo = models.CharField(max_length=50, choices=TIPO_CHOICES, verbose_name="Tipo de Gasto")
     valor_mensual = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Valor Mensual")
+    asignacion = models.CharField(max_length=20, choices=ASIGNACION_CHOICES, default='individual')
     
     # Índice de incremento para proyecciones
     indice_incremento = models.CharField(
