@@ -635,6 +635,7 @@ class GastoAdministrativo(models.Model):
         ('seguros', 'Seguros'),
         ('servicios_legales', 'Servicios Jurídicos y Legales'),
         ('mantenimiento_locativo', 'Mantenimiento Locativo'),
+        ('gastos_financieros', 'Gastos Bancarios y Financieros'),
         ('otros', 'Otros Gastos Administrativos'),
     ]
 
