@@ -637,6 +637,8 @@ class GastoAdministrativo(models.Model):
         ('mantenimiento_locativo', 'Mantenimiento Locativo'),
         ('gastos_financieros', 'Gastos Bancarios y Financieros'),
         ('bienestar', 'Bienestar y Clima Laboral'),
+        ('dotacion', 'Dotación y EPP'),
+        ('examenes', 'Exámenes Médicos'),
         ('telefonia_celular', 'Telefonía Celular y Datos'),
         ('otros', 'Otros Gastos Administrativos'),
     ]
@@ -720,6 +722,8 @@ class GastoComercial(models.Model):
         ('viaticos', 'Viáticos'),
         ('publicidad', 'Publicidad y Marketing'),
         ('muestras', 'Muestras y Degustaciones'),
+        ('dotacion', 'Dotación y EPP'),
+        ('examenes', 'Exámenes Médicos'),
         ('telefonia_celular', 'Telefonía Celular y Datos'),
         ('otros', 'Otros Gastos Comerciales'),
     ]
@@ -778,6 +782,8 @@ class GastoLogistico(models.Model):
         ('arriendo_bodega', 'Arriendo Bodega y CEDI'),
         ('servicios_publicos_bodega', 'Servicios Públicos Bodega'),
         ('internet_bodega', 'Internet y Conectividad Bodega'),
+        ('dotacion', 'Dotación y EPP'),
+        ('examenes', 'Exámenes Médicos'),
         ('telefonia_celular', 'Telefonía Celular y Datos'),
         ('otros', 'Otros Gastos Logísticos'),
     ]
