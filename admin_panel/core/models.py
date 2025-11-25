@@ -387,6 +387,15 @@ class VolumenOperacion(models.Model):
     marca = models.OneToOneField(Marca, on_delete=models.CASCADE, related_name='volumen_operacion')
     pallets_mensuales = models.IntegerField(default=0, verbose_name="Pallets Mensuales")
     metros_cubicos_mensuales = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="M³ Mensuales")
+    # Dotación
+    tope_smlv_dotacion = models.DecimalField(max_digits=4, decimal_places=2, default=2.0, verbose_name="Tope SMLV para Dotación")
+
+    # EPP (Solo Comercial)
+    valor_epp_anual_comercial = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Valor EPP Anual (Comercial)")
+    frecuencia_epp_anual = models.IntegerField(default=1, verbose_name="Frecuencia EPP Anual")
+
+    # Exámenes Médicos
+    costo_examen_ingreso_comercial = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Costo Examen Ingreso (Comercial)")
     toneladas_mensuales = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="Toneladas Mensuales")
     entregas_mensuales = models.IntegerField(default=0, verbose_name="Entregas Mensuales")
     rutas_activas = models.IntegerField(default=0, verbose_name="Rutas Activas")
@@ -723,6 +732,7 @@ class GastoComercial(models.Model):
         ('publicidad', 'Publicidad y Marketing'),
         ('muestras', 'Muestras y Degustaciones'),
         ('dotacion', 'Dotación y EPP'),
+        ('epp', 'EPP (Solo Comercial)'),
         ('examenes', 'Exámenes Médicos'),
         ('telefonia_celular', 'Telefonía Celular y Datos'),
         ('otros', 'Otros Gastos Comerciales'),

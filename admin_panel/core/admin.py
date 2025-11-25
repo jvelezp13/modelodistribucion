@@ -745,6 +745,10 @@ class PoliticaRecursosHumanosAdmin(admin.ModelAdmin):
             'fields': ('valor_dotacion_completa', 'frecuencia_dotacion_anual', 'tope_smlv_dotacion'),
             'description': 'Configuración para cálculo automático de dotación'
         }),
+        ('EPP (Comercial)', {
+            'fields': ('valor_epp_anual_comercial', 'frecuencia_epp_anual'),
+            'description': 'Configuración para EPP específico de personal comercial'
+        }),
         ('Exámenes Médicos', {
             'fields': (
                 ('costo_examen_ingreso_comercial', 'costo_examen_ingreso_operativo'),
