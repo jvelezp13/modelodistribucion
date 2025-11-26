@@ -259,16 +259,6 @@ class VehiculoAdmin(admin.ModelAdmin):
             'description': '⚠️ IMPORTANTE: Para vehículos de terceros (fletes externos), registrar AQUÍ en lugar de usar Gastos Logísticos "flete_tercero". Diligenciar solo si el esquema es "Tercero".',
             'classes': ('collapse',)
         }),
-        ('Información del Propietario (Terceros)', {
-            'fields': ('placa', 'propietario', 'tipo_documento', 'numero_documento', 'conductor'),
-            'description': 'Información del propietario y conductor para vehículos de terceros',
-            'classes': ('collapse',)
-        }),
-        ('Información Bancaria (Pagos a Terceros)', {
-            'fields': ('banco', 'tipo_cuenta', 'numero_cuenta'),
-            'description': 'Datos bancarios para liquidación y pago a terceros',
-            'classes': ('collapse',)
-        }),
         ('Esquema: Renting', {
             'fields': ('canon_renting',),
             'description': 'Diligenciar solo si el esquema es "Renting"',
