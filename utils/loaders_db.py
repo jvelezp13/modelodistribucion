@@ -376,12 +376,64 @@ class DataLoaderDB:
             logger.error(f"Error cargando datos de ventas de {marca_id}: {e}")
             raise
 
+    def cargar_marca_administrativo(self, marca_id: str) -> Dict[str, Any]:
+        """Carga los datos administrativos de una marca desde PostgreSQL"""
+        try:
+            marca = Marca.objects.get(marca_id=marca_id)
+
+            # Cargar personal administrativo
+            personal_qs = PersonalAdministrativo.objects.filter(marca=marca, **self._get_filter_kwargs())
+            personal_dict = []
+
+            for p in personal_qs:
+                personal_dict.append({
+                    'tipo': p.tipo,
+                    'nombre': p.nombre if hasattr(p, 'nombre') else '',
+                    'cantidad': p.cantidad,
+                    'salario_base': float(p.salario_base),
+                    'perfil_prestacional': p.perfil_prestacional,
+                    'asignacion': p.asignacion,
+                    'porcentaje_dedicacion': float(p.porcentaje_dedicacion) if p.porcentaje_dedicacion else None,
+                    'criterio_prorrateo': p.criterio_prorrateo,
+                    'costo_mensual_calculado': float(p.calcular_costo_mensual()),
+                })
+
+            # Cargar gastos administrativos
+            gastos_qs = GastoAdministrativo.objects.filter(marca=marca, **self._get_filter_kwargs())
+            gastos_dict = []
+
+            for gasto in gastos_qs:
+                gastos_dict.append({
+                    'tipo': gasto.tipo,
+                    'nombre': gasto.nombre,
+                    'valor_mensual': float(gasto.valor_mensual),
+                    'asignacion': gasto.asignacion,
+                    'criterio_prorrateo': gasto.criterio_prorrateo if gasto.asignacion == 'compartido' else None,
+                })
+
+            logger.info(f"[DEBUG] Personal administrativo de {marca_id}: {len(personal_dict)}")
+            logger.info(f"[DEBUG] Gastos administrativos de {marca_id}: {len(gastos_dict)}")
+
+            return {
+                'marca_id': marca.marca_id,
+                'personal': personal_dict,
+                'gastos': gastos_dict,
+            }
+
+        except Marca.DoesNotExist:
+            logger.error(f"Marca no encontrada: {marca_id}")
+            raise FileNotFoundError(f"Marca no encontrada: {marca_id}")
+        except Exception as e:
+            logger.error(f"Error cargando datos administrativos de {marca_id}: {e}")
+            raise
+
     def cargar_marca_completa(self, marca_id: str) -> Dict[str, Any]:
         """Carga todos los datos de una marca"""
         return {
             'marca_id': marca_id,
             'comercial': self.cargar_marca_comercial(marca_id),
             'logistica': self.cargar_marca_logistica(marca_id),
+            'administrativo': self.cargar_marca_administrativo(marca_id),
             'ventas': self.cargar_marca_ventas(marca_id)
         }
 

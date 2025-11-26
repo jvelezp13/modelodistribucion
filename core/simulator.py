@@ -380,6 +380,90 @@ class Simulator:
 
         logger.debug(f"Rubros logísticos procesados para {marca.nombre}")
 
+    def _procesar_rubros_administrativos(
+        self,
+        marca: Marca,
+        datos_administrativo: Dict[str, Any]
+    ):
+        """
+        Procesa y agrega rubros administrativos a una marca.
+
+        Args:
+            marca: Marca a la que agregar rubros
+            datos_administrativo: Datos administrativos de la marca
+        """
+        # Procesar personal administrativo
+        personal_list = datos_administrativo.get('personal', [])
+
+        for empleado_data in personal_list:
+            cantidad = empleado_data.get('cantidad', 0)
+            if cantidad == 0:
+                continue
+
+            salario_base = empleado_data.get('salario_base', 0)
+            perfil = empleado_data.get('perfil_prestacional', 'administrativo')
+            asignacion_str = empleado_data.get('asignacion', 'individual')
+
+            # Usar costo_mensual_calculado si está disponible, sino calcular
+            if 'costo_mensual_calculado' in empleado_data:
+                valor_mensual = empleado_data['costo_mensual_calculado']
+            else:
+                costo = self.calc_nomina.calcular_costo_empleado(
+                    salario_base=salario_base,
+                    perfil=perfil
+                )
+                valor_mensual = costo.costo_mensual
+
+            # Crear rubro
+            rubro = Rubro(
+                id=f"admin_{empleado_data.get('tipo')}_{marca.marca_id}",
+                nombre=empleado_data.get('nombre', empleado_data.get('tipo', 'Personal Admin')),
+                categoria='administrativo',
+                tipo='personal',
+                tipo_asignacion=TipoAsignacion(asignacion_str),
+                marca_id=marca.marca_id if asignacion_str == 'individual' else None,
+                cantidad=cantidad,
+                valor_unitario=valor_mensual
+            )
+
+            if rubro.es_individual():
+                marca.agregar_rubro_individual(rubro)
+            else:
+                criterio_str = empleado_data.get('criterio_prorrateo', 'ventas')
+                rubro.criterio_prorrateo = CriterioProrrateo(criterio_str)
+                rubro.porcentaje_dedicacion = empleado_data.get('porcentaje_dedicacion')
+                self.rubros_compartidos.append(rubro)
+
+        # Procesar gastos administrativos
+        gastos = datos_administrativo.get('gastos', [])
+        for gasto_data in gastos:
+            valor_mensual = gasto_data.get('valor_mensual', 0)
+            if valor_mensual == 0:
+                continue
+
+            asignacion_str = gasto_data.get('asignacion', 'individual')
+
+            # Crear rubro de gasto
+            rubro = Rubro(
+                id=f"gasto_admin_{gasto_data.get('tipo')}_{marca.marca_id}",
+                nombre=gasto_data.get('nombre', gasto_data.get('tipo', 'Gasto')),
+                categoria='administrativo',
+                tipo='gasto',
+                tipo_asignacion=TipoAsignacion(asignacion_str),
+                marca_id=marca.marca_id if asignacion_str == 'individual' else None,
+                valor_unitario=valor_mensual,
+                cantidad=1
+            )
+
+            if rubro.es_individual():
+                marca.agregar_rubro_individual(rubro)
+            else:
+                criterio_str = gasto_data.get('criterio_prorrateo', 'ventas')
+                rubro.criterio_prorrateo = CriterioProrrateo(criterio_str)
+                self.rubros_compartidos.append(rubro)
+
+        logger.debug(f"Rubros administrativos procesados para {marca.nombre}")
+
     def _procesar_rubros_compartidos_admin(self):
         """
         Procesa rubros administrativos compartidos.
@@ -478,6 +562,7 @@ class Simulator:
                 # Procesar rubros individuales
                 self._procesar_rubros_comerciales(marca, datos_marca.get('comercial', {}))
                 self._procesar_rubros_logisticos(marca, datos_marca.get('logistica', {}))
+                self._procesar_rubros_administrativos(marca, datos_marca.get('administrativo', {}))
 
                 self.marcas.append(marca)
 
