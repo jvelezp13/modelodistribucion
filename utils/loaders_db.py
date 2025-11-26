@@ -275,6 +275,8 @@ class DataLoaderDB:
                     # Campos adicionales para referencia
                     'costo_seguro_mercancia_mensual': float(v.costo_seguro_mercancia_mensual) if v.costo_seguro_mercancia_mensual else 0,
                     'costo_monitoreo_mensual': float(v.costo_monitoreo_mensual) if v.costo_monitoreo_mensual else 0,
+                    # Campo específico para terceros
+                    'valor_flete_mensual': float(v.valor_flete_mensual) if v.valor_flete_mensual else 0,
                 }
                 vehiculos_dict[v.esquema].append(vehiculo_data)
 

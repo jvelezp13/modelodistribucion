@@ -314,6 +314,7 @@ class Simulator:
 
             # Para terceros, usar el costo pre-calculado que incluye valor_flete_mensual
             valor_unitario = vehiculo_data.get('costo_mensual_calculado', 0)
+            valor_flete = vehiculo_data.get('valor_flete_mensual', 0)
 
             rubro = RubroVehiculo(
                 id=f"vehiculo_{tipo_vehiculo}_tercero_{marca.marca_id}",
@@ -325,7 +326,8 @@ class Simulator:
                 cantidad=cantidad,
                 tipo_vehiculo=tipo_vehiculo,
                 esquema='tercero',
-                valor_unitario=valor_unitario
+                valor_unitario=valor_unitario,
+                valor_flete_mensual=valor_flete
             )
 
             if rubro.es_individual():
@@ -385,16 +387,25 @@ class Simulator:
 
         # Procesar gastos logísticos
         gastos = datos_logistica.get('gastos_logisticos', [])
+        # Verificar si hay vehículos de terceros para evitar duplicación
+        tiene_vehiculos_terceros = len(vehiculos_config.get('tercero', [])) > 0
+
         for gasto_data in gastos:
             valor_mensual = gasto_data.get('valor_mensual', 0)
             if valor_mensual == 0:
+                continue
+
+            # Filtrar 'flete_tercero' si ya hay vehículos de terceros
+            tipo_gasto = gasto_data.get('tipo', '')
+            if tiene_vehiculos_terceros and tipo_gasto == 'flete_tercero':
+                logger.debug(f"Omitiendo gasto 'flete_tercero' porque ya hay vehículos de terceros registrados")
                 continue
 
             asignacion_str = gasto_data.get('asignacion', 'individual')
 
             # Crear rubro de gasto
             rubro = Rubro(
-                id=f"gasto_log_{gasto_data.get('tipo')}_{marca.marca_id}",
+                id=f"gasto_log_{tipo_gasto}_{marca.marca_id}",
                 nombre=gasto_data.get('nombre', gasto_data.get('tipo', 'Gasto')),
                 categoria='logistico',
                 tipo='gasto',
