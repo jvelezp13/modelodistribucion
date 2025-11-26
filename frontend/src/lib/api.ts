@@ -47,11 +47,27 @@ export interface Rubro {
   tipo: string;
   valor_total: number;
   cantidad?: number;
-  salario_base?: number;
   valor_unitario?: number;
+  tipo_asignacion?: string;
+  criterio_prorrateo?: string;
+
+  // Campos para personal
+  salario_base?: number;
+  prestaciones?: number;
+  subsidio_transporte?: number;
+  factor_prestacional?: number;
+
+  // Campos para vehículos
   tipo_vehiculo?: string;
   esquema?: string;
-  criterio_prorrateo?: string;
+  canon_mensual?: number;
+  combustible?: number;
+  mantenimiento?: number;
+  lavada?: number;
+  reposicion?: number;
+  depreciacion?: number;
+  seguro?: number;
+  impuestos?: number;
 }
 
 export interface Consolidado {

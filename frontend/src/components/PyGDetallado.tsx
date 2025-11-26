@@ -197,24 +197,151 @@ export default function PyGDetallado({ marca }: PyGDetalladoProps) {
     );
   };
 
-  const RubroItem = ({ rubro }: { rubro: Rubro }) => (
-    <div className="flex justify-between items-center py-1 px-3 hover:bg-gray-50 border-b border-gray-100 text-xs">
-      <div className="flex-1">
-        <span className="text-gray-700">{rubro.nombre}</span>
-        {rubro.cantidad && rubro.cantidad > 1 && (
-          <span className="text-gray-500 text-xs ml-1">
-            (x{rubro.cantidad})
-          </span>
-        )}
-        {rubro.esquema && (
-          <span className="text-gray-500 text-xs ml-1">
-            [{rubro.esquema}]
-          </span>
+  const RubroItem = ({ rubro }: { rubro: Rubro }) => {
+    const [expandido, setExpandido] = useState(false);
+
+    // Determinar si tiene detalles para expandir
+    const tieneDetalles = (rubro.tipo === 'personal' && rubro.salario_base) ||
+                          (rubro.tipo === 'vehiculo' && rubro.tipo_vehiculo);
+
+    const esCompartido = rubro.tipo_asignacion === 'compartido';
+
+    return (
+      <div className="border-b border-gray-100">
+        {/* Línea principal */}
+        <div
+          className={`flex justify-between items-center py-1.5 px-3 hover:bg-gray-50 text-xs ${tieneDetalles ? 'cursor-pointer' : ''}`}
+          onClick={() => tieneDetalles && setExpandido(!expandido)}
+        >
+          <div className="flex-1 flex items-center gap-2">
+            <span className="text-gray-700">{rubro.nombre}</span>
+            {rubro.cantidad && rubro.cantidad > 1 && (
+              <span className="text-gray-500 text-xs">(x{rubro.cantidad})</span>
+            )}
+            {esCompartido && (
+              <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-medium rounded">
+                Compartido{rubro.criterio_prorrateo ? ` - ${rubro.criterio_prorrateo}` : ''}
+              </span>
+            )}
+            {rubro.tipo === 'vehiculo' && rubro.esquema && (
+              <span className="px-1.5 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-medium rounded">
+                {rubro.esquema === 'renting' ? 'Renting' : 'Propio'}
+              </span>
+            )}
+            {rubro.tipo_vehiculo && (
+              <span className="text-gray-500 text-[10px]">[{rubro.tipo_vehiculo.toUpperCase()}]</span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {rubro.valor_unitario && rubro.cantidad && rubro.cantidad > 1 && (
+              <span className="text-gray-500 text-[10px]">
+                {formatCurrency(rubro.valor_unitario)} c/u
+              </span>
+            )}
+            <span className="font-medium text-gray-900">{formatCurrency(rubro.valor_total)}</span>
+            {tieneDetalles && (
+              <ChevronDown
+                size={12}
+                className={`text-gray-400 transition-transform ${expandido ? 'rotate-180' : ''}`}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Detalles expandidos */}
+        {expandido && tieneDetalles && (
+          <div className="px-3 py-1.5 bg-gray-50 text-[10px] text-gray-600 space-y-0.5">
+            {/* Desglose para Personal */}
+            {rubro.tipo === 'personal' && rubro.salario_base !== undefined && (
+              <>
+                <div className="flex justify-between">
+                  <span>Salario Base:</span>
+                  <span className="font-medium text-gray-700">{formatCurrency(rubro.salario_base * (rubro.cantidad || 1))}</span>
+                </div>
+                {rubro.prestaciones !== undefined && rubro.prestaciones > 0 && (
+                  <div className="flex justify-between">
+                    <span>Prestaciones ({(rubro.factor_prestacional || 0) * 100}%):</span>
+                    <span className="font-medium text-gray-700">{formatCurrency(rubro.prestaciones * (rubro.cantidad || 1))}</span>
+                  </div>
+                )}
+                {rubro.subsidio_transporte !== undefined && rubro.subsidio_transporte > 0 && (
+                  <div className="flex justify-between">
+                    <span>Subsidio Transporte:</span>
+                    <span className="font-medium text-gray-700">{formatCurrency(rubro.subsidio_transporte * (rubro.cantidad || 1))}</span>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Desglose para Vehículos */}
+            {rubro.tipo === 'vehiculo' && rubro.esquema === 'renting' && (
+              <>
+                {rubro.canon_mensual !== undefined && rubro.canon_mensual > 0 && (
+                  <div className="flex justify-between">
+                    <span>Canon Mensual:</span>
+                    <span className="font-medium text-gray-700">{formatCurrency(rubro.canon_mensual * (rubro.cantidad || 1))}</span>
+                  </div>
+                )}
+                {rubro.combustible !== undefined && rubro.combustible > 0 && (
+                  <div className="flex justify-between">
+                    <span>Combustible:</span>
+                    <span className="font-medium text-gray-700">{formatCurrency(rubro.combustible * (rubro.cantidad || 1))}</span>
+                  </div>
+                )}
+                {rubro.lavada !== undefined && rubro.lavada > 0 && (
+                  <div className="flex justify-between">
+                    <span>Lavada:</span>
+                    <span className="font-medium text-gray-700">{formatCurrency(rubro.lavada * (rubro.cantidad || 1))}</span>
+                  </div>
+                )}
+                {rubro.reposicion !== undefined && rubro.reposicion > 0 && (
+                  <div className="flex justify-between">
+                    <span>Reposición:</span>
+                    <span className="font-medium text-gray-700">{formatCurrency(rubro.reposicion * (rubro.cantidad || 1))}</span>
+                  </div>
+                )}
+              </>
+            )}
+
+            {rubro.tipo === 'vehiculo' && rubro.esquema === 'tradicional' && (
+              <>
+                {rubro.depreciacion !== undefined && rubro.depreciacion > 0 && (
+                  <div className="flex justify-between">
+                    <span>Depreciación:</span>
+                    <span className="font-medium text-gray-700">{formatCurrency(rubro.depreciacion * (rubro.cantidad || 1))}</span>
+                  </div>
+                )}
+                {rubro.mantenimiento !== undefined && rubro.mantenimiento > 0 && (
+                  <div className="flex justify-between">
+                    <span>Mantenimiento:</span>
+                    <span className="font-medium text-gray-700">{formatCurrency(rubro.mantenimiento * (rubro.cantidad || 1))}</span>
+                  </div>
+                )}
+                {rubro.seguro !== undefined && rubro.seguro > 0 && (
+                  <div className="flex justify-between">
+                    <span>Seguro:</span>
+                    <span className="font-medium text-gray-700">{formatCurrency(rubro.seguro * (rubro.cantidad || 1))}</span>
+                  </div>
+                )}
+                {rubro.combustible !== undefined && rubro.combustible > 0 && (
+                  <div className="flex justify-between">
+                    <span>Combustible:</span>
+                    <span className="font-medium text-gray-700">{formatCurrency(rubro.combustible * (rubro.cantidad || 1))}</span>
+                  </div>
+                )}
+                {rubro.impuestos !== undefined && rubro.impuestos > 0 && (
+                  <div className="flex justify-between">
+                    <span>Impuestos (mensual):</span>
+                    <span className="font-medium text-gray-700">{formatCurrency((rubro.impuestos / 12) * (rubro.cantidad || 1))}</span>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         )}
       </div>
-      <span className="font-medium text-gray-900 ml-2">{formatCurrency(rubro.valor_total)}</span>
-    </div>
-  );
+    );
+  };
 
   const LineaItem = ({
     titulo,
