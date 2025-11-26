@@ -98,7 +98,7 @@ class PersonalComercial(models.Model):
         ('vendedor_geografico', 'Vendedor Geográfico'),
         ('vendedor_senior', 'Vendedor Senior'),
         ('vendedor_minimercado', 'Vendedor Minimercado'),
-        ('supervisor', 'Supervisor'),
+        ('vendedor_supernumerario', 'Vendedor Supernumerario'),
         ('coordinador_comercial', 'Coordinador Comercial'),
         ('auxiliar_informacion', 'Auxiliar de Información'),
     ]
