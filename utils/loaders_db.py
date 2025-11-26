@@ -392,10 +392,11 @@ class DataLoaderDB:
                             'tipo': p.tipo,
                             'nombre': p.nombre if p.nombre else '',
                             'cantidad': p.cantidad,
-                            'salario_base': float(p.salario_base),
+                            'salario_base': float(p.salario_base) if p.salario_base else 0,
                             'perfil_prestacional': p.perfil_prestacional,
+                            'tipo_contrato': p.tipo_contrato,
+                            'honorarios_mensuales': float(p.honorarios_mensuales) if p.honorarios_mensuales else 0,
                             'asignacion': p.asignacion,
-                            'porcentaje_dedicacion': float(p.porcentaje_dedicacion) if p.porcentaje_dedicacion else None,
                             'criterio_prorrateo': p.criterio_prorrateo,
                             'costo_mensual_calculado': float(p.calcular_costo_mensual()),
                         })
@@ -497,11 +498,11 @@ class DataLoaderDB:
                     'tipo': p.tipo,
                     'nombre': p.nombre,
                     'cantidad': p.cantidad,
-                    'salario_base': float(p.salario_base),
+                    'salario_base': float(p.salario_base) if p.salario_base else 0,
                     'perfil_prestacional': p.perfil_prestacional,
-                    'tipo_contrato': 'nomina',  # Puede ser 'honorarios' o 'nomina'
+                    'tipo_contrato': p.tipo_contrato,
+                    'honorarios_mensuales': float(p.honorarios_mensuales) if p.honorarios_mensuales else 0,
                     'criterio_prorrateo': p.criterio_prorrateo,
-                    'porcentaje_dedicacion': float(p.porcentaje_dedicacion) if p.porcentaje_dedicacion else None,
                     'costo_mensual_calculado': float(p.calcular_costo_mensual()),
                 }
 

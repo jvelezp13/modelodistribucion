@@ -431,7 +431,7 @@ class Simulator:
             else:
                 criterio_str = empleado_data.get('criterio_prorrateo', 'ventas')
                 rubro.criterio_prorrateo = CriterioProrrateo(criterio_str)
-                rubro.porcentaje_dedicacion = empleado_data.get('porcentaje_dedicacion')
+                # Personal administrativo no usa porcentaje_dedicacion
                 self.rubros_compartidos.append(rubro)
 
         # Procesar gastos administrativos
@@ -484,8 +484,10 @@ class Simulator:
             if cantidad == 0:
                 continue
 
-            # Determinar si es honorarios o salario
-            if config.get('tipo_contrato') == 'honorarios':
+            # Usar costo_mensual_calculado si está disponible, sino calcular
+            if 'costo_mensual_calculado' in config:
+                valor_mensual = config['costo_mensual_calculado']
+            elif config.get('tipo_contrato') == 'honorarios':
                 valor_mensual = config.get('honorarios_mensuales', 0)
             else:
                 salario_base = config.get('salario_base', 0)
