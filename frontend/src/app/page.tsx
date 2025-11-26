@@ -94,7 +94,7 @@ export default function DashboardPage() {
         isCollapsed={isSidebarCollapsed}
         onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         activeView={activeView}
-        onViewChange={setActiveView}
+        onViewChange={(view) => setActiveView(view as ViewType)}
       />
 
       {/* Main Content */}
