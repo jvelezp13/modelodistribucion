@@ -184,6 +184,17 @@ class RubroPersonal(Rubro):
         # Llamar al __post_init__ del padre
         super().__post_init__()
 
+    def to_dict(self) -> Dict[str, Any]:
+        """Convierte el rubro de personal a diccionario con campos adicionales."""
+        base_dict = super().to_dict()
+        base_dict.update({
+            'salario_base': self.salario_base,
+            'prestaciones': self.prestaciones,
+            'subsidio_transporte': self.subsidio_transporte,
+            'factor_prestacional': self.factor_prestacional,
+        })
+        return base_dict
+
 
 @dataclass
 class RubroVehiculo(Rubro):
@@ -219,3 +230,20 @@ class RubroVehiculo(Rubro):
             )
 
         super().__post_init__()
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convierte el rubro de vehículo a diccionario con campos adicionales."""
+        base_dict = super().to_dict()
+        base_dict.update({
+            'tipo_vehiculo': self.tipo_vehiculo,
+            'esquema': self.esquema,
+            'canon_mensual': self.canon_mensual,
+            'combustible': self.combustible,
+            'mantenimiento': self.mantenimiento,
+            'lavada': self.lavada,
+            'reposicion': self.reposicion,
+            'depreciacion': self.depreciacion,
+            'seguro': self.seguro,
+            'impuestos': self.impuestos,
+        })
+        return base_dict

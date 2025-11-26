@@ -404,18 +404,14 @@ class Simulator:
             perfil = empleado_data.get('perfil_prestacional', 'administrativo')
             asignacion_str = empleado_data.get('asignacion', 'individual')
 
-            # Usar costo_mensual_calculado si está disponible, sino calcular
-            if 'costo_mensual_calculado' in empleado_data:
-                valor_mensual = empleado_data['costo_mensual_calculado']
-            else:
-                costo = self.calc_nomina.calcular_costo_empleado(
-                    salario_base=salario_base,
-                    perfil=perfil
-                )
-                valor_mensual = costo.costo_mensual
+            # Calcular costo con la calculadora para obtener desglose
+            costo = self.calc_nomina.calcular_costo_empleado(
+                salario_base=salario_base,
+                perfil=perfil
+            )
 
-            # Crear rubro
-            rubro = Rubro(
+            # Crear rubro de personal con desglose completo
+            rubro = RubroPersonal(
                 id=f"admin_{empleado_data.get('tipo')}_{marca.marca_id}",
                 nombre=empleado_data.get('nombre', empleado_data.get('tipo', 'Personal Admin')),
                 categoria='administrativo',
@@ -423,7 +419,10 @@ class Simulator:
                 tipo_asignacion=TipoAsignacion(asignacion_str),
                 marca_id=marca.marca_id if asignacion_str == 'individual' else None,
                 cantidad=cantidad,
-                valor_unitario=valor_mensual
+                salario_base=salario_base,
+                prestaciones=costo.prestaciones,
+                subsidio_transporte=costo.subsidio_transporte,
+                factor_prestacional=0.378 if perfil == 'administrativo' else 0.49 if perfil == 'aprendiz_sena' else 0.378
             )
 
             if rubro.es_individual():
@@ -484,25 +483,19 @@ class Simulator:
             if cantidad == 0:
                 continue
 
-            # Usar costo_mensual_calculado si está disponible, sino calcular
-            if 'costo_mensual_calculado' in config:
-                valor_mensual = config['costo_mensual_calculado']
-            elif config.get('tipo_contrato') == 'honorarios':
-                valor_mensual = config.get('honorarios_mensuales', 0)
-            else:
-                salario_base = config.get('salario_base', 0)
-                perfil = config.get('perfil_prestacional', 'administrativo')
+            salario_base = config.get('salario_base', 0)
+            perfil = config.get('perfil_prestacional', 'administrativo')
 
-                costo = self.calc_nomina.calcular_costo_empleado(
-                    salario_base=salario_base,
-                    perfil=perfil
-                )
-                valor_mensual = costo.costo_mensual
+            # Calcular costo con la calculadora para obtener desglose
+            costo = self.calc_nomina.calcular_costo_empleado(
+                salario_base=salario_base,
+                perfil=perfil
+            )
 
-            # Crear rubro compartido
+            # Crear rubro compartido con desglose completo
             criterio_str = config.get('criterio_prorrateo', 'ventas')
 
-            rubro = Rubro(
+            rubro = RubroPersonal(
                 id=f"admin_{puesto}",
                 nombre=config.get('nombre', config.get('descripcion', puesto.replace('_', ' ').title())),
                 categoria='administrativo',
@@ -510,7 +503,10 @@ class Simulator:
                 tipo_asignacion=TipoAsignacion.COMPARTIDO,
                 criterio_prorrateo=CriterioProrrateo(criterio_str),
                 cantidad=cantidad,
-                valor_unitario=valor_mensual
+                salario_base=salario_base,
+                prestaciones=costo.prestaciones,
+                subsidio_transporte=costo.subsidio_transporte,
+                factor_prestacional=0.378 if perfil == 'administrativo' else 0.49 if perfil == 'aprendiz_sena' else 0.378
             )
 
             self.rubros_compartidos.append(rubro)
