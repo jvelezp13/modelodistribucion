@@ -253,7 +253,7 @@ class VehiculoAdmin(admin.ModelAdmin):
         }),
         ('Esquema: Tercero', {
             'fields': ('valor_flete_mensual',),
-            'description': 'Diligenciar solo si el esquema es "Tercero"',
+            'description': '⚠️ IMPORTANTE: Para vehículos de terceros (fletes externos), registrar AQUÍ en lugar de usar Gastos Logísticos "flete_tercero". Diligenciar solo si el esquema es "Tercero".',
             'classes': ('collapse',)
         }),
         ('Esquema: Renting', {
@@ -675,7 +675,8 @@ class GastoLogisticoAdmin(admin.ModelAdmin):
 
     fieldsets = (
         ('Información Básica', {
-            'fields': ('marca', 'escenario', 'nombre', 'tipo', 'valor_mensual')
+            'fields': ('marca', 'escenario', 'nombre', 'tipo', 'valor_mensual'),
+            'description': '⚠️ IMPORTANTE: Para fletes de terceros (transportadoras externas), usar la tabla VEHÍCULOS con esquema="Tercero" en lugar de gastos logísticos. La opción "flete_tercero" ha sido deprecada.'
         }),
         ('Notas', {
             'fields': ('notas',),

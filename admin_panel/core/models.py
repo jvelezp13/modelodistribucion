@@ -965,7 +965,7 @@ class GastoLogistico(models.Model):
         ('equipos_carga', 'Equipos de Carga (Estibas, Carretas)'),
         ('combustible', 'Combustible'),
         ('neumaticos', 'Neumáticos y Repuestos'),
-        ('flete_tercero', 'Flete Transporte (Tercero)'),
+        # ('flete_tercero', 'Flete Transporte (Tercero)'),  # DEPRECADO: Usar tabla Vehículos con esquema='tercero'
         ('canon_renting', 'Canon Renting'),
         ('depreciacion_vehiculo', 'Depreciación Vehículos'),
         ('lavado_vehiculos', 'Aseo y Limpieza Vehículos'),
