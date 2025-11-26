@@ -29,10 +29,10 @@ interface SubSeccionState {
 export default function PyGDetallado({ marca }: PyGDetalladoProps) {
   const [seccionesAbiertas, setSeccionesAbiertas] = useState<SeccionState>({
     ingresos: true,
-    comercial: true,
-    logistico: true,
-    administrativo: true,
-    impuestos: true,
+    comercial: false,
+    logistico: false,
+    administrativo: false,
+    impuestos: false,
   });
 
   const [subSeccionesAbiertas, setSubSeccionesAbiertas] = useState<SubSeccionState>({
@@ -147,28 +147,26 @@ export default function PyGDetallado({ marca }: PyGDetalladoProps) {
     titulo,
     seccion,
     valor,
-    nivel = 1
+    bgColor = 'bg-gray-700'
   }: {
     titulo: string;
     seccion: keyof SeccionState;
     valor?: number;
-    nivel?: number;
+    bgColor?: string;
   }) => {
     const isOpen = seccionesAbiertas[seccion];
-    const bgColor = nivel === 1 ? 'bg-gray-800' : 'bg-gray-700';
-    const textSize = nivel === 1 ? 'text-lg' : 'text-base';
 
     return (
       <div
-        className={`${bgColor} text-white p-3 cursor-pointer flex justify-between items-center rounded-lg mb-2`}
+        className={`${bgColor} text-white px-3 py-2 cursor-pointer flex justify-between items-center`}
         onClick={() => toggleSeccion(seccion)}
       >
         <div className="flex items-center gap-2">
-          {isOpen ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
-          <span className={`font-semibold ${textSize}`}>{titulo}</span>
+          {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          <span className="text-xs font-semibold uppercase tracking-wide">{titulo}</span>
         </div>
         {valor !== undefined && (
-          <span className={`font-bold ${textSize}`}>{formatCurrency(valor)}</span>
+          <span className="text-sm font-bold">{formatCurrency(valor)}</span>
         )}
       </div>
     );
@@ -187,57 +185,59 @@ export default function PyGDetallado({ marca }: PyGDetalladoProps) {
 
     return (
       <div
-        className="bg-gray-600 text-white p-2 cursor-pointer flex justify-between items-center rounded mb-1"
+        className="bg-gray-100 px-3 py-1.5 cursor-pointer flex justify-between items-center border-b border-gray-200"
         onClick={() => toggleSubSeccion(subSeccion)}
       >
-        <div className="flex items-center gap-2">
-          {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-          <span className="font-medium">{titulo}</span>
+        <div className="flex items-center gap-1.5">
+          {isOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+          <span className="text-xs font-medium text-gray-700">{titulo}</span>
         </div>
-        <span className="font-semibold">{formatCurrency(valor)}</span>
+        <span className="text-xs font-semibold text-gray-900">{formatCurrency(valor)}</span>
       </div>
     );
   };
 
   const RubroItem = ({ rubro }: { rubro: Rubro }) => (
-    <div className="flex justify-between items-center py-2 px-4 hover:bg-gray-50 border-b border-gray-100">
+    <div className="flex justify-between items-center py-1 px-3 hover:bg-gray-50 border-b border-gray-100 text-xs">
       <div className="flex-1">
         <span className="text-gray-700">{rubro.nombre}</span>
         {rubro.cantidad && rubro.cantidad > 1 && (
-          <span className="text-gray-500 text-sm ml-2">
+          <span className="text-gray-500 text-xs ml-1">
             (x{rubro.cantidad})
           </span>
         )}
         {rubro.esquema && (
-          <span className="text-gray-500 text-sm ml-2">
+          <span className="text-gray-500 text-xs ml-1">
             [{rubro.esquema}]
           </span>
         )}
       </div>
-      <span className="font-medium text-gray-900">{formatCurrency(rubro.valor_total)}</span>
+      <span className="font-medium text-gray-900 ml-2">{formatCurrency(rubro.valor_total)}</span>
     </div>
   );
 
   const LineaItem = ({
     titulo,
     valor,
-    nivel = 1,
+    indent = 0,
+    bold = false,
     negativo = false
   }: {
     titulo: string;
     valor: number;
-    nivel?: number;
+    indent?: number;
+    bold?: boolean;
     negativo?: boolean;
   }) => {
-    const fontWeight = nivel === 1 ? 'font-bold' : 'font-semibold';
-    const textSize = nivel === 1 ? 'text-base' : 'text-sm';
-    const bgColor = nivel === 1 ? 'bg-gray-100' : '';
+    const paddingLeft = `${indent * 12 + 12}px`;
+    const fontWeight = bold ? 'font-semibold' : 'font-normal';
     const textColor = negativo ? 'text-red-600' : 'text-gray-900';
+    const bgColor = bold && indent === 0 ? 'bg-gray-50' : '';
 
     return (
-      <div className={`flex justify-between items-center py-2 px-4 ${bgColor}`}>
-        <span className={`${fontWeight} ${textSize} text-gray-700`}>{titulo}</span>
-        <span className={`${fontWeight} ${textSize} ${textColor}`}>
+      <div className={`flex justify-between items-center py-1 text-xs ${bgColor} border-b border-gray-100`} style={{ paddingLeft, paddingRight: '12px' }}>
+        <span className={`${fontWeight} text-gray-700`}>{titulo}</span>
+        <span className={`${fontWeight} ${textColor}`}>
           {negativo && valor > 0 ? '-' : ''}{formatCurrency(Math.abs(valor))}
         </span>
       </div>
@@ -245,44 +245,41 @@ export default function PyGDetallado({ marca }: PyGDetalladoProps) {
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-6 bg-white rounded-lg shadow-lg">
-      <h2 className="text-2xl font-bold mb-6 text-gray-800">
-        Estado de Resultados - {marca.nombre}
-      </h2>
+    <div className="bg-white border border-gray-200 rounded">
+      {/* Header */}
+      <div className="px-3 py-2 border-b border-gray-200 bg-gray-50">
+        <h3 className="text-sm font-semibold text-gray-800">
+          Estado de Resultados - {marca.nombre}
+        </h3>
+      </div>
 
       {/* SECCIÓN: INGRESOS */}
-      <SeccionHeader titulo="INGRESOS" seccion="ingresos" valor={ventasNetas} />
+      <SeccionHeader titulo="Ingresos" seccion="ingresos" valor={ventasNetas} bgColor="bg-blue-700" />
       {seccionesAbiertas.ingresos && (
-        <div className="mb-4 border border-gray-200 rounded-lg">
-          <LineaItem titulo="Ventas Brutas" valor={ventasBrutas} nivel={2} />
+        <div>
+          <LineaItem titulo="Ventas Brutas" valor={ventasBrutas} indent={1} />
           {totalDescuentos > 0 && (
             <>
-              <LineaItem titulo="Descuentos Totales" valor={totalDescuentos} nivel={2} negativo />
+              <LineaItem titulo="Descuentos Totales" valor={totalDescuentos} indent={1} negativo />
               {marca.descuento_pie_factura && marca.descuento_pie_factura > 0 && (
-                <div className="pl-8">
-                  <LineaItem titulo="Descuento Pie de Factura" valor={marca.descuento_pie_factura} nivel={3} negativo />
-                </div>
+                <LineaItem titulo="Descuento Pie de Factura" valor={marca.descuento_pie_factura} indent={2} negativo />
               )}
               {marca.rebate && marca.rebate > 0 && (
-                <div className="pl-8">
-                  <LineaItem titulo="Rebate" valor={marca.rebate} nivel={3} negativo />
-                </div>
+                <LineaItem titulo="Rebate" valor={marca.rebate} indent={2} negativo />
               )}
               {marca.descuento_financiero && marca.descuento_financiero > 0 && (
-                <div className="pl-8">
-                  <LineaItem titulo="Descuento Financiero" valor={marca.descuento_financiero} nivel={3} negativo />
-                </div>
+                <LineaItem titulo="Descuento Financiero" valor={marca.descuento_financiero} indent={2} negativo />
               )}
             </>
           )}
-          <LineaItem titulo="Ventas Netas" valor={ventasNetas} nivel={1} />
+          <LineaItem titulo="Ventas Netas" valor={ventasNetas} bold />
         </div>
       )}
 
       {/* SECCIÓN: COSTOS COMERCIALES */}
-      <SeccionHeader titulo="COSTOS COMERCIALES" seccion="comercial" valor={totalComercial} />
+      <SeccionHeader titulo="Costos Comerciales" seccion="comercial" valor={totalComercial} bgColor="bg-gray-700" />
       {seccionesAbiertas.comercial && (
-        <div className="mb-4 border border-gray-200 rounded-lg">
+        <div>
           {/* Personal Comercial */}
           {grupos.comercialPersonal.length > 0 && (
             <>
@@ -292,11 +289,11 @@ export default function PyGDetallado({ marca }: PyGDetalladoProps) {
                 valor={subtotalComercialPersonal}
               />
               {subSeccionesAbiertas.comercialPersonal && (
-                <div className="bg-gray-50">
+                <>
                   {grupos.comercialPersonal.map((rubro, idx) => (
                     <RubroItem key={`com-pers-${idx}`} rubro={rubro} />
                   ))}
-                </div>
+                </>
               )}
             </>
           )}
@@ -310,23 +307,23 @@ export default function PyGDetallado({ marca }: PyGDetalladoProps) {
                 valor={subtotalComercialGastos}
               />
               {subSeccionesAbiertas.comercialGastos && (
-                <div className="bg-gray-50">
+                <>
                   {grupos.comercialGastos.map((rubro, idx) => (
                     <RubroItem key={`com-gasto-${idx}`} rubro={rubro} />
                   ))}
-                </div>
+                </>
               )}
             </>
           )}
 
-          <LineaItem titulo="Total Costos Comerciales" valor={totalComercial} nivel={1} />
+          <LineaItem titulo="Total Costos Comerciales" valor={totalComercial} bold />
         </div>
       )}
 
       {/* SECCIÓN: COSTOS LOGÍSTICOS */}
-      <SeccionHeader titulo="COSTOS LOGÍSTICOS" seccion="logistico" valor={totalLogistico} />
+      <SeccionHeader titulo="Costos Logísticos" seccion="logistico" valor={totalLogistico} bgColor="bg-gray-700" />
       {seccionesAbiertas.logistico && (
-        <div className="mb-4 border border-gray-200 rounded-lg">
+        <div>
           {/* Vehículos */}
           {grupos.logisticoVehiculos.length > 0 && (
             <>
@@ -336,11 +333,11 @@ export default function PyGDetallado({ marca }: PyGDetalladoProps) {
                 valor={subtotalLogisticoVehiculos}
               />
               {subSeccionesAbiertas.logisticoVehiculos && (
-                <div className="bg-gray-50">
+                <>
                   {grupos.logisticoVehiculos.map((rubro, idx) => (
                     <RubroItem key={`log-veh-${idx}`} rubro={rubro} />
                   ))}
-                </div>
+                </>
               )}
             </>
           )}
@@ -354,11 +351,11 @@ export default function PyGDetallado({ marca }: PyGDetalladoProps) {
                 valor={subtotalLogisticoPersonal}
               />
               {subSeccionesAbiertas.logisticoPersonal && (
-                <div className="bg-gray-50">
+                <>
                   {grupos.logisticoPersonal.map((rubro, idx) => (
                     <RubroItem key={`log-pers-${idx}`} rubro={rubro} />
                   ))}
-                </div>
+                </>
               )}
             </>
           )}
@@ -372,23 +369,23 @@ export default function PyGDetallado({ marca }: PyGDetalladoProps) {
                 valor={subtotalLogisticoGastos}
               />
               {subSeccionesAbiertas.logisticoGastos && (
-                <div className="bg-gray-50">
+                <>
                   {grupos.logisticoGastos.map((rubro, idx) => (
                     <RubroItem key={`log-gasto-${idx}`} rubro={rubro} />
                   ))}
-                </div>
+                </>
               )}
             </>
           )}
 
-          <LineaItem titulo="Total Costos Logísticos" valor={totalLogistico} nivel={1} />
+          <LineaItem titulo="Total Costos Logísticos" valor={totalLogistico} bold />
         </div>
       )}
 
       {/* SECCIÓN: COSTOS ADMINISTRATIVOS */}
-      <SeccionHeader titulo="COSTOS ADMINISTRATIVOS" seccion="administrativo" valor={totalAdministrativo} />
+      <SeccionHeader titulo="Costos Administrativos" seccion="administrativo" valor={totalAdministrativo} bgColor="bg-gray-700" />
       {seccionesAbiertas.administrativo && (
-        <div className="mb-4 border border-gray-200 rounded-lg">
+        <div>
           {/* Personal Administrativo */}
           {grupos.administrativoPersonal.length > 0 && (
             <>
@@ -398,11 +395,11 @@ export default function PyGDetallado({ marca }: PyGDetalladoProps) {
                 valor={subtotalAdministrativoPersonal}
               />
               {subSeccionesAbiertas.administrativoPersonal && (
-                <div className="bg-gray-50">
+                <>
                   {grupos.administrativoPersonal.map((rubro, idx) => (
                     <RubroItem key={`adm-pers-${idx}`} rubro={rubro} />
                   ))}
-                </div>
+                </>
               )}
             </>
           )}
@@ -416,46 +413,46 @@ export default function PyGDetallado({ marca }: PyGDetalladoProps) {
                 valor={subtotalAdministrativoGastos}
               />
               {subSeccionesAbiertas.administrativoGastos && (
-                <div className="bg-gray-50">
+                <>
                   {grupos.administrativoGastos.map((rubro, idx) => (
                     <RubroItem key={`adm-gasto-${idx}`} rubro={rubro} />
                   ))}
-                </div>
+                </>
               )}
             </>
           )}
 
-          <LineaItem titulo="Total Costos Administrativos" valor={totalAdministrativo} nivel={1} />
+          <LineaItem titulo="Total Costos Administrativos" valor={totalAdministrativo} bold />
         </div>
       )}
 
       {/* UTILIDAD OPERACIONAL */}
-      <div className="mb-4 border-2 border-blue-500 rounded-lg bg-blue-50">
-        <div className="flex justify-between items-center p-4">
-          <span className="text-xl font-bold text-blue-900">UTILIDAD OPERACIONAL</span>
+      <div className="bg-blue-50 border-y-2 border-blue-500">
+        <div className="flex justify-between items-center px-3 py-2">
+          <span className="text-xs font-bold text-blue-900 uppercase">Utilidad Operacional</span>
           <div className="text-right">
-            <div className="text-xl font-bold text-blue-900">{formatCurrency(utilidadAntesImpuestos)}</div>
-            <div className="text-sm text-blue-700">Margen: {margenOperacional.toFixed(2)}%</div>
+            <div className="text-sm font-bold text-blue-900">{formatCurrency(utilidadAntesImpuestos)}</div>
+            <div className="text-xs text-blue-700">Margen: {margenOperacional.toFixed(2)}%</div>
           </div>
         </div>
       </div>
 
       {/* SECCIÓN: IMPUESTOS */}
-      <SeccionHeader titulo="IMPUESTOS" seccion="impuestos" valor={impuestoRenta} />
+      <SeccionHeader titulo="Impuestos" seccion="impuestos" valor={impuestoRenta} bgColor="bg-gray-700" />
       {seccionesAbiertas.impuestos && (
-        <div className="mb-4 border border-gray-200 rounded-lg">
-          <LineaItem titulo={`Impuesto de Renta (${(tasaImpuesto * 100).toFixed(0)}%)`} valor={impuestoRenta} nivel={2} negativo />
-          <LineaItem titulo="Total Impuestos" valor={impuestoRenta} nivel={1} />
+        <div>
+          <LineaItem titulo={`Impuesto de Renta (${(tasaImpuesto * 100).toFixed(0)}%)`} valor={impuestoRenta} indent={1} negativo />
+          <LineaItem titulo="Total Impuestos" valor={impuestoRenta} bold />
         </div>
       )}
 
       {/* UTILIDAD NETA */}
-      <div className="mb-4 border-2 border-green-500 rounded-lg bg-green-50">
-        <div className="flex justify-between items-center p-4">
-          <span className="text-xl font-bold text-green-900">UTILIDAD NETA</span>
+      <div className="bg-green-50 border-y-2 border-green-500">
+        <div className="flex justify-between items-center px-3 py-2">
+          <span className="text-xs font-bold text-green-900 uppercase">Utilidad Neta</span>
           <div className="text-right">
-            <div className="text-xl font-bold text-green-900">{formatCurrency(utilidadNeta)}</div>
-            <div className="text-sm text-green-700">Margen: {margenNeto.toFixed(2)}%</div>
+            <div className="text-sm font-bold text-green-900">{formatCurrency(utilidadNeta)}</div>
+            <div className="text-xs text-green-700">Margen: {margenNeto.toFixed(2)}%</div>
           </div>
         </div>
       </div>
