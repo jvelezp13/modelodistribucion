@@ -766,7 +766,7 @@ class Simulator:
             for marca in self.marcas:
                 try:
                     # Obtener el objeto Marca de Django
-                    from admin_panel.core.models import Marca as MarcaDjango
+                    from core.models import Marca as MarcaDjango
                     marca_django = MarcaDjango.objects.get(marca_id=marca.marca_id)
 
                     resultado = self.calc_lejanias.calcular_lejanias_marca(marca_django)

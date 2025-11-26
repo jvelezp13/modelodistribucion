@@ -30,7 +30,7 @@ class CalculadoraLejanias:
 
         # Cargar configuración de lejanías
         try:
-            from admin_panel.core.models import ConfiguracionLejania, ParametrosMacro
+            from core.models import ConfiguracionLejania, ParametrosMacro
             self.config = ConfiguracionLejania.objects.get(escenario=escenario)
             self.params_macro = ParametrosMacro.objects.get(anio=escenario.anio, activo=True)
         except Exception as e:
@@ -56,7 +56,7 @@ class CalculadoraLejanias:
         if not self.config or not self.params_macro:
             return self._resultado_vacio()
 
-        from admin_panel.core.models import MatrizDesplazamiento
+        from core.models import MatrizDesplazamiento
 
         combustible_total = Decimal('0')
         pernocta_total = Decimal('0')
@@ -166,7 +166,7 @@ class CalculadoraLejanias:
         if not self.config or not self.params_macro:
             return self._resultado_vacio()
 
-        from admin_panel.core.models import MatrizDesplazamiento
+        from core.models import MatrizDesplazamiento
 
         combustible_total = Decimal('0')
         pernocta_total = Decimal('0')
@@ -276,7 +276,7 @@ class CalculadoraLejanias:
                 'total_mensual': Decimal
             }
         """
-        from admin_panel.core.models import Zona
+        from core.models import Zona
 
         # Obtener zonas de la marca para este escenario
         zonas = Zona.objects.filter(
