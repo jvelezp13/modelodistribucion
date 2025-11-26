@@ -415,6 +415,62 @@ class Vehiculo(models.Model):
         blank=True
     )
 
+    # Información del propietario (para terceros)
+    placa = models.CharField(
+        max_length=20,
+        blank=True,
+        verbose_name="Placa",
+        help_text="Placa del vehículo"
+    )
+    propietario = models.CharField(
+        max_length=200,
+        blank=True,
+        verbose_name="Propietario",
+        help_text="Nombre completo del propietario (para terceros)"
+    )
+    tipo_documento = models.CharField(
+        max_length=10,
+        choices=[
+            ('CC', 'Cédula de Ciudadanía'),
+            ('NIT', 'NIT'),
+            ('CE', 'Cédula de Extranjería'),
+        ],
+        blank=True,
+        verbose_name="Tipo de Documento"
+    )
+    numero_documento = models.CharField(
+        max_length=50,
+        blank=True,
+        verbose_name="Número de Documento"
+    )
+    conductor = models.CharField(
+        max_length=200,
+        blank=True,
+        verbose_name="Conductor",
+        help_text="Nombre del conductor habitual"
+    )
+
+    # Información bancaria (para pagos a terceros)
+    banco = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name="Banco"
+    )
+    tipo_cuenta = models.CharField(
+        max_length=20,
+        choices=[
+            ('ahorros', 'Ahorros'),
+            ('corriente', 'Corriente'),
+        ],
+        blank=True,
+        verbose_name="Tipo de Cuenta"
+    )
+    numero_cuenta = models.CharField(
+        max_length=50,
+        blank=True,
+        verbose_name="Número de Cuenta"
+    )
+
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_modificacion = models.DateTimeField(auto_now=True)
 
@@ -1400,6 +1456,22 @@ class MatrizDesplazamiento(models.Model):
     )
     tiempo_minutos = models.IntegerField(verbose_name="Tiempo (minutos)")
 
+    # Peajes (solo aplica para vehículos logísticos, no para motos)
+    peaje_ida = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name="Peaje Ida",
+        help_text="Costo total de peajes en el trayecto de ida"
+    )
+    peaje_vuelta = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name="Peaje Vuelta",
+        help_text="Costo total de peajes en el trayecto de vuelta (puede ser diferente o 0)"
+    )
+
     notas = models.TextField(blank=True, verbose_name="Notas")
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_modificacion = models.DateTimeField(auto_now=True)
@@ -1661,6 +1733,24 @@ class ZonaMunicipio(models.Model):
         default=1,
         verbose_name="Entregas Logísticas por Periodo",
         help_text="Ej: Si la zona es semanal, cuántas entregas por semana"
+    )
+
+    # Logística: Vehículo asignado y flete base
+    vehiculo_logistica = models.ForeignKey(
+        'Vehiculo',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='rutas_asignadas',
+        verbose_name="Vehículo Logística",
+        help_text="Vehículo asignado para entregas logísticas en este municipio"
+    )
+    flete_base = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        verbose_name="Flete Base",
+        help_text="Valor base del flete para este municipio (antes de lejanías)"
     )
 
     fecha_creacion = models.DateTimeField(auto_now_add=True)

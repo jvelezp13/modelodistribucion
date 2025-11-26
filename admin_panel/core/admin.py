@@ -259,6 +259,16 @@ class VehiculoAdmin(admin.ModelAdmin):
             'description': '⚠️ IMPORTANTE: Para vehículos de terceros (fletes externos), registrar AQUÍ en lugar de usar Gastos Logísticos "flete_tercero". Diligenciar solo si el esquema es "Tercero".',
             'classes': ('collapse',)
         }),
+        ('Información del Propietario (Terceros)', {
+            'fields': ('placa', 'propietario', 'tipo_documento', 'numero_documento', 'conductor'),
+            'description': 'Información del propietario y conductor para vehículos de terceros',
+            'classes': ('collapse',)
+        }),
+        ('Información Bancaria (Pagos a Terceros)', {
+            'fields': ('banco', 'tipo_cuenta', 'numero_cuenta'),
+            'description': 'Datos bancarios para liquidación y pago a terceros',
+            'classes': ('collapse',)
+        }),
         ('Esquema: Renting', {
             'fields': ('canon_renting',),
             'description': 'Diligenciar solo si el esquema es "Renting"',
@@ -957,7 +967,7 @@ class MunicipioAdmin(admin.ModelAdmin):
 
 @admin.register(MatrizDesplazamiento)
 class MatrizDesplazamientoAdmin(admin.ModelAdmin):
-    list_display = ('origen', 'destino', 'distancia_km', 'tiempo_minutos', 'tiempo_horas')
+    list_display = ('origen', 'destino', 'distancia_km', 'tiempo_minutos', 'tiempo_horas', 'peaje_ida', 'peaje_vuelta')
     list_filter = ('origen__departamento',)
     search_fields = ('origen__nombre', 'destino__nombre')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
@@ -969,6 +979,10 @@ class MatrizDesplazamientoAdmin(admin.ModelAdmin):
         }),
         ('Distancia y Tiempo', {
             'fields': ('distancia_km', 'tiempo_minutos')
+        }),
+        ('Peajes (Solo para Logística)', {
+            'fields': ('peaje_ida', 'peaje_vuelta'),
+            'description': 'Costos de peajes en la ruta. Solo aplica para vehículos logísticos (no para motos comerciales).'
         }),
         ('Notas', {
             'fields': ('notas',),
@@ -1037,8 +1051,8 @@ class ConfiguracionLejaniaAdmin(admin.ModelAdmin):
 class ZonaMunicipioInline(admin.TabularInline):
     model = ZonaMunicipio
     extra = 1
-    autocomplete_fields = ['municipio']
-    fields = ('municipio', 'visitas_por_periodo', 'entregas_por_periodo')
+    autocomplete_fields = ['municipio', 'vehiculo_logistica']
+    fields = ('municipio', 'visitas_por_periodo', 'entregas_por_periodo', 'vehiculo_logistica', 'flete_base')
 
 
 @admin.register(Zona)

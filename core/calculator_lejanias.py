@@ -194,6 +194,9 @@ class CalculadoraLejanias:
             tipo_combustible = 'acpm'
 
         # Calcular para cada municipio de la zona
+        peaje_total = Decimal('0')
+        flete_base_total = Decimal('0')
+
         for zona_mun in zona.zonamunicipio_set.all():
             municipio = zona_mun.municipio
 
@@ -222,6 +225,15 @@ class CalculadoraLejanias:
 
             combustible_total += combustible_municipio
 
+            # Peajes por entrega (ida + vuelta)
+            peaje_por_entrega = (matriz.peaje_ida or Decimal('0')) + (matriz.peaje_vuelta or Decimal('0'))
+            peaje_municipio = peaje_por_entrega * entregas_mensuales
+            peaje_total += peaje_municipio
+
+            # Flete base (costo fijo mensual por atender este municipio)
+            flete_base_municipio = zona_mun.flete_base or Decimal('0')
+            flete_base_total += flete_base_municipio
+
             # Pernocta (si la ruta es larga y requiere pernocta)
             pernocta_municipio = Decimal('0')
             # Asumimos pernocta si distancia > 150 km o tiempo > 4 horas
@@ -243,15 +255,19 @@ class CalculadoraLejanias:
                 'municipio': municipio.nombre,
                 'distancia_km': float(matriz.distancia_km),
                 'entregas_mensuales': entregas_mensuales,
+                'flete_base': float(flete_base_municipio),
                 'combustible_mensual': float(combustible_municipio),
+                'peaje_mensual': float(peaje_municipio),
                 'pernocta_mensual': float(pernocta_municipio),
                 'requiere_pernocta': matriz.distancia_km > 150,
             })
 
-        total = combustible_total + pernocta_total
+        total = flete_base_total + combustible_total + peaje_total + pernocta_total
 
         return {
+            'flete_base_mensual': flete_base_total,
             'combustible_mensual': combustible_total,
+            'peaje_mensual': peaje_total,
             'pernocta_mensual': pernocta_total,
             'total_mensual': total,
             'detalle': {
