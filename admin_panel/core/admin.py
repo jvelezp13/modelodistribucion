@@ -280,7 +280,7 @@ class VehiculoAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
         ('Consumo de Combustible (Propio/Renting)', {
-            'fields': ('consumo_galon_km',),
+            'fields': ('tipo_combustible', 'consumo_galon_km'),
             'description': 'Diligenciar para esquemas Propio y Renting',
             'classes': ('collapse',)
         }),
