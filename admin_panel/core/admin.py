@@ -208,7 +208,6 @@ class PersonalLogisticoAdmin(admin.ModelAdmin):
 
 
 @admin.register(Vehiculo)
-@admin.register(Vehiculo)
 class VehiculoAdmin(admin.ModelAdmin):
     change_list_template = 'admin/core/change_list_with_total.html'
     list_display = ('marca', 'escenario', 'tipo_vehiculo', 'esquema', 'cantidad', 'costo_mensual_estimado_formateado')
