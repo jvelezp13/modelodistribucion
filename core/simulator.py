@@ -165,7 +165,7 @@ class Simulator:
                 # Crear rubro
                 rubro = RubroPersonal(
                     id=f"{tipo}_{marca.marca_id}",
-                    nombre=f"{tipo.replace('_', ' ').title()}",
+                    nombre=empleado_data.get('nombre', tipo.replace('_', ' ').title()),
                     categoria='comercial',
                     tipo='personal',
                     tipo_asignacion=TipoAsignacion(asignacion_str),
@@ -303,6 +303,39 @@ class Simulator:
                 rubro.criterio_prorrateo = CriterioProrrateo(criterio_str)
                 self.rubros_compartidos.append(rubro)
 
+        # Tercero (Flete con terceros)
+        for vehiculo_data in vehiculos_config.get('tercero', []):
+            tipo_vehiculo = vehiculo_data.get('tipo')
+            cantidad = vehiculo_data.get('cantidad', 0)
+            asignacion_str = vehiculo_data.get('asignacion', 'individual')
+
+            if cantidad == 0:
+                continue
+
+            # Para terceros, usar el costo pre-calculado que incluye valor_flete_mensual
+            valor_unitario = vehiculo_data.get('costo_mensual_calculado', 0)
+
+            rubro = RubroVehiculo(
+                id=f"vehiculo_{tipo_vehiculo}_tercero_{marca.marca_id}",
+                nombre=f"Vehículo {tipo_vehiculo.upper()} (Tercero)",
+                categoria='logistico',
+                tipo='vehiculo',
+                tipo_asignacion=TipoAsignacion(asignacion_str),
+                marca_id=marca.marca_id if asignacion_str == 'individual' else None,
+                cantidad=cantidad,
+                tipo_vehiculo=tipo_vehiculo,
+                esquema='tercero',
+                valor_unitario=valor_unitario
+            )
+
+            if rubro.es_individual():
+                marca.agregar_rubro_individual(rubro)
+            else:
+                criterio_str = vehiculo_data.get('criterio_prorrateo', 'volumen')
+                rubro.criterio_prorrateo = CriterioProrrateo(criterio_str)
+                rubro.porcentaje_dedicacion = vehiculo_data.get('porcentaje_uso')
+                self.rubros_compartidos.append(rubro)
+
         # Procesar personal logístico
         personal_config = datos_logistica.get('personal', {})
 
@@ -329,7 +362,7 @@ class Simulator:
                 # Crear rubro
                 rubro = RubroPersonal(
                     id=f"{tipo_personal}_{marca.marca_id}",
-                    nombre=f"{tipo_personal.replace('_', ' ').title()}",
+                    nombre=empleado_data.get('nombre', tipo_personal.replace('_', ' ').title()),
                     categoria='logistico',
                     tipo='personal',
                     tipo_asignacion=TipoAsignacion(asignacion_str),

@@ -201,19 +201,23 @@ class RubroVehiculo(Rubro):
     """Rubro especializado para vehículos."""
 
     tipo_vehiculo: str = ""  # nhr, pickup, motocarro, etc.
-    esquema: str = "renting"  # renting o tradicional
+    esquema: str = "renting"  # renting, tradicional, tercero
 
     # Costos según esquema
-    canon_mensual: float = 0.0  # Si es renting
+    # Renting
+    canon_mensual: float = 0.0
     combustible: float = 0.0
     mantenimiento: float = 0.0
     lavada: float = 0.0
     reposicion: float = 0.0
 
-    # Si es tradicional
+    # Tradicional
     depreciacion: float = 0.0
     seguro: float = 0.0
     impuestos: float = 0.0
+
+    # Tercero
+    valor_flete_mensual: float = 0.0
 
     def __post_init__(self):
         """Calcula el costo total del vehículo."""
@@ -245,5 +249,6 @@ class RubroVehiculo(Rubro):
             'depreciacion': self.depreciacion,
             'seguro': self.seguro,
             'impuestos': self.impuestos,
+            'valor_flete_mensual': self.valor_flete_mensual,
         })
         return base_dict
