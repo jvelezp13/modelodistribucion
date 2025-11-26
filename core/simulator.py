@@ -187,6 +187,34 @@ class Simulator:
                     rubro.porcentaje_dedicacion = empleado_data.get('porcentaje_dedicacion')
                     self.rubros_compartidos.append(rubro)
 
+        # Procesar gastos comerciales
+        gastos = datos_comercial.get('gastos_comerciales', [])
+        for gasto_data in gastos:
+            valor_mensual = gasto_data.get('valor_mensual', 0)
+            if valor_mensual == 0:
+                continue
+
+            asignacion_str = gasto_data.get('asignacion', 'individual')
+
+            # Crear rubro de gasto
+            rubro = Rubro(
+                id=f"gasto_com_{gasto_data.get('tipo')}_{marca.marca_id}",
+                nombre=gasto_data.get('nombre', gasto_data.get('tipo', 'Gasto')),
+                categoria='comercial',
+                tipo='gasto',
+                tipo_asignacion=TipoAsignacion(asignacion_str),
+                marca_id=marca.marca_id if asignacion_str == 'individual' else None,
+                valor_unitario=valor_mensual,
+                cantidad=1
+            )
+
+            if rubro.es_individual():
+                marca.agregar_rubro_individual(rubro)
+            else:
+                criterio_str = gasto_data.get('criterio_prorrateo', 'ventas')
+                rubro.criterio_prorrateo = CriterioProrrateo(criterio_str)
+                self.rubros_compartidos.append(rubro)
+
         logger.debug(f"Rubros comerciales procesados para {marca.nombre}")
 
     def _procesar_rubros_logisticos(
@@ -322,6 +350,34 @@ class Simulator:
                     rubro.porcentaje_dedicacion = empleado_data.get('porcentaje_dedicacion')
                     self.rubros_compartidos.append(rubro)
 
+        # Procesar gastos logísticos
+        gastos = datos_logistica.get('gastos_logisticos', [])
+        for gasto_data in gastos:
+            valor_mensual = gasto_data.get('valor_mensual', 0)
+            if valor_mensual == 0:
+                continue
+
+            asignacion_str = gasto_data.get('asignacion', 'individual')
+
+            # Crear rubro de gasto
+            rubro = Rubro(
+                id=f"gasto_log_{gasto_data.get('tipo')}_{marca.marca_id}",
+                nombre=gasto_data.get('nombre', gasto_data.get('tipo', 'Gasto')),
+                categoria='logistica',
+                tipo='gasto',
+                tipo_asignacion=TipoAsignacion(asignacion_str),
+                marca_id=marca.marca_id if asignacion_str == 'individual' else None,
+                valor_unitario=valor_mensual,
+                cantidad=1
+            )
+
+            if rubro.es_individual():
+                marca.agregar_rubro_individual(rubro)
+            else:
+                criterio_str = gasto_data.get('criterio_prorrateo', 'volumen')
+                rubro.criterio_prorrateo = CriterioProrrateo(criterio_str)
+                self.rubros_compartidos.append(rubro)
+
         logger.debug(f"Rubros logísticos procesados para {marca.nombre}")
 
     def _procesar_rubros_compartidos_admin(self):
@@ -362,13 +418,36 @@ class Simulator:
 
             rubro = Rubro(
                 id=f"admin_{puesto}",
-                nombre=config.get('descripcion', puesto.replace('_', ' ').title()),
+                nombre=config.get('nombre', config.get('descripcion', puesto.replace('_', ' ').title())),
                 categoria='administrativa',
                 tipo='personal',
                 tipo_asignacion=TipoAsignacion.COMPARTIDO,
                 criterio_prorrateo=CriterioProrrateo(criterio_str),
                 cantidad=cantidad,
                 valor_unitario=valor_mensual
+            )
+
+            self.rubros_compartidos.append(rubro)
+
+        # Procesar gastos administrativos compartidos
+        gastos = datos_admin.get('gastos_administrativos', [])
+        for gasto_data in gastos:
+            valor_mensual = gasto_data.get('valor_mensual', 0)
+            if valor_mensual == 0:
+                continue
+
+            criterio_str = gasto_data.get('criterio_prorrateo', 'ventas')
+
+            # Crear rubro de gasto
+            rubro = Rubro(
+                id=f"gasto_admin_{gasto_data.get('tipo')}",
+                nombre=gasto_data.get('nombre', gasto_data.get('tipo', 'Gasto')),
+                categoria='administrativa',
+                tipo='gasto',
+                tipo_asignacion=TipoAsignacion.COMPARTIDO,
+                criterio_prorrateo=CriterioProrrateo(criterio_str),
+                valor_unitario=valor_mensual,
+                cantidad=1
             )
 
             self.rubros_compartidos.append(rubro)

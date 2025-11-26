@@ -9,10 +9,10 @@ from . import django_init
 
 # Importar modelos de Django (ahora core.models será de /app/admin_panel/core/)
 from core.models import (
-    Marca, PersonalComercial, PersonalLogistico,
+    Marca, PersonalComercial, PersonalLogistico, PersonalAdministrativo,
     Vehiculo, ProyeccionVentas, VolumenOperacion,
-    Vehiculo, ProyeccionVentas, VolumenOperacion,
-    ParametrosMacro, FactorPrestacional, Escenario
+    ParametrosMacro, FactorPrestacional, Escenario,
+    GastoComercial, GastoLogistico, GastoAdministrativo
 )
 
 logger = logging.getLogger(__name__)
@@ -217,6 +217,21 @@ class DataLoaderDB:
                 logger.info(f"[DEBUG] Agregando {p.tipo}: cantidad={p.cantidad}")
                 recursos_comerciales[tipo_key].append(data)
 
+            # Cargar gastos comerciales
+            gastos_comerciales = []
+            gastos_qs = GastoComercial.objects.filter(marca=marca, **self._get_filter_kwargs())
+
+            for gasto in gastos_qs:
+                gastos_comerciales.append({
+                    'tipo': gasto.tipo,
+                    'nombre': gasto.nombre,
+                    'valor_mensual': float(gasto.valor_mensual),
+                    'asignacion': gasto.asignacion,
+                    'criterio_prorrateo': gasto.criterio_prorrateo if gasto.asignacion == 'compartido' else None,
+                })
+
+            logger.info(f"[DEBUG] Gastos comerciales cargados: {len(gastos_comerciales)}")
+
             return {
                 'marca_id': marca.marca_id,
                 'nombre': marca.nombre,
@@ -229,6 +244,7 @@ class DataLoaderDB:
                     }
                 },
                 'recursos_comerciales': recursos_comerciales,
+                'gastos_comerciales': gastos_comerciales,
             }
 
         except Marca.DoesNotExist:
@@ -295,11 +311,27 @@ class DataLoaderDB:
             except VolumenOperacion.DoesNotExist:
                 proyeccion_volumen = {}
 
+            # Cargar gastos logísticos
+            gastos_logisticos = []
+            gastos_qs = GastoLogistico.objects.filter(marca=marca, **self._get_filter_kwargs())
+
+            for gasto in gastos_qs:
+                gastos_logisticos.append({
+                    'tipo': gasto.tipo,
+                    'nombre': gasto.nombre,
+                    'valor_mensual': float(gasto.valor_mensual),
+                    'asignacion': gasto.asignacion,
+                    'criterio_prorrateo': gasto.criterio_prorrateo if gasto.asignacion == 'compartido' else None,
+                })
+
+            logger.info(f"[DEBUG] Gastos logísticos cargados: {len(gastos_logisticos)}")
+
             return {
                 'marca_id': marca.marca_id,
                 'vehiculos': vehiculos_dict,
                 'personal': personal_dict,
                 'proyeccion_volumen': proyeccion_volumen,
+                'gastos_logisticos': gastos_logisticos,
             }
 
         except Marca.DoesNotExist:
@@ -377,11 +409,55 @@ class DataLoaderDB:
     # =========================================================================
 
     def cargar_compartidos_administrativo(self) -> Dict[str, Any]:
-        """Carga recursos administrativos compartidos (mantiene compatibilidad)"""
-        # Por ahora, cargar desde YAML original
-        from .loaders import DataLoader
-        yaml_loader = DataLoader()
-        return yaml_loader.cargar_compartidos_administrativo()
+        """Carga recursos administrativos compartidos desde PostgreSQL"""
+        try:
+            # Cargar personal administrativo compartido (asignacion='compartido')
+            personal_qs = PersonalAdministrativo.objects.filter(asignacion='compartido', **self._get_filter_kwargs())
+
+            personal_administrativo = {}
+            for p in personal_qs:
+                # Usar el nombre o tipo como key
+                key = p.nombre if p.nombre else p.tipo
+                personal_administrativo[key] = {
+                    'tipo': p.tipo,
+                    'nombre': p.nombre,
+                    'cantidad': p.cantidad,
+                    'salario_base': float(p.salario_base),
+                    'perfil_prestacional': p.perfil_prestacional,
+                    'tipo_contrato': 'nomina',  # Puede ser 'honorarios' o 'nomina'
+                    'criterio_prorrateo': p.criterio_prorrateo,
+                    'porcentaje_dedicacion': float(p.porcentaje_dedicacion) if p.porcentaje_dedicacion else None,
+                    'costo_mensual_calculado': float(p.calcular_costo_mensual()),
+                }
+
+            # Cargar gastos administrativos compartidos
+            gastos_qs = GastoAdministrativo.objects.filter(asignacion='compartido', **self._get_filter_kwargs())
+
+            gastos_administrativos = []
+            for gasto in gastos_qs:
+                gastos_administrativos.append({
+                    'tipo': gasto.tipo,
+                    'nombre': gasto.nombre,
+                    'valor_mensual': float(gasto.valor_mensual),
+                    'asignacion': gasto.asignacion,
+                    'criterio_prorrateo': gasto.criterio_prorrateo,
+                })
+
+            logger.info(f"[DEBUG] Personal administrativo compartido: {len(personal_administrativo)}")
+            logger.info(f"[DEBUG] Gastos administrativos compartidos: {len(gastos_administrativos)}")
+
+            return {
+                'personal_administrativo': personal_administrativo,
+                'gastos_administrativos': gastos_administrativos,
+            }
+
+        except Exception as e:
+            logger.error(f"Error cargando datos administrativos compartidos: {e}")
+            # Fallback a estructura vacía
+            return {
+                'personal_administrativo': {},
+                'gastos_administrativos': [],
+            }
 
     def cargar_compartidos_logistica(self) -> Dict[str, Any]:
         """Carga recursos logísticos compartidos (mantiene compatibilidad)"""
