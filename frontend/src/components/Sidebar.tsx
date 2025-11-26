@@ -2,10 +2,7 @@
 
 import React from 'react';
 import {
-  LayoutDashboard,
-  TrendingUp,
   FileText,
-  Settings,
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
@@ -24,10 +21,8 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { id: 'consolidado', label: 'Consolidado', icon: LayoutDashboard },
-  { id: 'marcas', label: 'Por Marca', icon: TrendingUp },
   { id: 'pyg', label: 'P&G Detallado', icon: FileText },
-  { id: 'detalles', label: 'Detalles', icon: Settings },
+  // Próximamente: Lejanías, Comparativas, etc.
 ];
 
 export default function Sidebar({ isCollapsed, onToggle, activeView, onViewChange }: SidebarProps) {
