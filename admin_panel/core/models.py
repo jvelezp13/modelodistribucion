@@ -1556,7 +1556,7 @@ class ConfiguracionLejania(models.Model):
 
 
 class Zona(models.Model):
-    """Zonas comerciales (grupos de municipios atendidos)"""
+    """Zonas comerciales (grupos de municipios atendidos por vendedores)"""
     nombre = models.CharField(max_length=100, verbose_name="Nombre")
     codigo = models.CharField(max_length=20, verbose_name="Código")
     descripcion = models.TextField(blank=True, verbose_name="Descripción")
@@ -1630,8 +1630,8 @@ class Zona(models.Model):
 
     class Meta:
         db_table = 'dxv_zona'
-        verbose_name = "Zona"
-        verbose_name_plural = "Zonas"
+        verbose_name = "Zona Comercial"
+        verbose_name_plural = "Zonas Comerciales"
         ordering = ['marca', 'nombre']
 
     def __str__(self):
@@ -1655,10 +1655,11 @@ class Zona(models.Model):
 
 
 class ZonaMunicipio(models.Model):
-    """Relación entre Zona y Municipios con frecuencias específicas"""
+    """Municipios de una Zona Comercial (para visitas de vendedores)"""
     zona = models.ForeignKey(
         'Zona',
         on_delete=models.CASCADE,
+        related_name='municipios',
         verbose_name="Zona"
     )
     municipio = models.ForeignKey(
@@ -1667,34 +1668,11 @@ class ZonaMunicipio(models.Model):
         verbose_name="Municipio"
     )
 
-    # Frecuencias por periodo (según la frecuencia de la zona)
+    # Frecuencia de visitas comerciales por periodo (según la frecuencia de la zona)
     visitas_por_periodo = models.IntegerField(
         default=1,
-        verbose_name="Visitas Comerciales por Periodo",
+        verbose_name="Visitas por Periodo",
         help_text="Ej: Si la zona es semanal, cuántas visitas por semana"
-    )
-    entregas_por_periodo = models.IntegerField(
-        default=1,
-        verbose_name="Entregas Logísticas por Periodo",
-        help_text="Ej: Si la zona es semanal, cuántas entregas por semana"
-    )
-
-    # Logística: Vehículo asignado y flete base
-    vehiculo_logistica = models.ForeignKey(
-        'Vehiculo',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='rutas_asignadas',
-        verbose_name="Vehículo Logística",
-        help_text="Vehículo asignado para entregas logísticas en este municipio"
-    )
-    flete_base = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        default=0,
-        verbose_name="Flete Base",
-        help_text="Valor base del flete para este municipio (antes de lejanías)"
     )
 
     fecha_creacion = models.DateTimeField(auto_now_add=True)
@@ -1702,8 +1680,8 @@ class ZonaMunicipio(models.Model):
 
     class Meta:
         db_table = 'dxv_zona_municipio'
-        verbose_name = "Zona-Municipio"
-        verbose_name_plural = "Zonas-Municipios"
+        verbose_name = "Municipio de Zona Comercial"
+        verbose_name_plural = "Municipios de Zonas Comerciales"
         unique_together = ('zona', 'municipio')
         ordering = ['zona', 'municipio__nombre']
 
@@ -1714,6 +1692,130 @@ class ZonaMunicipio(models.Model):
         """Calcula visitas comerciales mensuales"""
         return self.visitas_por_periodo * self.zona.periodos_por_mes()
 
+
+# ============================================================================
+# MÓDULO DE RUTAS LOGÍSTICAS - Independiente de Zonas Comerciales
+# ============================================================================
+
+class RutaLogistica(models.Model):
+    """Rutas de distribución logística (por vehículo/tercero)"""
+
+    FRECUENCIA_CHOICES = [
+        ('SEMANAL', 'Semanal (4.33 periodos/mes)'),
+        ('QUINCENAL', 'Quincenal (2 periodos/mes)'),
+        ('MENSUAL', 'Mensual (1 periodo/mes)'),
+    ]
+
+    nombre = models.CharField(max_length=100, verbose_name="Nombre de la Ruta")
+    codigo = models.CharField(max_length=20, verbose_name="Código", blank=True)
+    descripcion = models.TextField(blank=True, verbose_name="Descripción")
+
+    vehiculo = models.ForeignKey(
+        'Vehiculo',
+        on_delete=models.CASCADE,
+        related_name='rutas_logisticas',
+        verbose_name="Vehículo Asignado",
+        help_text="Vehículo (propio, renting o tercero) que realiza esta ruta"
+    )
+    marca = models.ForeignKey(
+        'Marca',
+        on_delete=models.CASCADE,
+        related_name='rutas_logisticas',
+        verbose_name="Marca"
+    )
+    escenario = models.ForeignKey(
+        'Escenario',
+        on_delete=models.CASCADE,
+        related_name='rutas_logisticas',
+        verbose_name="Escenario"
+    )
+
+    # Frecuencia de entregas
+    frecuencia = models.CharField(
+        max_length=20,
+        choices=FRECUENCIA_CHOICES,
+        default='SEMANAL',
+        verbose_name="Frecuencia de Entregas"
+    )
+
+    # Pernocta logística
+    requiere_pernocta = models.BooleanField(
+        default=False,
+        verbose_name="¿Requiere Pernocta?",
+        help_text="Si la ruta requiere que el conductor pase la noche fuera"
+    )
+    noches_pernocta = models.IntegerField(
+        default=0,
+        verbose_name="Noches de Pernocta",
+        help_text="Cantidad de noches por viaje"
+    )
+
+    activo = models.BooleanField(default=True, verbose_name="Activa")
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_modificacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'dxv_ruta_logistica'
+        verbose_name = "Ruta Logística"
+        verbose_name_plural = "Rutas Logísticas"
+        ordering = ['marca', 'vehiculo', 'nombre']
+
+    def __str__(self):
+        return f"{self.nombre} - {self.vehiculo}"
+
+    def periodos_por_mes(self):
+        """Retorna cuántos periodos hay por mes según frecuencia."""
+        if self.frecuencia == 'SEMANAL':
+            return Decimal('4.33')
+        elif self.frecuencia == 'QUINCENAL':
+            return Decimal('2.00')
+        else:  # MENSUAL
+            return Decimal('1.00')
+
+
+class RutaMunicipio(models.Model):
+    """Municipios que atiende cada ruta logística"""
+    ruta = models.ForeignKey(
+        'RutaLogistica',
+        on_delete=models.CASCADE,
+        related_name='municipios',
+        verbose_name="Ruta"
+    )
+    municipio = models.ForeignKey(
+        'Municipio',
+        on_delete=models.CASCADE,
+        verbose_name="Municipio"
+    )
+
+    # Frecuencia de entregas por periodo
+    entregas_por_periodo = models.IntegerField(
+        default=1,
+        verbose_name="Entregas por Periodo",
+        help_text="Ej: Si la ruta es semanal, cuántas entregas por semana a este municipio"
+    )
+
+    # Flete base para terceros
+    flete_base = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        verbose_name="Flete Base",
+        help_text="Valor base del flete para este municipio (aplica para vehículos terceros)"
+    )
+
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_modificacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'dxv_ruta_municipio'
+        verbose_name = "Ruta-Municipio"
+        verbose_name_plural = "Rutas-Municipios"
+        unique_together = ('ruta', 'municipio')
+        ordering = ['ruta', 'municipio__nombre']
+
+    def __str__(self):
+        return f"{self.ruta.nombre} → {self.municipio}"
+
     def entregas_mensuales(self):
-        """Calcula entregas logísticas mensuales"""
-        return self.entregas_por_periodo * self.zona.periodos_por_mes()
+        """Calcula entregas mensuales a este municipio"""
+        return self.entregas_por_periodo * self.ruta.periodos_por_mes()

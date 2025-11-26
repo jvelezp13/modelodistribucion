@@ -11,9 +11,11 @@ from .models import (
     GastoComercial, GastoLogistico, Impuesto,
     ConfiguracionDescuentos, TramoDescuentoFactura,
     Escenario, PoliticaRecursosHumanos,
-    # Módulo de Lejanías
+    # Módulo de Lejanías Comerciales
     Municipio, MatrizDesplazamiento, ConfiguracionLejania,
-    Zona, ZonaMunicipio
+    Zona, ZonaMunicipio,
+    # Módulo de Rutas Logísticas
+    RutaLogistica, RutaMunicipio
 )
 
 
@@ -247,7 +249,7 @@ class VehiculoAdmin(admin.ModelAdmin):
     change_list_template = 'admin/core/change_list_with_total.html'
     list_display = ('marca', 'escenario', 'tipo_vehiculo', 'esquema', 'cantidad', 'costo_mensual_estimado_formateado')
     list_filter = ('escenario', 'marca', 'tipo_vehiculo', 'esquema', 'asignacion')
-    search_fields = ('marca__nombre',)
+    search_fields = ['marca__nombre', 'tipo_vehiculo', 'esquema']  # Para autocomplete en RutaLogistica
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
 
     fieldsets = (
@@ -1039,14 +1041,16 @@ class ConfiguracionLejaniaAdmin(admin.ModelAdmin):
 
 
 class ZonaMunicipioInline(admin.TabularInline):
+    """Inline para municipios de una zona comercial"""
     model = ZonaMunicipio
     extra = 1
-    autocomplete_fields = ['municipio', 'vehiculo_logistica']
-    fields = ('municipio', 'visitas_por_periodo', 'entregas_por_periodo', 'vehiculo_logistica', 'flete_base')
+    autocomplete_fields = ['municipio']
+    fields = ('municipio', 'visitas_por_periodo')
 
 
 @admin.register(Zona)
 class ZonaAdmin(admin.ModelAdmin):
+    """Admin para Zonas Comerciales (vendedores)"""
     list_display = ('nombre', 'codigo', 'marca', 'vendedor', 'tipo_vehiculo_comercial', 'frecuencia', 'requiere_pernocta', 'activo')
     list_filter = ('marca', 'frecuencia', 'requiere_pernocta', 'tipo_vehiculo_comercial', 'activo')
     search_fields = ('nombre', 'codigo', 'descripcion')
@@ -1062,11 +1066,12 @@ class ZonaAdmin(admin.ModelAdmin):
             'fields': ('marca', 'escenario', 'vendedor', 'municipio_base_vendedor')
         }),
         ('Configuración Comercial', {
-            'fields': ('tipo_vehiculo_comercial', 'frecuencia')
+            'fields': ('tipo_vehiculo_comercial', 'frecuencia'),
+            'description': 'Tipo de vehículo que usa el vendedor y frecuencia de visitas'
         }),
-        ('Pernocta', {
+        ('Pernocta Comercial', {
             'fields': ('requiere_pernocta', 'noches_pernocta'),
-            'description': 'Si la zona requiere que el personal pernocte fuera de casa'
+            'description': 'Si el vendedor requiere pernoctar fuera de casa'
         }),
         ('Metadata', {
             'fields': ('fecha_creacion', 'fecha_modificacion'),
@@ -1080,7 +1085,8 @@ class ZonaAdmin(admin.ModelAdmin):
 
 @admin.register(ZonaMunicipio)
 class ZonaMunicipioAdmin(admin.ModelAdmin):
-    list_display = ('zona', 'municipio', 'visitas_por_periodo', 'entregas_por_periodo', 'visitas_mensuales_calc', 'entregas_mensuales_calc')
+    """Admin para relación Zona-Municipio (comercial)"""
+    list_display = ('zona', 'municipio', 'visitas_por_periodo', 'visitas_mensuales_calc')
     list_filter = ('zona__marca', 'zona__frecuencia')
     search_fields = ('zona__nombre', 'municipio__nombre')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
@@ -1090,9 +1096,9 @@ class ZonaMunicipioAdmin(admin.ModelAdmin):
         ('Relación', {
             'fields': ('zona', 'municipio')
         }),
-        ('Frecuencias por Periodo', {
-            'fields': ('visitas_por_periodo', 'entregas_por_periodo'),
-            'description': 'Frecuencia según el periodo de la zona (semanal/quincenal/mensual)'
+        ('Visitas Comerciales', {
+            'fields': ('visitas_por_periodo',),
+            'description': 'Cantidad de visitas por periodo según la frecuencia de la zona'
         }),
         ('Metadata', {
             'fields': ('fecha_creacion', 'fecha_modificacion'),
@@ -1104,10 +1110,99 @@ class ZonaMunicipioAdmin(admin.ModelAdmin):
         return obj.visitas_mensuales()
     visitas_mensuales_calc.short_description = 'Visitas/Mes'
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('zona', 'municipio')
+
+
+# ============================================================================
+# ADMINS PARA RUTAS LOGÍSTICAS
+# ============================================================================
+
+class RutaMunicipioInline(admin.TabularInline):
+    """Inline para municipios de una ruta logística"""
+    model = RutaMunicipio
+    extra = 1
+    autocomplete_fields = ['municipio']
+    fields = ('municipio', 'entregas_por_periodo', 'flete_base')
+
+
+@admin.register(RutaLogistica)
+class RutaLogisticaAdmin(admin.ModelAdmin):
+    """Admin para Rutas Logísticas (vehículos/terceros)"""
+    list_display = ('nombre', 'codigo', 'marca', 'vehiculo', 'esquema_vehiculo', 'frecuencia', 'requiere_pernocta', 'activo')
+    list_filter = ('marca', 'escenario', 'vehiculo__esquema', 'frecuencia', 'requiere_pernocta', 'activo')
+    search_fields = ['nombre', 'codigo', 'descripcion', 'vehiculo__tipo_vehiculo']  # Para autocomplete
+    readonly_fields = ('fecha_creacion', 'fecha_modificacion')
+    autocomplete_fields = ['vehiculo']
+    inlines = [RutaMunicipioInline]
+
+    fieldsets = (
+        ('Información Básica', {
+            'fields': ('nombre', 'codigo', 'descripcion', 'activo')
+        }),
+        ('Asignación', {
+            'fields': ('marca', 'escenario', 'vehiculo'),
+            'description': 'El vehículo puede ser propio, renting o tercero'
+        }),
+        ('Frecuencia de Entregas', {
+            'fields': ('frecuencia',),
+            'description': 'Con qué frecuencia se realizan las entregas de esta ruta'
+        }),
+        ('Pernocta Logística', {
+            'fields': ('requiere_pernocta', 'noches_pernocta'),
+            'description': 'Si el conductor requiere pernoctar fuera (para rutas largas)'
+        }),
+        ('Metadata', {
+            'fields': ('fecha_creacion', 'fecha_modificacion'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def esquema_vehiculo(self, obj):
+        return obj.vehiculo.get_esquema_display() if obj.vehiculo else '-'
+    esquema_vehiculo.short_description = 'Esquema'
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('marca', 'vehiculo', 'escenario')
+
+
+@admin.register(RutaMunicipio)
+class RutaMunicipioAdmin(admin.ModelAdmin):
+    """Admin para relación Ruta-Municipio (logística)"""
+    list_display = ('ruta', 'municipio', 'entregas_por_periodo', 'entregas_mensuales_calc', 'flete_base_formateado')
+    list_filter = ('ruta__marca', 'ruta__vehiculo__esquema', 'ruta__frecuencia')
+    search_fields = ('ruta__nombre', 'municipio__nombre')
+    readonly_fields = ('fecha_creacion', 'fecha_modificacion')
+    autocomplete_fields = ['ruta', 'municipio']
+
+    fieldsets = (
+        ('Relación', {
+            'fields': ('ruta', 'municipio')
+        }),
+        ('Entregas', {
+            'fields': ('entregas_por_periodo',),
+            'description': 'Cantidad de entregas por periodo según la frecuencia de la ruta'
+        }),
+        ('Flete (Solo Terceros)', {
+            'fields': ('flete_base',),
+            'description': 'Valor base del flete para este municipio. Solo aplica si el vehículo es tercero.'
+        }),
+        ('Metadata', {
+            'fields': ('fecha_creacion', 'fecha_modificacion'),
+            'classes': ('collapse',)
+        }),
+    )
+
     def entregas_mensuales_calc(self, obj):
         return obj.entregas_mensuales()
     entregas_mensuales_calc.short_description = 'Entregas/Mes'
 
+    def flete_base_formateado(self, obj):
+        if obj.flete_base:
+            return f"${obj.flete_base:,.0f}"
+        return "-"
+    flete_base_formateado.short_description = 'Flete Base'
+
     def get_queryset(self, request):
-        return super().get_queryset(request).select_related('zona', 'municipio')
+        return super().get_queryset(request).select_related('ruta', 'ruta__vehiculo', 'municipio')
 
