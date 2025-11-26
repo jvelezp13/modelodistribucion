@@ -159,9 +159,9 @@ class Marca:
         """Agrega el costo de un rubro a la categoría correspondiente."""
         if rubro.categoria == 'comercial':
             self.costo_comercial += rubro.valor_total
-        elif rubro.categoria == 'logistica':
+        elif rubro.categoria == 'logistico':
             self.costo_logistico += rubro.valor_total
-        elif rubro.categoria == 'administrativa':
+        elif rubro.categoria == 'administrativo':
             self.costo_administrativo += rubro.valor_total
 
     def aplicar_descuentos(
