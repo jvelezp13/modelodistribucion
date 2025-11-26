@@ -259,6 +259,74 @@ class VehiculoAdmin(admin.ModelAdmin):
         }),
     )
 
+    def costo_mensual_estimado_formateado(self, obj):
+        costo = self._calcular_costo_vehiculo(obj)
+        return f"${costo:,.0f}"
+    costo_mensual_estimado_formateado.short_description = 'Costo Mensual (Est.)'
+    
+    def _calcular_costo_vehiculo(self, obj):
+        """Calcula el costo mensual total para un objeto Vehiculo"""
+        try:
+            total = 0
+            cantidad = obj.cantidad or 0
+            
+            # Obtener precio combustible del escenario
+            precio_galon = 0
+            if obj.escenario:
+                try:
+                    macro = ParametrosMacro.objects.get(anio=obj.escenario.anio, activo=True)
+                    precio_galon = macro.precio_galon_combustible or 0
+                except ParametrosMacro.DoesNotExist:
+                    pass
+
+            # Costos comunes (GPS)
+            total += (obj.costo_monitoreo_mensual or 0) * cantidad
+
+            if obj.esquema == 'tercero':
+                total += (obj.valor_flete_mensual or 0) * cantidad
+                
+            elif obj.esquema in ['renting', 'tradicional']:
+                # Costos comunes Propio/Renting
+                total += (obj.costo_lavado_mensual or 0) * cantidad
+                total += (obj.costo_parqueadero_mensual or 0) * cantidad
+                
+                # Combustible
+                consumo = obj.consumo_galon_km or 0
+                km_mensual = obj.kilometraje_promedio_mensual or 0
+                if consumo > 0:
+                    galones = km_mensual / consumo
+                    total += galones * precio_galon * cantidad
+
+                if obj.esquema == 'renting':
+                    total += (obj.canon_renting or 0) * cantidad
+                    
+                elif obj.esquema == 'tradicional':
+                    # Depreciación
+                    vida_util = obj.vida_util_anios or 0
+                    if vida_util > 0:
+                        costo_compra = obj.costo_compra or 0
+                        valor_residual = obj.valor_residual or 0
+                        depreciacion = (costo_compra - valor_residual) / (vida_util * 12)
+                        total += depreciacion * cantidad
+                    
+                    total += (obj.costo_mantenimiento_mensual or 0) * cantidad
+                    total += (obj.costo_seguro_mensual or 0) * cantidad
+                    
+            return total
+        except Exception:
+            return 0
+
+    def changelist_view(self, request, extra_context=None):
+        response = super().changelist_view(request, extra_context)
+        try:
+            qs = response.context_data['cl'].queryset
+            # Calcular total iterando sobre el queryset (ya que el cálculo es complejo)
+            total_general = sum(self._calcular_costo_vehiculo(v) for v in qs)
+            response.context_data['total_valor_mensual'] = total_general
+        except (AttributeError, KeyError):
+            pass
+        return response
+
 
 class ProyeccionVentasInline(admin.TabularInline):
     model = ProyeccionVentas
