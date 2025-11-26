@@ -9,7 +9,8 @@ import { MetricCard } from '@/components/ui/MetricCard';
 import { LoadingOverlay } from '@/components/ui/LoadingSpinner';
 import { MultiSelect } from '@/components/ui/MultiSelect';
 import { ScenarioSelector } from '@/components/ui/ScenarioSelector';
-import { TrendingUp, DollarSign, Users, PieChart, RefreshCw, Play } from 'lucide-react';
+import { TrendingUp, DollarSign, Users, PieChart, RefreshCw, Play, FileText } from 'lucide-react';
+import PyGDetallado from '@/components/PyGDetallado';
 
 export default function DashboardPage() {
   const [marcasDisponibles, setMarcasDisponibles] = useState<string[]>([]);
@@ -20,7 +21,8 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMarcas, setIsLoadingMarcas] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'consolidado' | 'marcas' | 'detalles'>('consolidado');
+  const [activeTab, setActiveTab] = useState<'consolidado' | 'marcas' | 'pyg' | 'detalles'>('consolidado');
+  const [selectedMarcaPyG, setSelectedMarcaPyG] = useState<string | null>(null);
 
   // Cargar marcas y escenarios al montar
   useEffect(() => {
@@ -166,6 +168,7 @@ export default function DashboardPage() {
                 {[
                   { id: 'consolidado', label: '📊 Resumen General', icon: PieChart },
                   { id: 'marcas', label: '📈 Por Marca', icon: TrendingUp },
+                  { id: 'pyg', label: '📄 P&G Detallado', icon: FileText },
                   { id: 'detalles', label: '🔍 Detalles', icon: Users },
                 ].map((tab) => (
                   <button
@@ -427,6 +430,49 @@ export default function DashboardPage() {
                     </CardContent>
                   </Card>
                 ))}
+              </div>
+            )}
+
+            {activeTab === 'pyg' && (
+              <div className="space-y-6">
+                {resultado.marcas.length > 1 && (
+                  <Card variant="bordered">
+                    <CardContent className="py-4">
+                      <label className="block text-sm font-semibold text-secondary-700 mb-2">
+                        Selecciona una marca para ver el P&G detallado:
+                      </label>
+                      <select
+                        value={selectedMarcaPyG || resultado.marcas[0]?.marca_id || ''}
+                        onChange={(e) => setSelectedMarcaPyG(e.target.value)}
+                        className="w-full px-4 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      >
+                        {resultado.marcas.map((marca) => (
+                          <option key={marca.marca_id} value={marca.marca_id}>
+                            {marca.nombre}
+                          </option>
+                        ))}
+                      </select>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {(() => {
+                  const marcaSeleccionada = resultado.marcas.find(
+                    m => m.marca_id === (selectedMarcaPyG || resultado.marcas[0]?.marca_id)
+                  );
+
+                  return marcaSeleccionada ? (
+                    <PyGDetallado marca={marcaSeleccionada} />
+                  ) : (
+                    <Card variant="bordered">
+                      <CardContent className="py-12 text-center">
+                        <p className="text-secondary-600">
+                          No se pudo cargar el P&G detallado
+                        </p>
+                      </CardContent>
+                    </Card>
+                  );
+                })()}
               </div>
             )}
 
