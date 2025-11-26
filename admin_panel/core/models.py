@@ -419,6 +419,7 @@ class Vehiculo(models.Model):
     placa = models.CharField(
         max_length=20,
         blank=True,
+        null=True,
         default='',
         verbose_name="Placa",
         help_text="Placa del vehículo"
@@ -426,6 +427,7 @@ class Vehiculo(models.Model):
     propietario = models.CharField(
         max_length=200,
         blank=True,
+        null=True,
         default='',
         verbose_name="Propietario",
         help_text="Nombre completo del propietario (para terceros)"
@@ -438,18 +440,21 @@ class Vehiculo(models.Model):
             ('CE', 'Cédula de Extranjería'),
         ],
         blank=True,
+        null=True,
         default='',
         verbose_name="Tipo de Documento"
     )
     numero_documento = models.CharField(
         max_length=50,
         blank=True,
+        null=True,
         default='',
         verbose_name="Número de Documento"
     )
     conductor = models.CharField(
         max_length=200,
         blank=True,
+        null=True,
         default='',
         verbose_name="Conductor",
         help_text="Nombre del conductor habitual"
@@ -459,6 +464,7 @@ class Vehiculo(models.Model):
     banco = models.CharField(
         max_length=100,
         blank=True,
+        null=True,
         default='',
         verbose_name="Banco"
     )
@@ -469,12 +475,14 @@ class Vehiculo(models.Model):
             ('corriente', 'Corriente'),
         ],
         blank=True,
+        null=True,
         default='',
         verbose_name="Tipo de Cuenta"
     )
     numero_cuenta = models.CharField(
         max_length=50,
         blank=True,
+        null=True,
         default='',
         verbose_name="Número de Cuenta"
     )
