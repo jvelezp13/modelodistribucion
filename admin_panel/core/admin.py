@@ -239,8 +239,13 @@ class VehiculoAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
         ('Otros Costos Operativos (Propio/Renting)', {
-            'fields': ('costo_lavado_mensual', 'costo_parqueadero_mensual', 'costo_monitoreo_mensual'),
-            'description': 'Aseo, Parqueadero y GPS',
+            'fields': ('costo_lavado_mensual', 'costo_parqueadero_mensual'),
+            'description': 'Aseo y Parqueadero',
+            'classes': ('collapse',)
+        }),
+        ('Otros Costos (Todos los Esquemas)', {
+            'fields': ('costo_monitoreo_mensual',),
+            'description': 'Monitoreo Satelital (GPS)',
             'classes': ('collapse',)
         }),
         ('Asignación y Proyecciones', {

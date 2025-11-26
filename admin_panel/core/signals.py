@@ -165,6 +165,9 @@ def calculate_logistic_expenses(escenario):
         total_monitoreo = 0
 
         for v in vehiculos_marca:
+            # Costo común para TODOS los esquemas (si aplica)
+            total_monitoreo += v.costo_monitoreo_mensual * v.cantidad
+
             if v.esquema == 'tercero':
                 # Flete: Valor Flete * Cantidad
                 total_flete += v.valor_flete_mensual * v.cantidad
@@ -173,7 +176,7 @@ def calculate_logistic_expenses(escenario):
                 # Costos comunes para Propio y Renting
                 total_lavado += v.costo_lavado_mensual * v.cantidad
                 total_parqueadero += v.costo_parqueadero_mensual * v.cantidad
-                total_monitoreo += v.costo_monitoreo_mensual * v.cantidad
+                # total_monitoreo ya se sumó arriba
 
                 # Combustible (común)
                 if v.consumo_galon_km > 0:
