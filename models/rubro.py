@@ -221,7 +221,10 @@ class RubroVehiculo(Rubro):
 
     def __post_init__(self):
         """Calcula el costo total del vehículo."""
-        if self.esquema == "renting":
+        if self.esquema == "tercero":
+            # Para terceros, usar el valor_flete_mensual
+            self.valor_unitario = self.valor_flete_mensual
+        elif self.esquema == "renting":
             self.valor_unitario = (
                 self.canon_mensual + self.combustible +
                 self.lavada + self.reposicion
