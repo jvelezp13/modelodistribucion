@@ -197,6 +197,8 @@ def serializar_resultado(resultado) -> Dict[str, Any]:
                 'costo_comercial': float(m.costo_comercial),
                 'costo_logistico': float(m.costo_logistico),
                 'costo_administrativo': float(m.costo_administrativo),
+                'lejania_comercial': float(m.lejania_comercial),
+                'lejania_logistica': float(m.lejania_logistica),
                 'margen_porcentaje': float(m.margen_porcentaje),
                 'total_empleados': int(m.total_empleados),
                 'empleados_comerciales': int(m.empleados_comerciales),
