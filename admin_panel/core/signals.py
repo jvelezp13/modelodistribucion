@@ -160,37 +160,41 @@ def calculate_logistic_expenses(escenario):
         total_mantenimiento = 0
         total_seguros = 0
         total_combustible = 0
+        total_lavado = 0
+        total_parqueadero = 0
+        total_monitoreo = 0
 
         for v in vehiculos_marca:
             if v.esquema == 'tercero':
                 # Flete: Valor Flete * Cantidad
                 total_flete += v.valor_flete_mensual * v.cantidad
             
-            elif v.esquema == 'renting':
-                # Renting: Canon * Cantidad
-                total_renting += v.canon_renting * v.cantidad
-                
-                # Combustible: (Km / Rendimiento) * Precio Galón * Cantidad
+            elif v.esquema in ['renting', 'tradicional']:
+                # Costos comunes para Propio y Renting
+                total_lavado += v.costo_lavado_mensual * v.cantidad
+                total_parqueadero += v.costo_parqueadero_mensual * v.cantidad
+                total_monitoreo += v.costo_monitoreo_mensual * v.cantidad
+
+                # Combustible (común)
                 if v.consumo_galon_km > 0:
                     galones = v.kilometraje_promedio_mensual / v.consumo_galon_km
                     total_combustible += galones * precio_galon * v.cantidad
 
-            elif v.esquema == 'tradicional': # Propio
-                # Depreciación: (Costo - Residual) / (Vida Util * 12) * Cantidad
-                if v.vida_util_anios > 0:
-                    depreciacion_mensual = (v.costo_compra - v.valor_residual) / (v.vida_util_anios * 12)
-                    total_depreciacion += depreciacion_mensual * v.cantidad
-                
-                # Mantenimiento
-                total_mantenimiento += v.costo_mantenimiento_mensual * v.cantidad
-                
-                # Seguros
-                total_seguros += v.costo_seguro_mensual * v.cantidad
-                
-                # Combustible
-                if v.consumo_galon_km > 0:
-                    galones = v.kilometraje_promedio_mensual / v.consumo_galon_km
-                    total_combustible += galones * precio_galon * v.cantidad
+                if v.esquema == 'renting':
+                    # Renting: Canon * Cantidad
+                    total_renting += v.canon_renting * v.cantidad
+                    
+                elif v.esquema == 'tradicional': # Propio
+                    # Depreciación: (Costo - Residual) / (Vida Util * 12) * Cantidad
+                    if v.vida_util_anios > 0:
+                        depreciacion_mensual = (v.costo_compra - v.valor_residual) / (v.vida_util_anios * 12)
+                        total_depreciacion += depreciacion_mensual * v.cantidad
+                    
+                    # Mantenimiento
+                    total_mantenimiento += v.costo_mantenimiento_mensual * v.cantidad
+                    
+                    # Seguros
+                    total_seguros += v.costo_seguro_mensual * v.cantidad
 
         # Función helper para actualizar/borrar gasto
         def update_gasto(tipo, nombre, valor):
@@ -215,6 +219,9 @@ def calculate_logistic_expenses(escenario):
         update_gasto('mantenimiento_vehiculos', 'Mantenimiento Flota Propia', total_mantenimiento)
         update_gasto('seguros_carga', 'Seguros Flota Propia', total_seguros) # Usamos seguros_carga o creamos uno nuevo? Reutilicemos por ahora o 'otros'
         update_gasto('combustible', 'Combustible Flota', total_combustible)
+        update_gasto('lavado_vehiculos', 'Aseo y Limpieza Vehículos', total_lavado)
+        update_gasto('parqueadero_vehiculos', 'Parqueaderos', total_parqueadero)
+        update_gasto('monitoreo_satelital', 'Monitoreo Satelital (GPS)', total_monitoreo)
 
 
 @receiver([post_save, post_delete], sender=Vehiculo)

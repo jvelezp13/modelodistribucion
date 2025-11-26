@@ -309,6 +309,11 @@ class Vehiculo(models.Model):
     
     # Campos para consumo (Propio y Renting)
     consumo_galon_km = models.DecimalField(max_digits=5, decimal_places=2, default=30, verbose_name="Km por Galón", help_text="Rendimiento del vehículo")
+
+    # Otros costos operativos (Propio y Renting)
+    costo_lavado_mensual = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Lavado Mensual")
+    costo_parqueadero_mensual = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Parqueadero Mensual")
+    costo_monitoreo_mensual = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Monitoreo Satelital (GPS)")
     
     # Índice de incremento para proyecciones
     indice_incremento = models.CharField(
@@ -815,6 +820,9 @@ class GastoLogistico(models.Model):
         ('flete_tercero', 'Flete Transporte (Tercero)'),
         ('canon_renting', 'Canon Renting'),
         ('depreciacion_vehiculo', 'Depreciación Vehículos'),
+        ('lavado_vehiculos', 'Aseo y Limpieza Vehículos'),
+        ('parqueadero_vehiculos', 'Parqueaderos'),
+        ('monitoreo_satelital', 'Monitoreo Satelital (GPS)'),
         ('bodegaje', 'Bodegaje Externo'),
         ('equipos_bodega', 'Equipos de Bodega'),
         ('embalaje', 'Material de Embalaje'),

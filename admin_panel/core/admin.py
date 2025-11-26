@@ -238,6 +238,11 @@ class VehiculoAdmin(admin.ModelAdmin):
             'description': 'Diligenciar para esquemas Propio y Renting',
             'classes': ('collapse',)
         }),
+        ('Otros Costos Operativos (Propio/Renting)', {
+            'fields': ('costo_lavado_mensual', 'costo_parqueadero_mensual', 'costo_monitoreo_mensual'),
+            'description': 'Aseo, Parqueadero y GPS',
+            'classes': ('collapse',)
+        }),
         ('Asignación y Proyecciones', {
             'fields': ('asignacion', 'porcentaje_uso', 'criterio_prorrateo', 'indice_incremento'),
             'classes': ('collapse',)
