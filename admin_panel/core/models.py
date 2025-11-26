@@ -123,6 +123,7 @@ class PersonalComercial(models.Model):
         blank=True
     )
     marca = models.ForeignKey(Marca, on_delete=models.CASCADE, related_name='personal_comercial')
+    nombre = models.CharField(max_length=200, verbose_name="Nombre/Descripción", help_text="Ej: 'Vendedor Zona Norte', 'Supervisor Equipo A'", default='', blank=True)
     tipo = models.CharField(max_length=50, choices=TIPO_CHOICES, verbose_name="Tipo de Personal")
     cantidad = models.IntegerField(validators=[MinValueValidator(1)], verbose_name="Cantidad")
     salario_base = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Salario Base")
@@ -199,7 +200,7 @@ class PersonalComercial(models.Model):
             return self.salario_base * self.cantidad
 
     def __str__(self):
-        return f"{self.marca.nombre} - {self.get_tipo_display()} ({self.cantidad})"
+        return f"{self.marca.nombre} - {self.nombre} ({self.cantidad})"
 
 
 class PersonalLogistico(models.Model):
@@ -235,6 +236,7 @@ class PersonalLogistico(models.Model):
         blank=True
     )
     marca = models.ForeignKey(Marca, on_delete=models.CASCADE, related_name='personal_logistico')
+    nombre = models.CharField(max_length=200, verbose_name="Nombre/Descripción", help_text="Ej: 'Conductor Ruta Principal', 'Auxiliar Bodega CEDI'", default='', blank=True)
     tipo = models.CharField(max_length=50, choices=TIPO_CHOICES, verbose_name="Tipo de Personal")
     cantidad = models.IntegerField(validators=[MinValueValidator(1)], verbose_name="Cantidad")
     salario_base = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Salario Base")
@@ -306,7 +308,7 @@ class PersonalLogistico(models.Model):
             return self.salario_base * self.cantidad
 
     def __str__(self):
-        return f"{self.marca.nombre} - {self.get_tipo_display()} ({self.cantidad})"
+        return f"{self.marca.nombre} - {self.nombre} ({self.cantidad})"
 
 
 class Vehiculo(models.Model):

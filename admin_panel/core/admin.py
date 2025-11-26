@@ -114,14 +114,14 @@ class MarcaAdmin(admin.ModelAdmin):
 @admin.register(PersonalComercial)
 class PersonalComercialAdmin(admin.ModelAdmin):
     change_list_template = 'admin/core/change_list_with_total.html'
-    list_display = ('marca', 'escenario', 'tipo', 'cantidad', 'salario_base', 'costo_total_estimado', 'asignacion', 'perfil_prestacional')
+    list_display = ('marca', 'nombre', 'escenario', 'tipo', 'cantidad', 'salario_base', 'costo_total_estimado', 'asignacion', 'perfil_prestacional')
     list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'perfil_prestacional')
-    search_fields = ('marca__nombre',)
+    search_fields = ('marca__nombre', 'nombre')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
 
     fieldsets = (
         ('Información Básica', {
-            'fields': ('marca', 'escenario', 'tipo', 'cantidad', 'salario_base', 'perfil_prestacional')
+            'fields': ('marca', 'escenario', 'nombre', 'tipo', 'cantidad', 'salario_base', 'perfil_prestacional')
         }),
         ('Asignación', {
             'fields': ('asignacion', 'porcentaje_dedicacion', 'criterio_prorrateo')
@@ -184,14 +184,14 @@ class PersonalComercialAdmin(admin.ModelAdmin):
 @admin.register(PersonalLogistico)
 class PersonalLogisticoAdmin(admin.ModelAdmin):
     change_list_template = 'admin/core/change_list_with_total.html'
-    list_display = ('marca', 'escenario', 'tipo', 'cantidad', 'salario_base', 'costo_total_estimado', 'asignacion', 'perfil_prestacional')
+    list_display = ('marca', 'nombre', 'escenario', 'tipo', 'cantidad', 'salario_base', 'costo_total_estimado', 'asignacion', 'perfil_prestacional')
     list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'perfil_prestacional')
-    search_fields = ('marca__nombre',)
+    search_fields = ('marca__nombre', 'nombre')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
 
     fieldsets = (
         ('Información Básica', {
-            'fields': ('marca', 'escenario', 'tipo', 'cantidad', 'salario_base', 'perfil_prestacional')
+            'fields': ('marca', 'escenario', 'nombre', 'tipo', 'cantidad', 'salario_base', 'perfil_prestacional')
         }),
         ('Asignación', {
             'fields': ('asignacion', 'porcentaje_dedicacion', 'criterio_prorrateo')
