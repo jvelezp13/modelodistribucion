@@ -105,6 +105,55 @@ export interface VentasData {
   };
 }
 
+export interface DetalleZonaComercial {
+  zona_id: number;
+  zona_nombre: string;
+  zona_codigo: string;
+  vendedor: string;
+  tipo_vehiculo: string;
+  frecuencia: string;
+  requiere_pernocta: boolean;
+  noches_pernocta: number;
+  combustible_mensual: number;
+  pernocta_mensual: number;
+  total_mensual: number;
+  detalle: any;
+}
+
+export interface DetalleZonaLogistica {
+  zona_id: number;
+  zona_nombre: string;
+  zona_codigo: string;
+  combustible_mensual: number;
+  pernocta_mensual: number;
+  total_mensual: number;
+  detalle: any;
+}
+
+export interface DetalleLejaniasComercial {
+  marca_id: string;
+  marca_nombre: string;
+  escenario_id: number;
+  escenario_nombre: string;
+  total_combustible_mensual: number;
+  total_pernocta_mensual: number;
+  total_mensual: number;
+  total_anual: number;
+  zonas: DetalleZonaComercial[];
+}
+
+export interface DetalleLejaniasLogistica {
+  marca_id: string;
+  marca_nombre: string;
+  escenario_id: number;
+  escenario_nombre: string;
+  total_combustible_mensual: number;
+  total_pernocta_mensual: number;
+  total_mensual: number;
+  total_anual: number;
+  zonas: DetalleZonaLogistica[];
+}
+
 class APIClient {
   private baseURL: string;
 
@@ -187,6 +236,30 @@ class APIClient {
    */
   async obtenerDatosVentas(marcaId: string): Promise<VentasData> {
     return this.request<VentasData>(`/api/marcas/${marcaId}/ventas`);
+  }
+
+  /**
+   * Obtiene detalle de lejanías comerciales
+   */
+  async obtenerDetalleLejaniasComercial(
+    escenarioId: number,
+    marcaId: string
+  ): Promise<DetalleLejaniasComercial> {
+    return this.request<DetalleLejaniasComercial>(
+      `/api/lejanias/comercial?escenario_id=${escenarioId}&marca_id=${marcaId}`
+    );
+  }
+
+  /**
+   * Obtiene detalle de lejanías logísticas
+   */
+  async obtenerDetalleLejaniasLogistica(
+    escenarioId: number,
+    marcaId: string
+  ): Promise<DetalleLejaniasLogistica> {
+    return this.request<DetalleLejaniasLogistica>(
+      `/api/lejanias/logistica?escenario_id=${escenarioId}&marca_id=${marcaId}`
+    );
   }
 }
 

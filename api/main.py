@@ -112,6 +112,153 @@ def ejecutar_simulacion(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/lejanias/comercial")
+def obtener_detalle_lejanias_comercial(
+    escenario_id: int,
+    marca_id: str
+) -> Dict[str, Any]:
+    """
+    Obtiene el detalle de lejanías comerciales por zona.
+
+    Args:
+        escenario_id: ID del escenario
+        marca_id: ID de la marca
+
+    Returns:
+        Detalle de lejanías comerciales por zona
+    """
+    try:
+        from core.models import Escenario, Marca, Zona
+        from core.calculator_lejanias import CalculadoraLejanias
+
+        # Obtener escenario y marca
+        escenario = Escenario.objects.get(pk=escenario_id)
+        marca = Marca.objects.get(marca_id=marca_id)
+
+        # Inicializar calculadora
+        calc = CalculadoraLejanias(escenario)
+
+        # Obtener zonas de la marca
+        zonas = Zona.objects.filter(
+            marca=marca,
+            escenario=escenario,
+            activo=True
+        ).prefetch_related('zonamunicipio_set__municipio', 'vendedor')
+
+        # Calcular para cada zona
+        detalle_zonas = []
+        total_combustible = 0.0
+        total_pernocta = 0.0
+
+        for zona in zonas:
+            resultado = calc.calcular_lejania_comercial_zona(zona)
+
+            detalle_zonas.append({
+                'zona_id': zona.id,
+                'zona_nombre': zona.nombre,
+                'zona_codigo': zona.codigo,
+                'vendedor': zona.vendedor.nombre if zona.vendedor else 'Sin asignar',
+                'tipo_vehiculo': zona.tipo_vehiculo_comercial,
+                'frecuencia': zona.get_frecuencia_display(),
+                'requiere_pernocta': zona.requiere_pernocta,
+                'noches_pernocta': zona.noches_pernocta,
+                'combustible_mensual': float(resultado['combustible_mensual']),
+                'pernocta_mensual': float(resultado['pernocta_mensual']),
+                'total_mensual': float(resultado['total_mensual']),
+                'detalle': resultado['detalle']
+            })
+
+            total_combustible += float(resultado['combustible_mensual'])
+            total_pernocta += float(resultado['pernocta_mensual'])
+
+        return {
+            'marca_id': marca_id,
+            'marca_nombre': marca.nombre,
+            'escenario_id': escenario_id,
+            'escenario_nombre': escenario.nombre,
+            'total_combustible_mensual': total_combustible,
+            'total_pernocta_mensual': total_pernocta,
+            'total_mensual': total_combustible + total_pernocta,
+            'total_anual': (total_combustible + total_pernocta) * 12,
+            'zonas': detalle_zonas
+        }
+
+    except Exception as e:
+        logger.error(f"Error obteniendo detalle de lejanías comerciales: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/lejanias/logistica")
+def obtener_detalle_lejanias_logistica(
+    escenario_id: int,
+    marca_id: str
+) -> Dict[str, Any]:
+    """
+    Obtiene el detalle de lejanías logísticas por zona.
+
+    Args:
+        escenario_id: ID del escenario
+        marca_id: ID de la marca
+
+    Returns:
+        Detalle de lejanías logísticas por zona
+    """
+    try:
+        from core.models import Escenario, Marca, Zona
+        from core.calculator_lejanias import CalculadoraLejanias
+
+        # Obtener escenario y marca
+        escenario = Escenario.objects.get(pk=escenario_id)
+        marca = Marca.objects.get(marca_id=marca_id)
+
+        # Inicializar calculadora
+        calc = CalculadoraLejanias(escenario)
+
+        # Obtener zonas de la marca
+        zonas = Zona.objects.filter(
+            marca=marca,
+            escenario=escenario,
+            activo=True
+        ).prefetch_related('zonamunicipio_set__municipio')
+
+        # Calcular para cada zona
+        detalle_zonas = []
+        total_combustible = 0.0
+        total_pernocta = 0.0
+
+        for zona in zonas:
+            resultado = calc.calcular_lejania_logistica_zona(zona)
+
+            detalle_zonas.append({
+                'zona_id': zona.id,
+                'zona_nombre': zona.nombre,
+                'zona_codigo': zona.codigo,
+                'combustible_mensual': float(resultado['combustible_mensual']),
+                'pernocta_mensual': float(resultado['pernocta_mensual']),
+                'total_mensual': float(resultado['total_mensual']),
+                'detalle': resultado['detalle']
+            })
+
+            total_combustible += float(resultado['combustible_mensual'])
+            total_pernocta += float(resultado['pernocta_mensual'])
+
+        return {
+            'marca_id': marca_id,
+            'marca_nombre': marca.nombre,
+            'escenario_id': escenario_id,
+            'escenario_nombre': escenario.nombre,
+            'total_combustible_mensual': total_combustible,
+            'total_pernocta_mensual': total_pernocta,
+            'total_mensual': total_combustible + total_pernocta,
+            'total_anual': (total_combustible + total_pernocta) * 12,
+            'zonas': detalle_zonas
+        }
+
+    except Exception as e:
+        logger.error(f"Error obteniendo detalle de lejanías logísticas: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/marcas/{marca_id}/comercial")
 def obtener_datos_comerciales(marca_id: str) -> Dict[str, Any]:
     """

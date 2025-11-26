@@ -4,7 +4,9 @@ import React from 'react';
 import {
   FileText,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  MapPin,
+  Truck
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -22,7 +24,9 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { id: 'pyg', label: 'P&G Detallado', icon: FileText },
-  // Próximamente: Lejanías, Comparativas, etc.
+  { id: 'lejanias-comercial', label: 'Lejanías Comerciales', icon: MapPin },
+  { id: 'lejanias-logistica', label: 'Lejanías Logísticas', icon: Truck },
+  // Próximamente: Comparativas, Multi-nivel, etc.
 ];
 
 export default function Sidebar({ isCollapsed, onToggle, activeView, onViewChange }: SidebarProps) {

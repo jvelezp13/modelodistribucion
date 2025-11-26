@@ -7,6 +7,10 @@ import { LoadingOverlay } from '@/components/ui/LoadingSpinner';
 import { RefreshCw, Play, AlertCircle } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import PyGDetallado from '@/components/PyGDetallado';
+import LejaniasComercial from '@/components/LejaniasComercial';
+import LejaniasLogistica from '@/components/LejaniasLogistica';
+
+type ViewType = 'pyg' | 'lejanias-comercial' | 'lejanias-logistica';
 
 export default function DashboardPage() {
   const [marcasDisponibles, setMarcasDisponibles] = useState<string[]>([]);
@@ -17,7 +21,7 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMarcas, setIsLoadingMarcas] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeView] = useState<'pyg'>('pyg'); // Por ahora solo P&G, se expandirá con nuevas vistas
+  const [activeView, setActiveView] = useState<ViewType>('pyg');
   const [selectedMarcaPyG, setSelectedMarcaPyG] = useState<string | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
@@ -90,7 +94,7 @@ export default function DashboardPage() {
         isCollapsed={isSidebarCollapsed}
         onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         activeView={activeView}
-        onViewChange={() => {}} // Por ahora sin cambio de vista
+        onViewChange={setActiveView}
       />
 
       {/* Main Content */}
@@ -181,51 +185,72 @@ export default function DashboardPage() {
 
         {/* Main Content Area */}
         <div className="p-4">
-          {isLoading ? (
-            <div className="flex items-center justify-center h-64">
-              <LoadingOverlay message="Ejecutando simulación..." />
-            </div>
-          ) : resultado ? (
-            <div>
-              {resultado.marcas.length > 1 && (
-                <div className="mb-3 bg-white border border-gray-200 rounded p-2">
-                  <label className="text-xs font-medium text-gray-700 block mb-1">
-                    Selecciona una marca:
-                  </label>
-                  <select
-                    value={selectedMarcaPyG || resultado.marcas[0]?.marca_id || ''}
-                    onChange={(e) => setSelectedMarcaPyG(e.target.value)}
-                    className="w-full text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  >
-                    {resultado.marcas.map((marca) => (
-                      <option key={marca.marca_id} value={marca.marca_id}>
-                        {marca.nombre}
-                      </option>
-                    ))}
-                  </select>
+          {/* Vista P&G - Requiere simulación */}
+          {activeView === 'pyg' && (
+            <>
+              {isLoading ? (
+                <div className="flex items-center justify-center h-64">
+                  <LoadingOverlay message="Ejecutando simulación..." />
+                </div>
+              ) : resultado ? (
+                <div>
+                  {resultado.marcas.length > 1 && (
+                    <div className="mb-3 bg-white border border-gray-200 rounded p-2">
+                      <label className="text-xs font-medium text-gray-700 block mb-1">
+                        Selecciona una marca:
+                      </label>
+                      <select
+                        value={selectedMarcaPyG || resultado.marcas[0]?.marca_id || ''}
+                        onChange={(e) => setSelectedMarcaPyG(e.target.value)}
+                        className="w-full text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      >
+                        {resultado.marcas.map((marca) => (
+                          <option key={marca.marca_id} value={marca.marca_id}>
+                            {marca.nombre}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {(() => {
+                    const marcaSeleccionada = resultado.marcas.find(
+                      m => m.marca_id === (selectedMarcaPyG || resultado.marcas[0]?.marca_id)
+                    );
+
+                    return marcaSeleccionada ? (
+                      <PyGDetallado marca={marcaSeleccionada} />
+                    ) : (
+                      <div className="bg-white border border-gray-200 rounded p-8 text-center">
+                        <p className="text-sm text-gray-600">No se pudo cargar el P&G detallado</p>
+                      </div>
+                    );
+                  })()}
+                </div>
+              ) : (
+                <div className="bg-white border border-gray-200 rounded p-12 text-center">
+                  <p className="text-sm text-gray-600">
+                    Selecciona las marcas y ejecuta la simulación para ver los resultados
+                  </p>
                 </div>
               )}
+            </>
+          )}
 
-              {(() => {
-                const marcaSeleccionada = resultado.marcas.find(
-                  m => m.marca_id === (selectedMarcaPyG || resultado.marcas[0]?.marca_id)
-                );
+          {/* Vista Lejanías Comerciales */}
+          {activeView === 'lejanias-comercial' && selectedScenarioId && marcasSeleccionadas.length > 0 && (
+            <LejaniasComercial
+              escenarioId={selectedScenarioId}
+              marcaId={marcasSeleccionadas[0]}
+            />
+          )}
 
-                return marcaSeleccionada ? (
-                  <PyGDetallado marca={marcaSeleccionada} />
-                ) : (
-                  <div className="bg-white border border-gray-200 rounded p-8 text-center">
-                    <p className="text-sm text-gray-600">No se pudo cargar el P&G detallado</p>
-                  </div>
-                );
-              })()}
-            </div>
-          ) : (
-            <div className="bg-white border border-gray-200 rounded p-12 text-center">
-              <p className="text-sm text-gray-600">
-                Selecciona las marcas y ejecuta la simulación para ver los resultados
-              </p>
-            </div>
+          {/* Vista Lejanías Logísticas */}
+          {activeView === 'lejanias-logistica' && selectedScenarioId && marcasSeleccionadas.length > 0 && (
+            <LejaniasLogistica
+              escenarioId={selectedScenarioId}
+              marcaId={marcasSeleccionadas[0]}
+            />
           )}
         </div>
       </div>
