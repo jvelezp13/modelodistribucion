@@ -141,9 +141,8 @@ def calculate_logistic_expenses(escenario):
 
     try:
         macro = ParametrosMacro.objects.get(anio=escenario.anio, activo=True)
-        precio_galon = macro.precio_galon_combustible
     except ParametrosMacro.DoesNotExist:
-        precio_galon = 0
+        macro = None
 
     # Obtener todas las marcas con vehículos en este escenario
     qs_vehiculos = Vehiculo.objects.filter(escenario=escenario)
@@ -181,8 +180,13 @@ def calculate_logistic_expenses(escenario):
                 # total_monitoreo ya se sumó arriba
 
                 # Combustible (común)
-                if v.consumo_galon_km > 0:
+                if v.consumo_galon_km > 0 and macro:
                     galones = v.kilometraje_promedio_mensual / v.consumo_galon_km
+                    # Usar el precio según el tipo de combustible del vehículo
+                    if v.tipo_combustible == 'gasolina':
+                        precio_galon = macro.precio_galon_gasolina
+                    else:  # acpm
+                        precio_galon = macro.precio_galon_acpm
                     total_combustible += galones * precio_galon * v.cantidad
 
                 if v.esquema == 'renting':
