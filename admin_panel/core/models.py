@@ -371,7 +371,10 @@ class Vehiculo(models.Model):
     costo_lavado_mensual = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Lavado Mensual")
     costo_parqueadero_mensual = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Parqueadero Mensual")
     costo_monitoreo_mensual = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Monitoreo Satelital (GPS)")
-    
+
+    # Otros costos (Todos los esquemas)
+    costo_seguro_mercancia_mensual = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Seguro de Mercancía", help_text="Seguro de carga transportada")
+
     # Índice de incremento para proyecciones
     indice_incremento = models.CharField(
         max_length=20,
@@ -425,8 +428,9 @@ class Vehiculo(models.Model):
                 except ParametrosMacro.DoesNotExist:
                     pass
 
-            # Costos comunes (GPS)
+            # Costos comunes a todos los esquemas
             total += (self.costo_monitoreo_mensual or 0) * cantidad
+            total += (self.costo_seguro_mercancia_mensual or 0) * cantidad
 
             if self.esquema == 'tercero':
                 total += (self.valor_flete_mensual or 0) * cantidad

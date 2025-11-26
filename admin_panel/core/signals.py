@@ -159,14 +159,16 @@ def calculate_logistic_expenses(escenario):
         total_depreciacion = 0
         total_mantenimiento = 0
         total_seguros = 0
+        total_seguros_mercancia = 0
         total_combustible = 0
         total_lavado = 0
         total_parqueadero = 0
         total_monitoreo = 0
 
         for v in vehiculos_marca:
-            # Costo común para TODOS los esquemas (si aplica)
+            # Costos comunes para TODOS los esquemas
             total_monitoreo += v.costo_monitoreo_mensual * v.cantidad
+            total_seguros_mercancia += v.costo_seguro_mercancia_mensual * v.cantidad
 
             if v.esquema == 'tercero':
                 # Flete: Valor Flete * Cantidad
@@ -206,14 +208,14 @@ def calculate_logistic_expenses(escenario):
                     escenario=escenario,
                     tipo=tipo,
                     marca=marca_obj,
+                    nombre=nombre,  # Incluir nombre en el lookup para permitir múltiples registros del mismo tipo
                     defaults={
-                        'nombre': nombre,
                         'valor_mensual': valor,
                         'asignacion': 'individual'
                     }
                 )
             else:
-                GastoLogistico.objects.filter(escenario=escenario, tipo=tipo, marca=marca_obj).delete()
+                GastoLogistico.objects.filter(escenario=escenario, tipo=tipo, marca=marca_obj, nombre=nombre).delete()
 
         # Actualizar cada rubro
         update_gasto('flete_tercero', 'Flete Transporte (Tercero)', total_flete)
@@ -225,6 +227,7 @@ def calculate_logistic_expenses(escenario):
         update_gasto('lavado_vehiculos', 'Aseo y Limpieza Vehículos', total_lavado)
         update_gasto('parqueadero_vehiculos', 'Parqueaderos', total_parqueadero)
         update_gasto('monitoreo_satelital', 'Monitoreo Satelital (GPS)', total_monitoreo)
+        update_gasto('seguros_carga', 'Seguro de Mercancía', total_seguros_mercancia)
 
 
 @receiver([post_save, post_delete], sender=Vehiculo)

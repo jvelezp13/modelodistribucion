@@ -277,8 +277,8 @@ class VehiculoAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
         ('Otros Costos (Todos los Esquemas)', {
-            'fields': ('costo_monitoreo_mensual',),
-            'description': 'Monitoreo Satelital (GPS)',
+            'fields': ('costo_monitoreo_mensual', 'costo_seguro_mercancia_mensual'),
+            'description': 'Monitoreo Satelital (GPS) y Seguro de Mercancía',
             'classes': ('collapse',)
         }),
         ('Asignación y Proyecciones', {
