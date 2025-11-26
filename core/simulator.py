@@ -251,7 +251,7 @@ class Simulator:
             rubro = RubroVehiculo(
                 id=f"vehiculo_{tipo_vehiculo}_renting_{marca.marca_id}",
                 nombre=f"Vehículo {tipo_vehiculo.upper()} (Renting)",
-                categoria='logistica',
+                categoria='logistico',
                 tipo='vehiculo',
                 tipo_asignacion=TipoAsignacion(asignacion_str),
                 marca_id=marca.marca_id if asignacion_str == 'individual' else None,
@@ -286,7 +286,7 @@ class Simulator:
             rubro = RubroVehiculo(
                 id=f"vehiculo_{tipo_vehiculo}_tradicional_{marca.marca_id}",
                 nombre=f"Vehículo {tipo_vehiculo.upper()} (Propio)",
-                categoria='logistica',
+                categoria='logistico',
                 tipo='vehiculo',
                 tipo_asignacion=TipoAsignacion(asignacion_str),
                 marca_id=marca.marca_id if asignacion_str == 'individual' else None,
@@ -330,7 +330,7 @@ class Simulator:
                 rubro = RubroPersonal(
                     id=f"{tipo_personal}_{marca.marca_id}",
                     nombre=f"{tipo_personal.replace('_', ' ').title()}",
-                    categoria='logistica',
+                    categoria='logistico',
                     tipo='personal',
                     tipo_asignacion=TipoAsignacion(asignacion_str),
                     marca_id=marca.marca_id if asignacion_str == 'individual' else None,
@@ -363,7 +363,7 @@ class Simulator:
             rubro = Rubro(
                 id=f"gasto_log_{gasto_data.get('tipo')}_{marca.marca_id}",
                 nombre=gasto_data.get('nombre', gasto_data.get('tipo', 'Gasto')),
-                categoria='logistica',
+                categoria='logistico',
                 tipo='gasto',
                 tipo_asignacion=TipoAsignacion(asignacion_str),
                 marca_id=marca.marca_id if asignacion_str == 'individual' else None,
@@ -419,7 +419,7 @@ class Simulator:
             rubro = Rubro(
                 id=f"admin_{puesto}",
                 nombre=config.get('nombre', config.get('descripcion', puesto.replace('_', ' ').title())),
-                categoria='administrativa',
+                categoria='administrativo',
                 tipo='personal',
                 tipo_asignacion=TipoAsignacion.COMPARTIDO,
                 criterio_prorrateo=CriterioProrrateo(criterio_str),
@@ -442,7 +442,7 @@ class Simulator:
             rubro = Rubro(
                 id=f"gasto_admin_{gasto_data.get('tipo')}",
                 nombre=gasto_data.get('nombre', gasto_data.get('tipo', 'Gasto')),
-                categoria='administrativa',
+                categoria='administrativo',
                 tipo='gasto',
                 tipo_asignacion=TipoAsignacion.COMPARTIDO,
                 criterio_prorrateo=CriterioProrrateo(criterio_str),
