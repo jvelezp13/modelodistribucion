@@ -1,7 +1,7 @@
 # Generated manually to fix vehiculo schema issues
 # This migration ensures the Vehiculo table is in sync with the model
 
-from django.db import migrations, models
+from django.db import migrations
 
 
 class Migration(migrations.Migration):
@@ -11,23 +11,37 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        # This is a no-op migration that just ensures Django's migration state
-        # is in sync with the actual database schema.
-        # If there are any orphaned columns, we try to remove them again.
+        # Drop each column separately with IF EXISTS to avoid errors
         migrations.RunSQL(
-            # Drop columns if they still exist (PostgreSQL syntax)
-            sql=[
-                "ALTER TABLE dxv_vehiculo DROP COLUMN IF EXISTS banco CASCADE;",
-                "ALTER TABLE dxv_vehiculo DROP COLUMN IF EXISTS conductor CASCADE;",
-                "ALTER TABLE dxv_vehiculo DROP COLUMN IF EXISTS numero_cuenta CASCADE;",
-                "ALTER TABLE dxv_vehiculo DROP COLUMN IF EXISTS numero_documento CASCADE;",
-                "ALTER TABLE dxv_vehiculo DROP COLUMN IF EXISTS placa CASCADE;",
-                "ALTER TABLE dxv_vehiculo DROP COLUMN IF EXISTS propietario CASCADE;",
-                "ALTER TABLE dxv_vehiculo DROP COLUMN IF EXISTS tipo_cuenta CASCADE;",
-                "ALTER TABLE dxv_vehiculo DROP COLUMN IF EXISTS tipo_documento CASCADE;",
-            ],
-            reverse_sql=[
-                # No reverse - we can't restore dropped columns
-            ],
+            sql="ALTER TABLE dxv_vehiculo DROP COLUMN IF EXISTS banco CASCADE;",
+            reverse_sql=migrations.RunSQL.noop,
+        ),
+        migrations.RunSQL(
+            sql="ALTER TABLE dxv_vehiculo DROP COLUMN IF EXISTS conductor CASCADE;",
+            reverse_sql=migrations.RunSQL.noop,
+        ),
+        migrations.RunSQL(
+            sql="ALTER TABLE dxv_vehiculo DROP COLUMN IF EXISTS numero_cuenta CASCADE;",
+            reverse_sql=migrations.RunSQL.noop,
+        ),
+        migrations.RunSQL(
+            sql="ALTER TABLE dxv_vehiculo DROP COLUMN IF EXISTS numero_documento CASCADE;",
+            reverse_sql=migrations.RunSQL.noop,
+        ),
+        migrations.RunSQL(
+            sql="ALTER TABLE dxv_vehiculo DROP COLUMN IF EXISTS placa CASCADE;",
+            reverse_sql=migrations.RunSQL.noop,
+        ),
+        migrations.RunSQL(
+            sql="ALTER TABLE dxv_vehiculo DROP COLUMN IF EXISTS propietario CASCADE;",
+            reverse_sql=migrations.RunSQL.noop,
+        ),
+        migrations.RunSQL(
+            sql="ALTER TABLE dxv_vehiculo DROP COLUMN IF EXISTS tipo_cuenta CASCADE;",
+            reverse_sql=migrations.RunSQL.noop,
+        ),
+        migrations.RunSQL(
+            sql="ALTER TABLE dxv_vehiculo DROP COLUMN IF EXISTS tipo_documento CASCADE;",
+            reverse_sql=migrations.RunSQL.noop,
         ),
     ]
