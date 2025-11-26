@@ -129,6 +129,8 @@ def update_expenses_on_personnel_change(sender, instance, **kwargs):
 
 @receiver(post_save, sender=PoliticaRecursosHumanos)
 def update_expenses_on_policy_change(sender, instance, **kwargs):
+    # Obtener todos los escenarios del año de la política
+    escenarios = Escenario.objects.filter(anio=instance.anio)
     for escenario in escenarios:
         calculate_hr_expenses(escenario)
 
