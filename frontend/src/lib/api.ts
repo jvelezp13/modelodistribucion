@@ -68,6 +68,7 @@ export interface Rubro {
   depreciacion?: number;
   seguro?: number;
   impuestos?: number;
+  valor_flete_mensual?: number;
 }
 
 export interface Consolidado {

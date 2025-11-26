@@ -225,7 +225,7 @@ export default function PyGDetallado({ marca }: PyGDetalladoProps) {
             )}
             {rubro.tipo === 'vehiculo' && rubro.esquema && (
               <span className="px-1.5 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-medium rounded">
-                {rubro.esquema === 'renting' ? 'Renting' : 'Propio'}
+                {rubro.esquema === 'renting' ? 'Renting' : rubro.esquema === 'tercero' ? 'Tercero' : 'Propio'}
               </span>
             )}
             {rubro.tipo_vehiculo && (
@@ -333,6 +333,18 @@ export default function PyGDetallado({ marca }: PyGDetalladoProps) {
                   <div className="flex justify-between">
                     <span>Impuestos (mensual):</span>
                     <span className="font-medium text-gray-700">{formatCurrency((rubro.impuestos / 12) * (rubro.cantidad || 1))}</span>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Desglose para Vehículos Terceros */}
+            {rubro.tipo === 'vehiculo' && rubro.esquema === 'tercero' && (
+              <>
+                {rubro.valor_flete_mensual !== undefined && rubro.valor_flete_mensual > 0 && (
+                  <div className="flex justify-between">
+                    <span>Valor Flete Mensual:</span>
+                    <span className="font-medium text-gray-700">{formatCurrency(rubro.valor_flete_mensual * (rubro.cantidad || 1))}</span>
                   </div>
                 )}
               </>
