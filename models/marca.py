@@ -57,6 +57,10 @@ class Marca:
     costo_administrativo: float = 0.0
     costo_total: float = 0.0
 
+    # Lejanías (gastos variables por ruta)
+    lejania_comercial: float = 0.0
+    lejania_logistica: float = 0.0
+
     # Metadata
     activa: bool = True
     color: str = "#4ECDC4"  # Para visualizaciones

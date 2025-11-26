@@ -19,6 +19,7 @@ from core.allocator import Allocator
 from core.calculator_nomina import CalculadoraNomina
 from core.calculator_vehiculos import CalculadoraVehiculos
 from core.calculator_descuentos import CalculadoraDescuentos
+from core.calculator_lejanias import CalculadoraLejanias
 from utils.loaders import DataLoader
 
 logger = logging.getLogger(__name__)
@@ -63,6 +64,7 @@ class Simulator:
         self.calc_nomina = CalculadoraNomina(self.loader)
         self.calc_vehiculos = CalculadoraVehiculos(self.loader)
         self.calc_descuentos = CalculadoraDescuentos()
+        self.calc_lejanias = None  # Se inicializa con escenario en ejecutar_simulacion()
 
         # Configuraciones
         self._config_empresa = None
@@ -689,6 +691,9 @@ class Simulator:
             except Exception as e:
                 logger.warning(f"Error aplicando descuentos a {marca.nombre}: {e}")
 
+        # Calcular lejanías (gastos variables por ruta)
+        self._calcular_lejanias()
+
         # Calcular consolidado
         consolidado = self._calcular_consolidado()
 
@@ -741,6 +746,53 @@ class Simulator:
             'total_empleados': sum(m.total_empleados for m in self.marcas),
             'porcentaje_descuento_promedio': (total_descuentos / total_ventas_brutas * 100) if total_ventas_brutas > 0 else 0
         }
+
+    def _calcular_lejanias(self):
+        """
+        Calcula lejanías (gastos variables por ruta) para todas las marcas.
+        Requiere que las marcas tengan zonas configuradas con municipios.
+        """
+        try:
+            # Obtener escenario del loader
+            escenario = getattr(self.loader, 'escenario', None)
+            if not escenario:
+                logger.warning("No hay escenario disponible, saltando cálculo de lejanías")
+                return
+
+            # Inicializar calculadora con escenario
+            self.calc_lejanias = CalculadoraLejanias(escenario)
+
+            # Calcular para cada marca
+            for marca in self.marcas:
+                try:
+                    # Obtener el objeto Marca de Django
+                    from admin_panel.core.models import Marca as MarcaDjango
+                    marca_django = MarcaDjango.objects.get(marca_id=marca.marca_id)
+
+                    resultado = self.calc_lejanias.calcular_lejanias_marca(marca_django)
+
+                    # Asignar a la marca (dataclass)
+                    marca.lejania_comercial = float(resultado['comercial']['total_mensual'])
+                    marca.lejania_logistica = float(resultado['logistica']['total_mensual'])
+
+                    # Agregar a costos totales
+                    marca.costo_comercial += marca.lejania_comercial
+                    marca.costo_logistico += marca.lejania_logistica
+                    marca.costo_total = (
+                        marca.costo_comercial +
+                        marca.costo_logistico +
+                        marca.costo_administrativo
+                    )
+
+                    logger.info(
+                        f"Lejanías calculadas para {marca.nombre}: "
+                        f"Comercial=${marca.lejania_comercial:,.0f}, "
+                        f"Logística=${marca.lejania_logistica:,.0f}"
+                    )
+                except Exception as e:
+                    logger.warning(f"Error calculando lejanías para {marca.nombre}: {e}")
+        except Exception as e:
+            logger.warning(f"No se pudieron calcular lejanías: {e}")
 
 
 # Función de conveniencia
