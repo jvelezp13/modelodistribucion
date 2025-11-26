@@ -366,6 +366,16 @@ class Vehiculo(models.Model):
     
     # Campos para consumo (Propio y Renting)
     consumo_galon_km = models.DecimalField(max_digits=5, decimal_places=2, default=30, verbose_name="Km por Galón", help_text="Rendimiento del vehículo")
+    tipo_combustible = models.CharField(
+        max_length=10,
+        choices=[
+            ('gasolina', 'Gasolina'),
+            ('acpm', 'ACPM (Diesel)'),
+        ],
+        default='acpm',
+        verbose_name="Tipo de Combustible",
+        help_text="Tipo de combustible que usa el vehículo"
+    )
 
     # Otros costos operativos (Propio y Renting)
     costo_lavado_mensual = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Lavado Mensual")
@@ -419,12 +429,16 @@ class Vehiculo(models.Model):
             total = 0
             cantidad = self.cantidad or 0
 
-            # Obtener precio combustible del escenario
+            # Obtener precio combustible del escenario según tipo
             precio_galon = 0
             if self.escenario:
                 try:
                     macro = ParametrosMacro.objects.get(anio=self.escenario.anio, activo=True)
-                    precio_galon = macro.precio_galon_combustible or 0
+                    # Usar el precio según el tipo de combustible
+                    if self.tipo_combustible == 'gasolina':
+                        precio_galon = macro.precio_galon_gasolina or 0
+                    else:  # acpm
+                        precio_galon = macro.precio_galon_acpm or 0
                 except ParametrosMacro.DoesNotExist:
                     pass
 
@@ -549,7 +563,20 @@ class ParametrosMacro(models.Model):
     salario_minimo_legal = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Salario Mínimo Legal")
     salario_minimo_legal = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Salario Mínimo Legal")
     subsidio_transporte = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Subsidio de Transporte")
-    precio_galon_combustible = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="Precio Galón Combustible")
+    precio_galon_gasolina = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=15000,
+        verbose_name="Precio Galón Gasolina",
+        help_text="Precio promedio galón de gasolina"
+    )
+    precio_galon_acpm = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=14000,
+        verbose_name="Precio Galón ACPM (Diesel)",
+        help_text="Precio promedio galón de ACPM/diesel"
+    )
     incremento_salarios = models.DecimalField(max_digits=6, decimal_places=5, verbose_name="Incremento Salarios General (%)", help_text="Incremento general de salarios")
     
     # Nuevos índices para proyecciones
@@ -1306,3 +1333,345 @@ class PoliticaRecursosHumanos(models.Model):
 
     def __str__(self):
         return f"Políticas RRHH {self.anio}"
+
+
+# ============================================================================
+# MÓDULO DE LEJANÍAS - Gestión de Rutas y Gastos Variables
+# ============================================================================
+
+class Municipio(models.Model):
+    """Municipios del territorio de operación"""
+    codigo_dane = models.CharField(
+        max_length=10,
+        unique=True,
+        verbose_name="Código DANE",
+        help_text="Código DANE del municipio"
+    )
+    nombre = models.CharField(max_length=100, verbose_name="Nombre")
+    departamento = models.CharField(max_length=50, verbose_name="Departamento")
+    latitud = models.DecimalField(
+        max_digits=10,
+        decimal_places=7,
+        null=True,
+        blank=True,
+        verbose_name="Latitud"
+    )
+    longitud = models.DecimalField(
+        max_digits=10,
+        decimal_places=7,
+        null=True,
+        blank=True,
+        verbose_name="Longitud"
+    )
+
+    activo = models.BooleanField(default=True, verbose_name="Activo")
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_modificacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'dxv_municipio'
+        verbose_name = "Municipio"
+        verbose_name_plural = "Municipios"
+        ordering = ['departamento', 'nombre']
+
+    def __str__(self):
+        return f"{self.nombre}, {self.departamento}"
+
+
+class MatrizDesplazamiento(models.Model):
+    """Matriz de distancias y tiempos entre municipios"""
+    origen = models.ForeignKey(
+        'Municipio',
+        related_name='rutas_desde',
+        on_delete=models.CASCADE,
+        verbose_name="Origen"
+    )
+    destino = models.ForeignKey(
+        'Municipio',
+        related_name='rutas_hacia',
+        on_delete=models.CASCADE,
+        verbose_name="Destino"
+    )
+    distancia_km = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        verbose_name="Distancia (km)"
+    )
+    tiempo_minutos = models.IntegerField(verbose_name="Tiempo (minutos)")
+
+    notas = models.TextField(blank=True, verbose_name="Notas")
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_modificacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'dxv_matriz_desplazamiento'
+        verbose_name = "Matriz de Desplazamiento"
+        verbose_name_plural = "Matrices de Desplazamiento"
+        unique_together = ('origen', 'destino')
+        ordering = ['origen__nombre', 'destino__nombre']
+
+    def __str__(self):
+        return f"{self.origen} → {self.destino}: {self.distancia_km} km"
+
+
+class ConfiguracionLejania(models.Model):
+    """Configuración de cálculo de lejanías por escenario"""
+    escenario = models.OneToOneField(
+        'Escenario',
+        on_delete=models.CASCADE,
+        related_name='configuracion_lejania',
+        verbose_name="Escenario"
+    )
+    municipio_bodega = models.ForeignKey(
+        'Municipio',
+        on_delete=models.SET_NULL,
+        null=True,
+        verbose_name="Municipio Bodega",
+        help_text="Centro de distribución principal"
+    )
+
+    # === UMBRALES ===
+    umbral_lejania_logistica_km = models.IntegerField(
+        default=60,
+        verbose_name="Umbral Logística (km)",
+        help_text="Aplicar lejania logística desde X km"
+    )
+    umbral_lejania_comercial_km = models.IntegerField(
+        default=10,
+        verbose_name="Umbral Comercial (km)",
+        help_text="Aplicar lejania comercial desde X km"
+    )
+
+    # === COMBUSTIBLE COMERCIAL ===
+    consumo_galon_km_moto = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=40,
+        verbose_name="Consumo Moto (km/galón)",
+        help_text="Rendimiento moto: típicamente 40 km/galón"
+    )
+    consumo_galon_km_automovil = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=12,
+        verbose_name="Consumo Automóvil (km/galón)",
+        help_text="Rendimiento automóvil: típicamente 12 km/galón"
+    )
+
+    # === GASTOS PERNOCTA LOGÍSTICA ===
+    desayuno_logistica = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=15000,
+        verbose_name="Desayuno Logística"
+    )
+    almuerzo_logistica = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=20000,
+        verbose_name="Almuerzo Logística"
+    )
+    cena_logistica = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=20000,
+        verbose_name="Cena Logística"
+    )
+    alojamiento_logistica = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=80000,
+        verbose_name="Alojamiento Logística"
+    )
+    parqueadero_logistica = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=15000,
+        verbose_name="Parqueadero Logística"
+    )
+    es_constitutiva_salario_logistica = models.BooleanField(
+        default=False,
+        verbose_name="¿Constitutiva Salario? (Logística)",
+        help_text="Si marca Sí, se incluye en prestaciones sociales"
+    )
+
+    # === GASTOS PERNOCTA COMERCIAL ===
+    desayuno_comercial = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=15000,
+        verbose_name="Desayuno Comercial"
+    )
+    almuerzo_comercial = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=20000,
+        verbose_name="Almuerzo Comercial"
+    )
+    cena_comercial = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=20000,
+        verbose_name="Cena Comercial"
+    )
+    alojamiento_comercial = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=80000,
+        verbose_name="Alojamiento Comercial"
+    )
+    es_constitutiva_salario_comercial = models.BooleanField(
+        default=False,
+        verbose_name="¿Constitutiva Salario? (Comercial)",
+        help_text="Si marca Sí, se incluye en prestaciones sociales"
+    )
+
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_modificacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'dxv_configuracion_lejania'
+        verbose_name = "Configuración de Lejanías"
+        verbose_name_plural = "Configuraciones de Lejanías"
+
+    def __str__(self):
+        return f"Config Lejanías - {self.escenario}"
+
+
+class Zona(models.Model):
+    """Zonas comerciales (grupos de municipios atendidos)"""
+    nombre = models.CharField(max_length=100, verbose_name="Nombre")
+    codigo = models.CharField(max_length=20, verbose_name="Código")
+    descripcion = models.TextField(blank=True, verbose_name="Descripción")
+
+    vendedor = models.ForeignKey(
+        'PersonalComercial',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Vendedor Asignado"
+    )
+    marca = models.ForeignKey(
+        'Marca',
+        on_delete=models.CASCADE,
+        verbose_name="Marca"
+    )
+    escenario = models.ForeignKey(
+        'Escenario',
+        on_delete=models.CASCADE,
+        verbose_name="Escenario"
+    )
+
+    # Base del vendedor (para calcular rutas comerciales)
+    municipio_base_vendedor = models.ForeignKey(
+        'Municipio',
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='zonas_base',
+        verbose_name="Municipio Base Vendedor",
+        help_text="Desde dónde parte el vendedor (su residencia)"
+    )
+
+    # Tipo de vehículo comercial
+    tipo_vehiculo_comercial = models.CharField(
+        max_length=20,
+        choices=[
+            ('MOTO', 'Moto'),
+            ('AUTOMOVIL', 'Automóvil'),
+        ],
+        default='MOTO',
+        verbose_name="Tipo Vehículo Comercial"
+    )
+
+    # Frecuencia de visitas
+    frecuencia = models.CharField(
+        max_length=20,
+        choices=[
+            ('SEMANAL', 'Semanal (4 periodos/mes)'),
+            ('QUINCENAL', 'Quincenal (2 periodos/mes)'),
+            ('MENSUAL', 'Mensual (1 periodo/mes)'),
+        ],
+        default='MENSUAL',
+        verbose_name="Frecuencia de Visitas"
+    )
+
+    # Pernocta
+    requiere_pernocta = models.BooleanField(
+        default=False,
+        verbose_name="¿Requiere Pernocta?",
+        help_text="Si la ruta requiere pasar la noche fuera"
+    )
+    noches_pernocta = models.IntegerField(
+        default=0,
+        verbose_name="Noches de Pernocta",
+        help_text="Cantidad de noches por periodo"
+    )
+
+    activo = models.BooleanField(default=True, verbose_name="Activa")
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_modificacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'dxv_zona'
+        verbose_name = "Zona"
+        verbose_name_plural = "Zonas"
+        ordering = ['marca', 'nombre']
+
+    def __str__(self):
+        return f"{self.nombre} - {self.marca}"
+
+    def periodos_por_mes(self):
+        """Retorna cuántos periodos hay por mes según frecuencia"""
+        if self.frecuencia == 'SEMANAL':
+            return 4
+        elif self.frecuencia == 'QUINCENAL':
+            return 2
+        else:  # MENSUAL
+            return 1
+
+
+class ZonaMunicipio(models.Model):
+    """Relación entre Zona y Municipios con frecuencias específicas"""
+    zona = models.ForeignKey(
+        'Zona',
+        on_delete=models.CASCADE,
+        verbose_name="Zona"
+    )
+    municipio = models.ForeignKey(
+        'Municipio',
+        on_delete=models.CASCADE,
+        verbose_name="Municipio"
+    )
+
+    # Frecuencias por periodo (según la frecuencia de la zona)
+    visitas_por_periodo = models.IntegerField(
+        default=1,
+        verbose_name="Visitas Comerciales por Periodo",
+        help_text="Ej: Si la zona es semanal, cuántas visitas por semana"
+    )
+    entregas_por_periodo = models.IntegerField(
+        default=1,
+        verbose_name="Entregas Logísticas por Periodo",
+        help_text="Ej: Si la zona es semanal, cuántas entregas por semana"
+    )
+
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_modificacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'dxv_zona_municipio'
+        verbose_name = "Zona-Municipio"
+        verbose_name_plural = "Zonas-Municipios"
+        unique_together = ('zona', 'municipio')
+        ordering = ['zona', 'municipio__nombre']
+
+    def __str__(self):
+        return f"{self.zona.nombre} → {self.municipio}"
+
+    def visitas_mensuales(self):
+        """Calcula visitas comerciales mensuales"""
+        return self.visitas_por_periodo * self.zona.periodos_por_mes()
+
+    def entregas_mensuales(self):
+        """Calcula entregas logísticas mensuales"""
+        return self.entregas_por_periodo * self.zona.periodos_por_mes()

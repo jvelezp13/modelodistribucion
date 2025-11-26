@@ -10,7 +10,10 @@ from .models import (
     PersonalAdministrativo, GastoAdministrativo,
     GastoComercial, GastoLogistico, Impuesto,
     ConfiguracionDescuentos, TramoDescuentoFactura,
-    Escenario, PoliticaRecursosHumanos
+    Escenario, PoliticaRecursosHumanos,
+    # Módulo de Lejanías
+    Municipio, MatrizDesplazamiento, ConfiguracionLejania,
+    Zona, ZonaMunicipio
 )
 
 
@@ -924,4 +927,183 @@ class PoliticaRecursosHumanosAdmin(admin.ModelAdmin):
     def tasa_rotacion_percent(self, obj):
         return f"{obj.tasa_rotacion_anual:.1f}%"
     tasa_rotacion_percent.short_description = 'Rotación'
+
+
+# ============================================================================
+# ADMINS PARA MÓDULO DE LEJANÍAS
+# ============================================================================
+
+@admin.register(Municipio)
+class MunicipioAdmin(admin.ModelAdmin):
+    list_display = ('nombre', 'departamento', 'codigo_dane', 'activo')
+    list_filter = ('departamento', 'activo')
+    search_fields = ['nombre', 'codigo_dane', 'departamento']  # Para autocomplete
+    readonly_fields = ('fecha_creacion', 'fecha_modificacion')
+
+    fieldsets = (
+        ('Información Básica', {
+            'fields': ('nombre', 'departamento', 'codigo_dane', 'activo')
+        }),
+        ('Geolocalización (Opcional)', {
+            'fields': ('latitud', 'longitud'),
+            'classes': ('collapse',)
+        }),
+        ('Metadata', {
+            'fields': ('fecha_creacion', 'fecha_modificacion'),
+            'classes': ('collapse',)
+        }),
+    )
+
+
+@admin.register(MatrizDesplazamiento)
+class MatrizDesplazamientoAdmin(admin.ModelAdmin):
+    list_display = ('origen', 'destino', 'distancia_km', 'tiempo_minutos', 'tiempo_horas')
+    list_filter = ('origen__departamento',)
+    search_fields = ('origen__nombre', 'destino__nombre')
+    readonly_fields = ('fecha_creacion', 'fecha_modificacion')
+    autocomplete_fields = ['origen', 'destino']
+
+    fieldsets = (
+        ('Ruta', {
+            'fields': ('origen', 'destino')
+        }),
+        ('Distancia y Tiempo', {
+            'fields': ('distancia_km', 'tiempo_minutos')
+        }),
+        ('Notas', {
+            'fields': ('notas',),
+            'classes': ('collapse',)
+        }),
+        ('Metadata', {
+            'fields': ('fecha_creacion', 'fecha_modificacion'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def tiempo_horas(self, obj):
+        return f"{obj.tiempo_minutos / 60:.1f}h"
+    tiempo_horas.short_description = 'Tiempo (hrs)'
+
+
+@admin.register(ConfiguracionLejania)
+class ConfiguracionLejaniaAdmin(admin.ModelAdmin):
+    list_display = ('escenario', 'municipio_bodega', 'umbral_logistica', 'umbral_comercial')
+    list_filter = ('escenario__anio',)
+    search_fields = ('escenario__nombre',)
+    readonly_fields = ('fecha_creacion', 'fecha_modificacion')
+    autocomplete_fields = ['municipio_bodega']
+
+    fieldsets = (
+        ('Escenario y Bodega', {
+            'fields': ('escenario', 'municipio_bodega')
+        }),
+        ('Umbrales de Lejanía', {
+            'fields': ('umbral_lejania_logistica_km', 'umbral_lejania_comercial_km'),
+            'description': 'Distancia mínima en km para aplicar cálculo de lejanía'
+        }),
+        ('Consumo Combustible Comercial', {
+            'fields': ('consumo_galon_km_moto', 'consumo_galon_km_automovil'),
+            'description': 'Rendimiento en km por galón de gasolina'
+        }),
+        ('Gastos Pernocta Logística', {
+            'fields': (
+                ('desayuno_logistica', 'almuerzo_logistica', 'cena_logistica'),
+                ('alojamiento_logistica', 'parqueadero_logistica'),
+                'es_constitutiva_salario_logistica'
+            )
+        }),
+        ('Gastos Pernocta Comercial', {
+            'fields': (
+                ('desayuno_comercial', 'almuerzo_comercial', 'cena_comercial'),
+                'alojamiento_comercial',
+                'es_constitutiva_salario_comercial'
+            )
+        }),
+        ('Metadata', {
+            'fields': ('fecha_creacion', 'fecha_modificacion'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def umbral_logistica(self, obj):
+        return f"{obj.umbral_lejania_logistica_km} km"
+    umbral_logistica.short_description = 'Umbral Log.'
+
+    def umbral_comercial(self, obj):
+        return f"{obj.umbral_lejania_comercial_km} km"
+    umbral_comercial.short_description = 'Umbral Com.'
+
+
+class ZonaMunicipioInline(admin.TabularInline):
+    model = ZonaMunicipio
+    extra = 1
+    autocomplete_fields = ['municipio']
+    fields = ('municipio', 'visitas_por_periodo', 'entregas_por_periodo')
+
+
+@admin.register(Zona)
+class ZonaAdmin(admin.ModelAdmin):
+    list_display = ('nombre', 'codigo', 'marca', 'vendedor', 'tipo_vehiculo_comercial', 'frecuencia', 'requiere_pernocta', 'activo')
+    list_filter = ('marca', 'frecuencia', 'requiere_pernocta', 'tipo_vehiculo_comercial', 'activo')
+    search_fields = ('nombre', 'codigo', 'descripcion')
+    readonly_fields = ('fecha_creacion', 'fecha_modificacion')
+    autocomplete_fields = ['vendedor', 'municipio_base_vendedor']
+    inlines = [ZonaMunicipioInline]
+
+    fieldsets = (
+        ('Información Básica', {
+            'fields': ('nombre', 'codigo', 'descripcion', 'activo')
+        }),
+        ('Asignación', {
+            'fields': ('marca', 'escenario', 'vendedor', 'municipio_base_vendedor')
+        }),
+        ('Configuración Comercial', {
+            'fields': ('tipo_vehiculo_comercial', 'frecuencia')
+        }),
+        ('Pernocta', {
+            'fields': ('requiere_pernocta', 'noches_pernocta'),
+            'description': 'Si la zona requiere que el personal pernocte fuera de casa'
+        }),
+        ('Metadata', {
+            'fields': ('fecha_creacion', 'fecha_modificacion'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('marca', 'vendedor', 'municipio_base_vendedor')
+
+
+@admin.register(ZonaMunicipio)
+class ZonaMunicipioAdmin(admin.ModelAdmin):
+    list_display = ('zona', 'municipio', 'visitas_por_periodo', 'entregas_por_periodo', 'visitas_mensuales_calc', 'entregas_mensuales_calc')
+    list_filter = ('zona__marca', 'zona__frecuencia')
+    search_fields = ('zona__nombre', 'municipio__nombre')
+    readonly_fields = ('fecha_creacion', 'fecha_modificacion')
+    autocomplete_fields = ['zona', 'municipio']
+
+    fieldsets = (
+        ('Relación', {
+            'fields': ('zona', 'municipio')
+        }),
+        ('Frecuencias por Periodo', {
+            'fields': ('visitas_por_periodo', 'entregas_por_periodo'),
+            'description': 'Frecuencia según el periodo de la zona (semanal/quincenal/mensual)'
+        }),
+        ('Metadata', {
+            'fields': ('fecha_creacion', 'fecha_modificacion'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def visitas_mensuales_calc(self, obj):
+        return obj.visitas_mensuales()
+    visitas_mensuales_calc.short_description = 'Visitas/Mes'
+
+    def entregas_mensuales_calc(self, obj):
+        return obj.entregas_mensuales()
+    entregas_mensuales_calc.short_description = 'Entregas/Mes'
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('zona', 'municipio')
 
