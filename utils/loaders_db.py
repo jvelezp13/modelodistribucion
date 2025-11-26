@@ -51,6 +51,11 @@ class DataLoaderDB:
             
         return self._escenario_cache
 
+    @property
+    def escenario(self):
+        """Propiedad para acceder al escenario (compatible con CalculadoraLejanias)"""
+        return self._get_escenario()
+
     def _get_filter_kwargs(self):
         """Retorna los kwargs para filtrar por escenario"""
         escenario = self._get_escenario()
