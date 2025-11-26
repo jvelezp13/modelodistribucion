@@ -382,34 +382,48 @@ class DataLoaderDB:
             marca = Marca.objects.get(marca_id=marca_id)
 
             # Cargar personal administrativo
-            personal_qs = PersonalAdministrativo.objects.filter(marca=marca, **self._get_filter_kwargs())
             personal_dict = []
+            try:
+                personal_qs = PersonalAdministrativo.objects.filter(marca=marca, **self._get_filter_kwargs())
 
-            for p in personal_qs:
-                personal_dict.append({
-                    'tipo': p.tipo,
-                    'nombre': p.nombre if hasattr(p, 'nombre') else '',
-                    'cantidad': p.cantidad,
-                    'salario_base': float(p.salario_base),
-                    'perfil_prestacional': p.perfil_prestacional,
-                    'asignacion': p.asignacion,
-                    'porcentaje_dedicacion': float(p.porcentaje_dedicacion) if p.porcentaje_dedicacion else None,
-                    'criterio_prorrateo': p.criterio_prorrateo,
-                    'costo_mensual_calculado': float(p.calcular_costo_mensual()),
-                })
+                for p in personal_qs:
+                    try:
+                        personal_dict.append({
+                            'tipo': p.tipo,
+                            'nombre': p.nombre if p.nombre else '',
+                            'cantidad': p.cantidad,
+                            'salario_base': float(p.salario_base),
+                            'perfil_prestacional': p.perfil_prestacional,
+                            'asignacion': p.asignacion,
+                            'porcentaje_dedicacion': float(p.porcentaje_dedicacion) if p.porcentaje_dedicacion else None,
+                            'criterio_prorrateo': p.criterio_prorrateo,
+                            'costo_mensual_calculado': float(p.calcular_costo_mensual()),
+                        })
+                    except Exception as e:
+                        logger.warning(f"Error procesando personal administrativo {p.id}: {e}")
+                        continue
+            except Exception as e:
+                logger.warning(f"Error cargando personal administrativo de {marca_id}: {e}")
 
             # Cargar gastos administrativos
-            gastos_qs = GastoAdministrativo.objects.filter(marca=marca, **self._get_filter_kwargs())
             gastos_dict = []
+            try:
+                gastos_qs = GastoAdministrativo.objects.filter(marca=marca, **self._get_filter_kwargs())
 
-            for gasto in gastos_qs:
-                gastos_dict.append({
-                    'tipo': gasto.tipo,
-                    'nombre': gasto.nombre,
-                    'valor_mensual': float(gasto.valor_mensual),
-                    'asignacion': gasto.asignacion,
-                    'criterio_prorrateo': gasto.criterio_prorrateo if gasto.asignacion == 'compartido' else None,
-                })
+                for gasto in gastos_qs:
+                    try:
+                        gastos_dict.append({
+                            'tipo': gasto.tipo,
+                            'nombre': gasto.nombre,
+                            'valor_mensual': float(gasto.valor_mensual),
+                            'asignacion': gasto.asignacion,
+                            'criterio_prorrateo': gasto.criterio_prorrateo if gasto.asignacion == 'compartido' else None,
+                        })
+                    except Exception as e:
+                        logger.warning(f"Error procesando gasto administrativo {gasto.id}: {e}")
+                        continue
+            except Exception as e:
+                logger.warning(f"Error cargando gastos administrativos de {marca_id}: {e}")
 
             logger.info(f"[DEBUG] Personal administrativo de {marca_id}: {len(personal_dict)}")
             logger.info(f"[DEBUG] Gastos administrativos de {marca_id}: {len(gastos_dict)}")
@@ -421,11 +435,20 @@ class DataLoaderDB:
             }
 
         except Marca.DoesNotExist:
-            logger.error(f"Marca no encontrada: {marca_id}")
-            raise FileNotFoundError(f"Marca no encontrada: {marca_id}")
+            logger.warning(f"Marca no encontrada: {marca_id}, retornando datos vacíos")
+            return {
+                'marca_id': marca_id,
+                'personal': [],
+                'gastos': [],
+            }
         except Exception as e:
             logger.error(f"Error cargando datos administrativos de {marca_id}: {e}")
-            raise
+            # No romper la simulación, retornar estructura vacía
+            return {
+                'marca_id': marca_id,
+                'personal': [],
+                'gastos': [],
+            }
 
     def cargar_marca_completa(self, marca_id: str) -> Dict[str, Any]:
         """Carga todos los datos de una marca"""
