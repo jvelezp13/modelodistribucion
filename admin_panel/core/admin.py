@@ -208,8 +208,10 @@ class PersonalLogisticoAdmin(admin.ModelAdmin):
 
 
 @admin.register(Vehiculo)
+@admin.register(Vehiculo)
 class VehiculoAdmin(admin.ModelAdmin):
-    list_display = ('marca', 'escenario', 'tipo_vehiculo', 'esquema', 'cantidad', 'kilometraje_promedio_mensual', 'asignacion')
+    change_list_template = 'admin/core/change_list_with_total.html'
+    list_display = ('marca', 'escenario', 'tipo_vehiculo', 'esquema', 'cantidad', 'costo_mensual_estimado_formateado')
     list_filter = ('escenario', 'marca', 'tipo_vehiculo', 'esquema', 'asignacion')
     search_fields = ('marca__nombre',)
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
