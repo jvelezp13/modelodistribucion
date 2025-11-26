@@ -1,6 +1,7 @@
 """
 Modelos Django para el Sistema DxV
 """
+from decimal import Decimal
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 
@@ -1621,13 +1622,20 @@ class Zona(models.Model):
         return f"{self.nombre} - {self.marca}"
 
     def periodos_por_mes(self):
-        """Retorna cuántos periodos hay por mes según frecuencia"""
+        """
+        Retorna cuántos periodos hay por mes según frecuencia.
+
+        Usa cálculos exactos:
+        - SEMANAL: 52 semanas / 12 meses = 4.33
+        - QUINCENAL: 24 quincenas / 12 meses = 2.00
+        - MENSUAL: 12 meses / 12 meses = 1.00
+        """
         if self.frecuencia == 'SEMANAL':
-            return 4
+            return Decimal('4.33')  # 52 semanas / 12 meses
         elif self.frecuencia == 'QUINCENAL':
-            return 2
+            return Decimal('2.00')
         else:  # MENSUAL
-            return 1
+            return Decimal('1.00')
 
 
 class ZonaMunicipio(models.Model):
