@@ -203,6 +203,7 @@ class DataLoaderDB:
 
                 data = {
                     'tipo': p.tipo,
+                    'nombre': p.nombre if hasattr(p, 'nombre') else '',  # ⭐ NUEVO campo
                     'cantidad': p.cantidad,
                     'salario_base': float(p.salario_base),
                     'perfil_prestacional': p.perfil_prestacional,
@@ -210,6 +211,7 @@ class DataLoaderDB:
                     'auxilio_adicional': float(p.auxilio_adicional) if p.auxilio_adicional else 0,
                     'porcentaje_dedicacion': float(p.porcentaje_dedicacion) if p.porcentaje_dedicacion else None,
                     'criterio_prorrateo': p.criterio_prorrateo,
+                    'costo_mensual_calculado': float(p.calcular_costo_mensual()),  # ⭐ USAR método del modelo
                 }
 
                 logger.info(f"[DEBUG] Agregando {p.tipo}: cantidad={p.cantidad}")
@@ -243,7 +245,7 @@ class DataLoaderDB:
 
             # Cargar vehículos
             vehiculos_qs = Vehiculo.objects.filter(marca=marca, **self._get_filter_kwargs())
-            vehiculos_dict = {'renting': [], 'tradicional': []}
+            vehiculos_dict = {'tercero': [], 'renting': [], 'tradicional': []}  # ⭐ Agregar esquema tercero
 
             for v in vehiculos_qs:
                 vehiculo_data = {
@@ -253,6 +255,10 @@ class DataLoaderDB:
                     'kilometraje_promedio_mensual': v.kilometraje_promedio_mensual,
                     'porcentaje_uso': float(v.porcentaje_uso) if v.porcentaje_uso else None,
                     'criterio_prorrateo': v.criterio_prorrateo,
+                    'costo_mensual_calculado': float(v.calcular_costo_mensual()),  # ⭐ USAR método del modelo (incluye seguro mercancía)
+                    # Campos adicionales para referencia
+                    'costo_seguro_mercancia_mensual': float(v.costo_seguro_mercancia_mensual) if v.costo_seguro_mercancia_mensual else 0,
+                    'costo_monitoreo_mensual': float(v.costo_monitoreo_mensual) if v.costo_monitoreo_mensual else 0,
                 }
                 vehiculos_dict[v.esquema].append(vehiculo_data)
 
@@ -267,12 +273,14 @@ class DataLoaderDB:
                     personal_dict[tipo_key] = []
 
                 personal_dict[tipo_key].append({
+                    'nombre': p.nombre if hasattr(p, 'nombre') else '',  # ⭐ NUEVO campo
                     'cantidad': p.cantidad,
                     'salario_base': float(p.salario_base),
                     'perfil_prestacional': p.perfil_prestacional,
                     'asignacion': p.asignacion,
                     'porcentaje_dedicacion': float(p.porcentaje_dedicacion) if p.porcentaje_dedicacion else None,
                     'criterio_prorrateo': p.criterio_prorrateo,
+                    'costo_mensual_calculado': float(p.calcular_costo_mensual()),  # ⭐ USAR método del modelo
                 })
 
             # Cargar volumen de operación
