@@ -258,6 +258,8 @@ class Marca:
             'costo_logistico': self.costo_logistico,
             'costo_administrativo': self.costo_administrativo,
             'costo_total': self.costo_total,
+            'lejania_comercial': self.lejania_comercial,
+            'lejania_logistica': self.lejania_logistica,
             'margen': self.margen,
             'margen_porcentaje': self.margen_porcentaje,
             'costo_como_porcentaje_ventas': self.costo_como_porcentaje_ventas,

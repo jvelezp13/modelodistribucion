@@ -455,6 +455,11 @@ export default function PyGDetallado({ marca }: PyGDetalladoProps) {
             </>
           )}
 
+          {/* Lejanías Comerciales */}
+          {marca.lejania_comercial && marca.lejania_comercial > 0 && (
+            <LineaItem titulo="Lejanías Comerciales (Rutas)" valor={marca.lejania_comercial} indent={1} />
+          )}
+
           <LineaItem titulo="Total Costos Comerciales" valor={totalComercial} bold />
         </div>
       )}
@@ -515,6 +520,11 @@ export default function PyGDetallado({ marca }: PyGDetalladoProps) {
                 </>
               )}
             </>
+          )}
+
+          {/* Lejanías Logísticas */}
+          {marca.lejania_logistica && marca.lejania_logistica > 0 && (
+            <LineaItem titulo="Lejanías Logísticas (Rutas)" valor={marca.lejania_logistica} indent={1} />
           )}
 
           <LineaItem titulo="Total Costos Logísticos" valor={totalLogistico} bold />

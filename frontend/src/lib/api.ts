@@ -32,6 +32,8 @@ export interface Marca {
   costo_comercial: number;
   costo_logistico: number;
   costo_administrativo: number;
+  lejania_comercial?: number;
+  lejania_logistica?: number;
   margen_porcentaje: number;
   total_empleados: number;
   empleados_comerciales: number;
