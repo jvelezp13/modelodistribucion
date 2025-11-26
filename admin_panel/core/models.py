@@ -169,6 +169,35 @@ class PersonalComercial(models.Model):
         verbose_name_plural = "Personal Comercial"
         ordering = ['marca', 'tipo']
 
+    def calcular_costo_mensual(self):
+        """Calcula el costo mensual total para este registro de personal"""
+        if not self.salario_base or not self.cantidad:
+            return 0
+
+        try:
+            # Obtener factor prestacional
+            factor = FactorPrestacional.objects.get(perfil=self.perfil_prestacional)
+            costo_unitario = self.salario_base * (1 + factor.factor_total)
+
+            # Sumar auxilio de transporte si aplica (<= 2 SMLV)
+            if self.escenario:
+                try:
+                    macro = ParametrosMacro.objects.get(anio=self.escenario.anio, activo=True)
+                    if self.salario_base <= (macro.salario_minimo_legal * 2):
+                        costo_unitario += macro.subsidio_transporte
+                except ParametrosMacro.DoesNotExist:
+                    pass
+
+            # Sumar auxilio adicional
+            costo_unitario += self.auxilio_adicional
+
+            # Multiplicar por cantidad
+            return costo_unitario * self.cantidad
+
+        except FactorPrestacional.DoesNotExist:
+            # Si no existe factor, retornar solo salario base * cantidad
+            return self.salario_base * self.cantidad
+
     def __str__(self):
         return f"{self.marca.nombre} - {self.get_tipo_display()} ({self.cantidad})"
 
@@ -249,6 +278,32 @@ class PersonalLogistico(models.Model):
         verbose_name = "Personal Logístico"
         verbose_name_plural = "Personal Logístico"
         ordering = ['marca', 'tipo']
+
+    def calcular_costo_mensual(self):
+        """Calcula el costo mensual total para este registro de personal"""
+        if not self.salario_base or not self.cantidad:
+            return 0
+
+        try:
+            # Obtener factor prestacional
+            factor = FactorPrestacional.objects.get(perfil=self.perfil_prestacional)
+            costo_unitario = self.salario_base * (1 + factor.factor_total)
+
+            # Sumar auxilio de transporte si aplica (<= 2 SMLV)
+            if self.escenario:
+                try:
+                    macro = ParametrosMacro.objects.get(anio=self.escenario.anio, activo=True)
+                    if self.salario_base <= (macro.salario_minimo_legal * 2):
+                        costo_unitario += macro.subsidio_transporte
+                except ParametrosMacro.DoesNotExist:
+                    pass
+
+            # Multiplicar por cantidad
+            return costo_unitario * self.cantidad
+
+        except FactorPrestacional.DoesNotExist:
+            # Si no existe factor, retornar solo salario base * cantidad
+            return self.salario_base * self.cantidad
 
     def __str__(self):
         return f"{self.marca.nombre} - {self.get_tipo_display()} ({self.cantidad})"
@@ -352,6 +407,58 @@ class Vehiculo(models.Model):
         verbose_name = "Vehículo"
         verbose_name_plural = "Vehículos"
         ordering = ['marca', 'tipo_vehiculo']
+
+    def calcular_costo_mensual(self):
+        """Calcula el costo mensual total para este vehículo"""
+        try:
+            total = 0
+            cantidad = self.cantidad or 0
+
+            # Obtener precio combustible del escenario
+            precio_galon = 0
+            if self.escenario:
+                try:
+                    macro = ParametrosMacro.objects.get(anio=self.escenario.anio, activo=True)
+                    precio_galon = macro.precio_galon_combustible or 0
+                except ParametrosMacro.DoesNotExist:
+                    pass
+
+            # Costos comunes (GPS)
+            total += (self.costo_monitoreo_mensual or 0) * cantidad
+
+            if self.esquema == 'tercero':
+                total += (self.valor_flete_mensual or 0) * cantidad
+
+            elif self.esquema in ['renting', 'tradicional']:
+                # Costos comunes Propio/Renting
+                total += (self.costo_lavado_mensual or 0) * cantidad
+                total += (self.costo_parqueadero_mensual or 0) * cantidad
+
+                # Combustible
+                consumo = self.consumo_galon_km or 0
+                km_mensual = self.kilometraje_promedio_mensual or 0
+                if consumo > 0:
+                    galones = km_mensual / consumo
+                    total += galones * precio_galon * cantidad
+
+                if self.esquema == 'renting':
+                    total += (self.canon_renting or 0) * cantidad
+
+                elif self.esquema == 'tradicional':
+                    # Depreciación
+                    vida_util = self.vida_util_anios or 0
+                    if vida_util > 0:
+                        costo_compra = self.costo_compra or 0
+                        valor_residual = self.valor_residual or 0
+                        depreciacion = (costo_compra - valor_residual) / (vida_util * 12)
+                        total += depreciacion * cantidad
+
+                    total += (self.costo_mantenimiento_mensual or 0) * cantidad
+                    total += (self.costo_seguro_mensual or 0) * cantidad
+
+            return total
+        except Exception:
+            return 0
 
     def __str__(self):
         return f"{self.marca.nombre} - {self.get_tipo_vehiculo_display()} {self.get_esquema_display()} ({self.cantidad})"
@@ -638,6 +745,42 @@ class PersonalAdministrativo(models.Model):
         verbose_name = "Personal Administrativo"
         verbose_name_plural = "Personal Administrativo"
         ordering = ['tipo']
+
+    def calcular_costo_mensual(self):
+        """Calcula el costo mensual total para este registro de personal"""
+        if not self.cantidad:
+            return 0
+
+        # Si es contrato por honorarios
+        if self.tipo_contrato == 'honorarios':
+            if not self.honorarios_mensuales:
+                return 0
+            return self.honorarios_mensuales * self.cantidad
+
+        # Si es contrato de nómina
+        if not self.salario_base:
+            return 0
+
+        try:
+            # Obtener factor prestacional
+            factor = FactorPrestacional.objects.get(perfil=self.perfil_prestacional)
+            costo_unitario = self.salario_base * (1 + factor.factor_total)
+
+            # Sumar auxilio de transporte si aplica (<= 2 SMLV)
+            if self.escenario:
+                try:
+                    macro = ParametrosMacro.objects.get(anio=self.escenario.anio, activo=True)
+                    if self.salario_base <= (macro.salario_minimo_legal * 2):
+                        costo_unitario += macro.subsidio_transporte
+                except ParametrosMacro.DoesNotExist:
+                    pass
+
+            # Multiplicar por cantidad
+            return costo_unitario * self.cantidad
+
+        except FactorPrestacional.DoesNotExist:
+            # Si no existe factor, retornar solo salario base * cantidad
+            return self.salario_base * self.cantidad
 
     def __str__(self):
         if self.marca:

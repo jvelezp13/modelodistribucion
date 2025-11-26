@@ -4,12 +4,30 @@
 {% block result_list %}
     {% if total_valor_mensual %}
     <div style="margin-bottom: 20px; padding: 15px; background-color: #f8f9fa; border-left: 4px solid #447e9b; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-        <h3 style="margin: 0; color: #333; font-size: 16px;">
-            <span style="font-weight: bold;">Total Valor Mensual (Selección Actual):</span> 
-            <span style="color: #447e9b; font-size: 18px; margin-left: 10px;">${{ total_valor_mensual|intcomma }}</span>
-        </h3>
-        <p style="margin: 5px 0 0 0; font-size: 12px; color: #666;">
-            Este valor es la suma de los registros filtrados actualmente en la lista.
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <div>
+                <h3 style="margin: 0; color: #333; font-size: 16px;">
+                    <span style="font-weight: bold;">Total Costo Mensual:</span>
+                    <span style="color: #447e9b; font-size: 20px; margin-left: 10px;">${{ total_valor_mensual|intcomma }}</span>
+                </h3>
+            </div>
+            <div style="display: flex; gap: 25px; font-size: 13px; color: #666;">
+                {% if total_registros %}
+                <div>
+                    <span style="font-weight: bold;">Registros:</span>
+                    <span style="color: #333;">{{ total_registros }}</span>
+                </div>
+                {% endif %}
+                {% if promedio_registro %}
+                <div>
+                    <span style="font-weight: bold;">Promedio/Registro:</span>
+                    <span style="color: #333;">${{ promedio_registro|intcomma }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        <p style="margin: 0; font-size: 12px; color: #666;">
+            Este valor corresponde a los registros filtrados actualmente en la lista.
         </p>
     </div>
     {% endif %}
