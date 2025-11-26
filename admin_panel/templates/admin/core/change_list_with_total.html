@@ -8,7 +8,7 @@
             <div>
                 <h3 style="margin: 0; color: #333; font-size: 16px;">
                     <span style="font-weight: bold;">Total Costo Mensual:</span>
-                    <span style="color: #447e9b; font-size: 20px; margin-left: 10px;">${{ total_valor_mensual|intcomma }}</span>
+                    <span style="color: #447e9b; font-size: 20px; margin-left: 10px;">${{ total_valor_mensual|floatformat:0|intcomma }}</span>
                 </h3>
             </div>
             <div style="display: flex; gap: 25px; font-size: 13px; color: #666;">
@@ -21,7 +21,7 @@
                 {% if promedio_registro %}
                 <div>
                     <span style="font-weight: bold;">Promedio/Registro:</span>
-                    <span style="color: #333;">${{ promedio_registro|intcomma }}</span>
+                    <span style="color: #333;">${{ promedio_registro|floatformat:0|intcomma }}</span>
                 </div>
                 {% endif %}
             </div>
