@@ -1831,13 +1831,6 @@ class RutaMunicipio(models.Model):
         help_text="Secuencia en el recorrido: 1=primer municipio, 2=segundo, etc."
     )
 
-    # Frecuencia de entregas por periodo
-    entregas_por_periodo = models.IntegerField(
-        default=1,
-        verbose_name="Entregas por Periodo",
-        help_text="Cuántas entregas a este municipio cada vez que se hace el recorrido"
-    )
-
     # Flete base para terceros
     flete_base = models.DecimalField(
         max_digits=12,
@@ -1859,7 +1852,3 @@ class RutaMunicipio(models.Model):
 
     def __str__(self):
         return f"{self.ruta.nombre} → {self.orden_visita}. {self.municipio}"
-
-    def entregas_mensuales(self):
-        """Calcula entregas mensuales a este municipio"""
-        return self.entregas_por_periodo * self.ruta.periodos_por_mes()

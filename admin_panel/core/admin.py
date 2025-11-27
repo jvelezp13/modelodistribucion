@@ -1149,7 +1149,7 @@ class RecorridoMunicipioInline(admin.TabularInline):
     model = RutaMunicipio
     extra = 1
     autocomplete_fields = ['municipio']
-    fields = ('orden_visita', 'municipio', 'entregas_por_periodo', 'flete_base')
+    fields = ('orden_visita', 'municipio', 'flete_base')
     ordering = ['orden_visita']
 
 
@@ -1196,7 +1196,7 @@ class RecorridoLogisticoAdmin(admin.ModelAdmin):
 @admin.register(RutaMunicipio, site=dxv_admin_site)
 class RecorridoMunicipioAdmin(admin.ModelAdmin):
     """Admin para Municipios de un Recorrido (logística)"""
-    list_display = ('ruta', 'orden_visita', 'municipio', 'entregas_por_periodo', 'flete_base_formateado')
+    list_display = ('ruta', 'orden_visita', 'municipio', 'flete_base_formateado')
     list_filter = ('ruta__marca', 'ruta__vehiculo__esquema', 'ruta__frecuencia')
     search_fields = ('ruta__nombre', 'municipio__nombre')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
@@ -1207,10 +1207,6 @@ class RecorridoMunicipioAdmin(admin.ModelAdmin):
         ('Recorrido', {
             'fields': ('ruta', 'orden_visita', 'municipio'),
             'description': 'El orden de visita define la secuencia del circuito'
-        }),
-        ('Entregas', {
-            'fields': ('entregas_por_periodo',),
-            'description': 'Cuántas entregas a este municipio cada vez que se hace el recorrido'
         }),
         ('Flete (Solo Terceros)', {
             'fields': ('flete_base',),

@@ -286,15 +286,13 @@ class CalculadoraLejanias:
         # Calcular flete base por municipio (se suma por cada recorrido)
         for ruta_mun in municipios_ordenados:
             flete_base_municipio = ruta_mun.flete_base or Decimal('0')
-            # Multiplicar por entregas_por_periodo × recorridos para obtener mensual
-            entregas_mensuales = ruta_mun.entregas_por_periodo * recorridos_mensuales
-            flete_base_total += flete_base_municipio * entregas_mensuales
+            # Multiplicar por recorridos mensuales para obtener flete mensual
+            flete_base_total += flete_base_municipio * recorridos_mensuales
 
             detalle_municipios.append({
                 'orden': ruta_mun.orden_visita,
                 'municipio': ruta_mun.municipio.nombre,
                 'municipio_id': ruta_mun.municipio.id,
-                'entregas_por_periodo': ruta_mun.entregas_por_periodo,
                 'flete_base': float(flete_base_municipio),
             })
 
