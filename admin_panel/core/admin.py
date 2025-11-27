@@ -17,9 +17,10 @@ from .models import (
     # Módulo de Rutas Logísticas
     RutaLogistica, RutaMunicipio
 )
+from .admin_site import dxv_admin_site
 
 
-@admin.register(Escenario)
+@admin.register(Escenario, site=dxv_admin_site)
 class EscenarioAdmin(admin.ModelAdmin):
     list_display = ('nombre', 'tipo', 'anio', 'periodo_display', 'activo', 'aprobado', 'fecha_modificacion')
     list_filter = ('tipo', 'anio', 'activo', 'aprobado')
@@ -88,7 +89,7 @@ class EscenarioAdmin(admin.ModelAdmin):
     proyectar_escenario.short_description = "Proyectar al Siguiente Año"
 
 
-@admin.register(Marca)
+@admin.register(Marca, site=dxv_admin_site)
 class MarcaAdmin(admin.ModelAdmin):
     list_display = ('nombre', 'marca_id', 'activa', 'total_empleados', 'total_vehiculos', 'fecha_modificacion')
     list_filter = ('activa',)
@@ -116,7 +117,7 @@ class MarcaAdmin(admin.ModelAdmin):
     total_vehiculos.short_description = 'Total Vehículos'
 
 
-@admin.register(PersonalComercial)
+@admin.register(PersonalComercial, site=dxv_admin_site)
 class PersonalComercialAdmin(admin.ModelAdmin):
     change_list_template = 'admin/core/change_list_with_total.html'
     list_display = ('marca', 'nombre', 'escenario', 'tipo', 'cantidad', 'salario_base', 'costo_total_estimado', 'asignacion', 'perfil_prestacional')
@@ -186,7 +187,7 @@ class PersonalComercialAdmin(admin.ModelAdmin):
         return response
 
 
-@admin.register(PersonalLogistico)
+@admin.register(PersonalLogistico, site=dxv_admin_site)
 class PersonalLogisticoAdmin(admin.ModelAdmin):
     change_list_template = 'admin/core/change_list_with_total.html'
     list_display = ('marca', 'nombre', 'escenario', 'tipo', 'cantidad', 'salario_base', 'costo_total_estimado', 'asignacion', 'perfil_prestacional')
@@ -244,7 +245,7 @@ class PersonalLogisticoAdmin(admin.ModelAdmin):
         return response
 
 
-@admin.register(Vehiculo)
+@admin.register(Vehiculo, site=dxv_admin_site)
 class VehiculoAdmin(admin.ModelAdmin):
     change_list_template = 'admin/core/change_list_with_total.html'
     list_display = ('nombre_display', 'marca', 'escenario', 'tipo_vehiculo', 'esquema', 'cantidad', 'costo_mensual_estimado_formateado')
@@ -324,7 +325,7 @@ class ProyeccionVentasInline(admin.TabularInline):
     max_num = 12
 
 
-@admin.register(ProyeccionVentas)
+@admin.register(ProyeccionVentas, site=dxv_admin_site)
 class ProyeccionVentasAdmin(admin.ModelAdmin):
     list_display = ('marca', 'escenario', 'anio', 'mes', 'ventas_formateadas', 'fecha_modificacion')
     list_filter = ('escenario', 'marca', 'anio', 'mes')
@@ -347,7 +348,7 @@ class ProyeccionVentasAdmin(admin.ModelAdmin):
     ventas_formateadas.admin_order_field = 'ventas'
 
 
-@admin.register(VolumenOperacion)
+@admin.register(VolumenOperacion, site=dxv_admin_site)
 class VolumenOperacionAdmin(admin.ModelAdmin):
     list_display = (
         'marca',
@@ -382,7 +383,7 @@ class VolumenOperacionAdmin(admin.ModelAdmin):
     )
 
 
-@admin.register(ParametrosMacro)
+@admin.register(ParametrosMacro, site=dxv_admin_site)
 class ParametrosMacroAdmin(admin.ModelAdmin):
     list_display = (
         'anio',
@@ -444,7 +445,7 @@ class ParametrosMacroAdmin(admin.ModelAdmin):
     subsidio_transporte_formateado.admin_order_field = 'subsidio_transporte'
 
 
-@admin.register(FactorPrestacional)
+@admin.register(FactorPrestacional, site=dxv_admin_site)
 class FactorPrestacionalAdmin(admin.ModelAdmin):
     list_display = ('perfil', 'factor_total_percent', 'pension_percent', 'salud_percent', 'fecha_modificacion')
     list_filter = ('perfil',)
@@ -492,7 +493,7 @@ class FactorPrestacionalAdmin(admin.ModelAdmin):
     salud_percent.admin_order_field = 'salud'
 
 
-@admin.register(PersonalAdministrativo)
+@admin.register(PersonalAdministrativo, site=dxv_admin_site)
 class PersonalAdministrativoAdmin(admin.ModelAdmin):
     change_list_template = 'admin/core/change_list_with_total.html'
     list_display = ('nombre', 'marca', 'escenario', 'tipo', 'cantidad', 'asignacion', 'tipo_contrato', 'valor_mensual', 'costo_total_estimado')
@@ -575,7 +576,7 @@ class PersonalAdministrativoAdmin(admin.ModelAdmin):
         return response
 
 
-@admin.register(GastoAdministrativo)
+@admin.register(GastoAdministrativo, site=dxv_admin_site)
 class GastoAdministrativoAdmin(admin.ModelAdmin):
     change_list_template = 'admin/core/change_list_with_total.html'
     list_display = ('nombre', 'marca', 'escenario', 'tipo', 'asignacion', 'valor_mensual_formateado', 'criterio_prorrateo')
@@ -627,7 +628,7 @@ class GastoAdministrativoAdmin(admin.ModelAdmin):
         return response
 
 
-@admin.register(GastoComercial)
+@admin.register(GastoComercial, site=dxv_admin_site)
 class GastoComercialAdmin(admin.ModelAdmin):
     change_list_template = 'admin/core/change_list_with_total.html'
     list_display = ('marca', 'escenario', 'nombre', 'tipo', 'valor_mensual_formateado', 'fecha_modificacion')
@@ -671,7 +672,7 @@ class GastoComercialAdmin(admin.ModelAdmin):
         return response
 
 
-@admin.register(GastoLogistico)
+@admin.register(GastoLogistico, site=dxv_admin_site)
 class GastoLogisticoAdmin(admin.ModelAdmin):
     change_list_template = 'admin/core/change_list_with_total.html'
     list_display = ('marca', 'escenario', 'nombre', 'tipo', 'valor_mensual_formateado', 'fecha_modificacion')
@@ -716,7 +717,7 @@ class GastoLogisticoAdmin(admin.ModelAdmin):
         return response
 
 
-@admin.register(Impuesto)
+@admin.register(Impuesto, site=dxv_admin_site)
 class ImpuestoAdmin(admin.ModelAdmin):
     list_display = ('nombre', 'tipo', 'aplicacion', 'valor_display', 'periodicidad', 'activo')
     list_filter = ('tipo', 'aplicacion', 'periodicidad', 'activo')
@@ -758,7 +759,7 @@ class TramoDescuentoFacturaInline(admin.TabularInline):
     ordering = ('orden',)
 
 
-@admin.register(ConfiguracionDescuentos)
+@admin.register(ConfiguracionDescuentos, site=dxv_admin_site)
 class ConfiguracionDescuentosAdmin(admin.ModelAdmin):
     list_display = (
         'marca',
@@ -836,7 +837,7 @@ class ConfiguracionDescuentosAdmin(admin.ModelAdmin):
                 )
 
 
-@admin.register(TramoDescuentoFactura)
+@admin.register(TramoDescuentoFactura, site=dxv_admin_site)
 class TramoDescuentoFacturaAdmin(admin.ModelAdmin):
     list_display = (
         'configuracion',
@@ -875,7 +876,7 @@ class TramoDescuentoFacturaAdmin(admin.ModelAdmin):
     porcentaje_descuento_display.admin_order_field = 'porcentaje_descuento'
 
 
-@admin.register(PoliticaRecursosHumanos)
+@admin.register(PoliticaRecursosHumanos, site=dxv_admin_site)
 class PoliticaRecursosHumanosAdmin(admin.ModelAdmin):
     list_display = (
         'anio', 
@@ -936,7 +937,7 @@ class PoliticaRecursosHumanosAdmin(admin.ModelAdmin):
 # ADMINS PARA MÓDULO DE LEJANÍAS
 # ============================================================================
 
-@admin.register(Municipio)
+@admin.register(Municipio, site=dxv_admin_site)
 class MunicipioAdmin(admin.ModelAdmin):
     list_display = ('nombre', 'departamento', 'codigo_dane', 'activo')
     list_filter = ('departamento', 'activo')
@@ -958,7 +959,7 @@ class MunicipioAdmin(admin.ModelAdmin):
     )
 
 
-@admin.register(MatrizDesplazamiento)
+@admin.register(MatrizDesplazamiento, site=dxv_admin_site)
 class MatrizDesplazamientoAdmin(admin.ModelAdmin):
     list_display = ('origen', 'destino', 'distancia_km', 'tiempo_minutos', 'tiempo_horas', 'peaje_ida', 'peaje_vuelta')
     list_filter = ('origen__departamento',)
@@ -992,7 +993,7 @@ class MatrizDesplazamientoAdmin(admin.ModelAdmin):
     tiempo_horas.short_description = 'Tiempo (hrs)'
 
 
-@admin.register(ConfiguracionLejania)
+@admin.register(ConfiguracionLejania, site=dxv_admin_site)
 class ConfiguracionLejaniaAdmin(admin.ModelAdmin):
     list_display = ('escenario', 'municipio_bodega', 'umbral_logistica', 'umbral_comercial')
     list_filter = ('escenario__anio',)
@@ -1066,7 +1067,7 @@ class ZonaMunicipioInline(admin.TabularInline):
     fields = ('municipio', 'visitas_por_periodo')
 
 
-@admin.register(Zona)
+@admin.register(Zona, site=dxv_admin_site)
 class ZonaAdmin(admin.ModelAdmin):
     """Admin para Zonas Comerciales (vendedores)"""
     list_display = ('nombre', 'marca', 'vendedor', 'tipo_vehiculo_comercial', 'frecuencia', 'requiere_pernocta', 'activo')
@@ -1101,7 +1102,7 @@ class ZonaAdmin(admin.ModelAdmin):
         return super().get_queryset(request).select_related('marca', 'vendedor', 'municipio_base_vendedor')
 
 
-@admin.register(ZonaMunicipio)
+@admin.register(ZonaMunicipio, site=dxv_admin_site)
 class ZonaMunicipioAdmin(admin.ModelAdmin):
     """Admin para relación Zona-Municipio (comercial)"""
     list_display = ('zona', 'municipio', 'visitas_por_periodo', 'visitas_mensuales_calc')
@@ -1145,7 +1146,7 @@ class RecorridoMunicipioInline(admin.TabularInline):
     ordering = ['orden_visita']
 
 
-@admin.register(RutaLogistica)
+@admin.register(RutaLogistica, site=dxv_admin_site)
 class RecorridoLogisticoAdmin(admin.ModelAdmin):
     """Admin para Recorridos Logísticos (circuitos que hace un vehículo)"""
     list_display = ('nombre', 'marca', 'vehiculo', 'esquema_vehiculo', 'frecuencia', 'viajes_por_periodo', 'requiere_pernocta', 'activo')
@@ -1185,7 +1186,7 @@ class RecorridoLogisticoAdmin(admin.ModelAdmin):
         return super().get_queryset(request).select_related('marca', 'vehiculo', 'escenario')
 
 
-@admin.register(RutaMunicipio)
+@admin.register(RutaMunicipio, site=dxv_admin_site)
 class RecorridoMunicipioAdmin(admin.ModelAdmin):
     """Admin para Municipios de un Recorrido (logística)"""
     list_display = ('ruta', 'orden_visita', 'municipio', 'entregas_por_periodo', 'flete_base_formateado')

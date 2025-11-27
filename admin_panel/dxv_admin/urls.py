@@ -1,14 +1,9 @@
 """
 URL configuration for DxV Admin Panel
 """
-from django.contrib import admin
 from django.urls import path
+from core.admin_site import dxv_admin_site
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path('admin/', dxv_admin_site.urls),
 ]
-
-# Customize admin site
-admin.site.site_header = "Sistema DxV - Panel de Administración"
-admin.site.site_title = "DxV Admin"
-admin.site.index_title = "Gestión de Distribución y Ventas"
