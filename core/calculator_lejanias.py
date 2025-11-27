@@ -31,7 +31,7 @@ class CalculadoraLejanias:
 
         # Cargar configuración de lejanías
         try:
-            from admin_panel.core.models import ConfiguracionLejania, ParametrosMacro
+            from core.models import ConfiguracionLejania, ParametrosMacro
             self.config = ConfiguracionLejania.objects.get(escenario=escenario)
             self.params_macro = ParametrosMacro.objects.get(anio=escenario.anio, activo=True)
         except Exception as e:
@@ -61,7 +61,7 @@ class CalculadoraLejanias:
         if not self.config or not self.params_macro:
             return self._resultado_vacio_comercial()
 
-        from admin_panel.core.models import MatrizDesplazamiento
+        from core.models import MatrizDesplazamiento
 
         combustible_total = Decimal('0')
         pernocta_total = Decimal('0')
@@ -166,7 +166,7 @@ class CalculadoraLejanias:
                 'zonas': [...]
             }
         """
-        from admin_panel.core.models import Zona
+        from core.models import Zona
 
         zonas = Zona.objects.filter(
             marca=marca,
@@ -231,7 +231,7 @@ class CalculadoraLejanias:
         if not self.config or not self.params_macro:
             return self._resultado_vacio_logistica()
 
-        from admin_panel.core.models import MatrizDesplazamiento
+        from core.models import MatrizDesplazamiento
 
         flete_base_total = Decimal('0')
         combustible_total = Decimal('0')
@@ -368,7 +368,7 @@ class CalculadoraLejanias:
                 'rutas': [...]
             }
         """
-        from admin_panel.core.models import RutaLogistica
+        from core.models import RutaLogistica
 
         rutas = RutaLogistica.objects.filter(
             marca=marca,
