@@ -65,7 +65,7 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
 
       setLoadingLejanias(true);
       try {
-        const data = await apiClient.getDetalleLejaniasLogistica(escenarioId, marca.marca_id);
+        const data = await apiClient.obtenerDetalleLejaniasLogistica(escenarioId, marca.marca_id);
         setLejaniasLogistica(data);
       } catch (error) {
         console.error('Error cargando lejanías logísticas:', error);
