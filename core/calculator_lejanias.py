@@ -313,6 +313,19 @@ class CalculadoraLejanias:
                 peaje_municipio = peaje_por_entrega * entregas_mensuales
                 peaje_total += peaje_municipio
 
+            # Pernocta por municipio
+            pernocta_municipio = Decimal('0')
+            if ruta_mun.requiere_pernocta and ruta_mun.noches_pernocta > 0:
+                gasto_por_noche = (
+                    self.config.desayuno_logistica +
+                    self.config.almuerzo_logistica +
+                    self.config.cena_logistica +
+                    self.config.alojamiento_logistica +
+                    self.config.parqueadero_logistica
+                )
+                pernocta_municipio = gasto_por_noche * ruta_mun.noches_pernocta * entregas_mensuales
+                pernocta_total += pernocta_municipio
+
             detalle_municipios.append({
                 'municipio': municipio.nombre,
                 'municipio_id': municipio.id,
@@ -323,11 +336,14 @@ class CalculadoraLejanias:
                 'flete_base': float(flete_base_municipio),
                 'combustible_mensual': float(combustible_municipio),
                 'peaje_mensual': float(peaje_municipio),
+                'requiere_pernocta': ruta_mun.requiere_pernocta,
+                'noches_pernocta': ruta_mun.noches_pernocta,
+                'pernocta_mensual': float(pernocta_municipio),
             })
 
-        # Pernocta se calcula a nivel de RUTA (una vez por viaje, no por municipio)
+        # Detalle de costos de pernocta (para mostrar en frontend)
         detalle_pernocta = None
-        if ruta.requiere_pernocta and ruta.noches_pernocta > 0:
+        if pernocta_total > 0:
             desayuno = self.config.desayuno_logistica
             almuerzo = self.config.almuerzo_logistica
             cena = self.config.cena_logistica
@@ -335,18 +351,13 @@ class CalculadoraLejanias:
             parqueadero = self.config.parqueadero_logistica
             gasto_por_noche = desayuno + almuerzo + cena + alojamiento + parqueadero
 
-            # Pernocta = noches × gasto_por_noche × viajes_mensuales
-            pernocta_total = gasto_por_noche * ruta.noches_pernocta * viajes_mensuales
-
             detalle_pernocta = {
-                'noches': ruta.noches_pernocta,
                 'desayuno': float(desayuno),
                 'almuerzo': float(almuerzo),
                 'cena': float(cena),
                 'alojamiento': float(alojamiento),
                 'parqueadero': float(parqueadero),
                 'gasto_por_noche': float(gasto_por_noche),
-                'viajes_mensuales': float(viajes_mensuales),
                 'total_mensual': float(pernocta_total),
             }
 

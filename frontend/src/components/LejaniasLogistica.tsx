@@ -253,11 +253,11 @@ export default function LejaniasLogistica({ escenarioId, marcaId }: LejaniasLogi
                     </div>
                   )}
 
-                  {/* Detalle de Pernocta */}
+                  {/* Detalle de Pernocta (costos por noche) */}
                   {ruta.detalle?.pernocta && (
                     <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded">
                       <div className="text-xs font-semibold text-purple-800 mb-2">
-                        Detalle Pernocta ({ruta.detalle.pernocta.noches} noche{ruta.detalle.pernocta.noches > 1 ? 's' : ''} × {ruta.detalle.pernocta.viajes_mensuales.toFixed(1)} viajes/mes)
+                        Costos de Pernocta por Noche
                       </div>
                       <div className="grid grid-cols-6 gap-2 text-xs">
                         <div>
@@ -305,6 +305,8 @@ export default function LejaniasLogistica({ escenarioId, marcaId }: LejaniasLogi
                               <th className="px-2 py-1 text-right">Flete Base</th>
                               <th className="px-2 py-1 text-right">Combustible</th>
                               <th className="px-2 py-1 text-right">Peaje</th>
+                              <th className="px-2 py-1 text-center">Pernocta</th>
+                              <th className="px-2 py-1 text-right">$ Pernocta</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -326,6 +328,14 @@ export default function LejaniasLogistica({ escenarioId, marcaId }: LejaniasLogi
                                 </td>
                                 <td className="px-2 py-1 text-right text-yellow-600">
                                   {formatCurrency(municipio.peaje_mensual || 0)}
+                                </td>
+                                <td className="px-2 py-1 text-center">
+                                  {municipio.requiere_pernocta ? (
+                                    <span className="text-purple-600 font-medium">{municipio.noches_pernocta} noche{municipio.noches_pernocta > 1 ? 's' : ''}</span>
+                                  ) : '-'}
+                                </td>
+                                <td className="px-2 py-1 text-right text-purple-600">
+                                  {formatCurrency(municipio.pernocta_mensual || 0)}
                                 </td>
                               </tr>
                             ))}

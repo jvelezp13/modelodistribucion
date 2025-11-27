@@ -1737,19 +1737,7 @@ class RutaLogistica(models.Model):
     viajes_por_periodo = models.IntegerField(
         default=1,
         verbose_name="Viajes por Periodo",
-        help_text="Cantidad de viajes completos (ida+vuelta) por periodo. Ej: Si pernocta, puede ser 2 viajes/semana en lugar de 4"
-    )
-
-    # Pernocta logística
-    requiere_pernocta = models.BooleanField(
-        default=False,
-        verbose_name="¿Requiere Pernocta?",
-        help_text="Si la ruta requiere que el conductor pase la noche fuera"
-    )
-    noches_pernocta = models.IntegerField(
-        default=0,
-        verbose_name="Noches de Pernocta",
-        help_text="Cantidad de noches por viaje"
+        help_text="Cantidad de viajes completos (ida+vuelta) por periodo"
     )
 
     activo = models.BooleanField(default=True, verbose_name="Activa")
@@ -1807,6 +1795,18 @@ class RutaMunicipio(models.Model):
         default=0,
         verbose_name="Flete Base",
         help_text="Valor base del flete para este municipio (aplica para vehículos terceros)"
+    )
+
+    # Pernocta por municipio
+    requiere_pernocta = models.BooleanField(
+        default=False,
+        verbose_name="¿Requiere Pernocta?",
+        help_text="Si la entrega a este municipio requiere que el conductor pase la noche"
+    )
+    noches_pernocta = models.IntegerField(
+        default=0,
+        verbose_name="Noches de Pernocta",
+        help_text="Cantidad de noches por viaje a este municipio"
     )
 
     fecha_creacion = models.DateTimeField(auto_now_add=True)
