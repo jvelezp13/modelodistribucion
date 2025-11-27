@@ -16,9 +16,15 @@ class DxVAdminSite(admin.AdminSite):
             'Marca',
             'Escenario',
             'ParametrosMacro',
+            'FactorPrestacional',
+            'Impuesto',
             'ConfiguracionDescuentos',
             'TramoDescuentoFactura',
             'PoliticaRecursosHumanos',
+        ],
+        'Ventas y Proyecciones': [
+            'ProyeccionVentas',
+            'VolumenOperacion',
         ],
         'Comercial': [
             'PersonalComercial',
