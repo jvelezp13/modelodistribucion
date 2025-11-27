@@ -120,9 +120,20 @@ export default function LejaniasLogistica({ escenarioId, marcaId }: LejaniasLogi
             </div>
           </div>
           <div>
-            <div className="text-xs text-gray-500">Pernocta</div>
+            <div className="text-xs text-gray-500">Pernocta Total</div>
             <div className="text-sm font-semibold text-purple-600">
               {formatCurrency(datos.total_pernocta_mensual)}
+            </div>
+            <div className="text-[10px] text-gray-400 mt-0.5">
+              <span>Cond: {formatCurrency(datos.total_pernocta_conductor_mensual || 0)}</span>
+              <span className="mx-1">|</span>
+              <span>Aux: {formatCurrency(datos.total_pernocta_auxiliar_mensual || 0)}</span>
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-gray-500">Parqueadero</div>
+            <div className="text-sm font-semibold text-gray-600">
+              {formatCurrency(datos.total_parqueadero_mensual || 0)}
             </div>
           </div>
           <div>
@@ -223,10 +234,17 @@ export default function LejaniasLogistica({ escenarioId, marcaId }: LejaniasLogi
                       </div>
                     </div>
                     <div>
-                      <div className="text-xs text-gray-500">Pernocta</div>
+                      <div className="text-xs text-gray-500">Pernocta Total</div>
                       <div className="text-sm font-medium text-purple-600">
                         {formatCurrency(recorrido.pernocta_mensual)}
                       </div>
+                      {recorrido.pernocta_mensual > 0 && (
+                        <div className="text-[10px] text-gray-400 mt-0.5">
+                          <div>Cond: {formatCurrency(recorrido.pernocta_conductor_mensual || 0)}</div>
+                          <div>Aux: {formatCurrency(recorrido.pernocta_auxiliar_mensual || 0)}</div>
+                          <div>Parq: {formatCurrency(recorrido.parqueadero_mensual || 0)}</div>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -291,31 +309,73 @@ export default function LejaniasLogistica({ escenarioId, marcaId }: LejaniasLogi
                       <div className="text-xs font-semibold text-purple-800 mb-2">
                         Pernocta: {recorrido.detalle.pernocta.noches} noche(s) por recorrido
                       </div>
-                      <div className="grid grid-cols-6 gap-2 text-xs">
-                        <div>
-                          <span className="text-gray-500">Desayuno:</span>{' '}
-                          <span className="font-medium">{formatCurrency(recorrido.detalle.pernocta.desayuno)}</span>
+
+                      {/* Conductor */}
+                      {recorrido.detalle.pernocta.conductor && (
+                        <div className="mb-2">
+                          <div className="text-xs font-medium text-purple-700 mb-1">
+                            Conductor {recorrido.esquema === 'tercero' ? '(va al pago del Tercero)' : ''}
+                          </div>
+                          <div className="grid grid-cols-5 gap-2 text-xs pl-2">
+                            <div>
+                              <span className="text-gray-500">Desayuno:</span>{' '}
+                              <span className="font-medium">{formatCurrency(recorrido.detalle.pernocta.conductor.desayuno)}</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Almuerzo:</span>{' '}
+                              <span className="font-medium">{formatCurrency(recorrido.detalle.pernocta.conductor.almuerzo)}</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Cena:</span>{' '}
+                              <span className="font-medium">{formatCurrency(recorrido.detalle.pernocta.conductor.cena)}</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Alojamiento:</span>{' '}
+                              <span className="font-medium">{formatCurrency(recorrido.detalle.pernocta.conductor.alojamiento)}</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Total/noche:</span>{' '}
+                              <span className="font-medium">{formatCurrency(recorrido.detalle.pernocta.conductor.gasto_por_noche)}</span>
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <span className="text-gray-500">Almuerzo:</span>{' '}
-                          <span className="font-medium">{formatCurrency(recorrido.detalle.pernocta.almuerzo)}</span>
+                      )}
+
+                      {/* Auxiliar */}
+                      {recorrido.detalle.pernocta.auxiliar && (
+                        <div className="mb-2">
+                          <div className="text-xs font-medium text-purple-700 mb-1">
+                            Auxiliar (siempre paga la Empresa)
+                          </div>
+                          <div className="grid grid-cols-5 gap-2 text-xs pl-2">
+                            <div>
+                              <span className="text-gray-500">Desayuno:</span>{' '}
+                              <span className="font-medium">{formatCurrency(recorrido.detalle.pernocta.auxiliar.desayuno)}</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Almuerzo:</span>{' '}
+                              <span className="font-medium">{formatCurrency(recorrido.detalle.pernocta.auxiliar.almuerzo)}</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Cena:</span>{' '}
+                              <span className="font-medium">{formatCurrency(recorrido.detalle.pernocta.auxiliar.cena)}</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Alojamiento:</span>{' '}
+                              <span className="font-medium">{formatCurrency(recorrido.detalle.pernocta.auxiliar.alojamiento)}</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Total/noche:</span>{' '}
+                              <span className="font-medium">{formatCurrency(recorrido.detalle.pernocta.auxiliar.gasto_por_noche)}</span>
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <span className="text-gray-500">Cena:</span>{' '}
-                          <span className="font-medium">{formatCurrency(recorrido.detalle.pernocta.cena)}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Alojamiento:</span>{' '}
-                          <span className="font-medium">{formatCurrency(recorrido.detalle.pernocta.alojamiento)}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Parqueadero:</span>{' '}
-                          <span className="font-medium">{formatCurrency(recorrido.detalle.pernocta.parqueadero)}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Total/noche:</span>{' '}
-                          <span className="font-medium">{formatCurrency(recorrido.detalle.pernocta.gasto_por_noche)}</span>
-                        </div>
+                      )}
+
+                      {/* Parqueadero */}
+                      <div className="pt-2 border-t border-purple-200">
+                        <span className="text-xs text-gray-500">Parqueadero/noche:</span>{' '}
+                        <span className="text-xs font-medium">{formatCurrency(recorrido.detalle.pernocta.parqueadero || 0)}</span>
                       </div>
                     </div>
                   )}

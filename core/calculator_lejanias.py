@@ -346,36 +346,67 @@ class CalculadoraLejanias:
         peaje_total = peaje_total_circuito * recorridos_mensuales
 
         # Pernocta del recorrido (a nivel de recorrido, no municipio)
-        pernocta_total = Decimal('0')
+        # Se separa en conductor y auxiliar para diferenciar pagos
+        pernocta_conductor_total = Decimal('0')
+        pernocta_auxiliar_total = Decimal('0')
+        parqueadero_total = Decimal('0')
         detalle_pernocta = None
-        if ruta.requiere_pernocta and ruta.noches_pernocta > 0:
-            desayuno = self.config.desayuno_logistica
-            almuerzo = self.config.almuerzo_logistica
-            cena = self.config.cena_logistica
-            alojamiento = self.config.alojamiento_logistica
-            parqueadero = self.config.parqueadero_logistica
-            gasto_por_noche = desayuno + almuerzo + cena + alojamiento + parqueadero
 
-            pernocta_total = gasto_por_noche * ruta.noches_pernocta * recorridos_mensuales
+        if ruta.requiere_pernocta and ruta.noches_pernocta > 0:
+            # Gastos del conductor (en tercero, van al pago del tercero)
+            desayuno_conductor = self.config.desayuno_conductor
+            almuerzo_conductor = self.config.almuerzo_conductor
+            cena_conductor = self.config.cena_conductor
+            alojamiento_conductor = self.config.alojamiento_conductor
+            gasto_conductor_noche = desayuno_conductor + almuerzo_conductor + cena_conductor + alojamiento_conductor
+
+            # Gastos del auxiliar (siempre los paga la empresa)
+            desayuno_auxiliar = self.config.desayuno_auxiliar
+            almuerzo_auxiliar = self.config.almuerzo_auxiliar
+            cena_auxiliar = self.config.cena_auxiliar
+            alojamiento_auxiliar = self.config.alojamiento_auxiliar
+            gasto_auxiliar_noche = desayuno_auxiliar + almuerzo_auxiliar + cena_auxiliar + alojamiento_auxiliar
+
+            # Parqueadero (del vehículo)
+            parqueadero = self.config.parqueadero_logistica
+
+            pernocta_conductor_total = gasto_conductor_noche * ruta.noches_pernocta * recorridos_mensuales
+            pernocta_auxiliar_total = gasto_auxiliar_noche * ruta.noches_pernocta * recorridos_mensuales
+            parqueadero_total = parqueadero * ruta.noches_pernocta * recorridos_mensuales
 
             detalle_pernocta = {
                 'noches': ruta.noches_pernocta,
-                'desayuno': float(desayuno),
-                'almuerzo': float(almuerzo),
-                'cena': float(cena),
-                'alojamiento': float(alojamiento),
+                'conductor': {
+                    'desayuno': float(desayuno_conductor),
+                    'almuerzo': float(almuerzo_conductor),
+                    'cena': float(cena_conductor),
+                    'alojamiento': float(alojamiento_conductor),
+                    'gasto_por_noche': float(gasto_conductor_noche),
+                    'total_mensual': float(pernocta_conductor_total),
+                },
+                'auxiliar': {
+                    'desayuno': float(desayuno_auxiliar),
+                    'almuerzo': float(almuerzo_auxiliar),
+                    'cena': float(cena_auxiliar),
+                    'alojamiento': float(alojamiento_auxiliar),
+                    'gasto_por_noche': float(gasto_auxiliar_noche),
+                    'total_mensual': float(pernocta_auxiliar_total),
+                },
                 'parqueadero': float(parqueadero),
-                'gasto_por_noche': float(gasto_por_noche),
-                'total_mensual': float(pernocta_total),
+                'parqueadero_mensual': float(parqueadero_total),
             }
 
+        pernocta_total = pernocta_conductor_total + pernocta_auxiliar_total + parqueadero_total
         total = flete_base_total + combustible_total + peaje_total + pernocta_total
 
         return {
             'flete_base_mensual': flete_base_total,
             'combustible_mensual': combustible_total,
             'peaje_mensual': peaje_total,
-            'pernocta_mensual': pernocta_total,
+            'pernocta_conductor_mensual': pernocta_conductor_total,
+            'pernocta_auxiliar_mensual': pernocta_auxiliar_total,
+            'parqueadero_mensual': parqueadero_total,
+            'pernocta_mensual': pernocta_total,  # Total para compatibilidad
             'total_mensual': total,
             'detalle': {
                 'bodega': bodega.nombre,
@@ -407,6 +438,9 @@ class CalculadoraLejanias:
                 'total_flete_base_mensual': Decimal,
                 'total_combustible_mensual': Decimal,
                 'total_peaje_mensual': Decimal,
+                'total_pernocta_conductor_mensual': Decimal,
+                'total_pernocta_auxiliar_mensual': Decimal,
+                'total_parqueadero_mensual': Decimal,
                 'total_pernocta_mensual': Decimal,
                 'total_mensual': Decimal,
                 'total_anual': Decimal,
@@ -424,6 +458,9 @@ class CalculadoraLejanias:
         total_flete_base = Decimal('0')
         total_combustible = Decimal('0')
         total_peaje = Decimal('0')
+        total_pernocta_conductor = Decimal('0')
+        total_pernocta_auxiliar = Decimal('0')
+        total_parqueadero = Decimal('0')
         total_pernocta = Decimal('0')
         detalle_rutas = []
 
@@ -432,6 +469,9 @@ class CalculadoraLejanias:
             total_flete_base += resultado['flete_base_mensual']
             total_combustible += resultado['combustible_mensual']
             total_peaje += resultado['peaje_mensual']
+            total_pernocta_conductor += resultado['pernocta_conductor_mensual']
+            total_pernocta_auxiliar += resultado['pernocta_auxiliar_mensual']
+            total_parqueadero += resultado['parqueadero_mensual']
             total_pernocta += resultado['pernocta_mensual']
 
             detalle_rutas.append({
@@ -447,6 +487,9 @@ class CalculadoraLejanias:
                 'flete_base_mensual': float(resultado['flete_base_mensual']),
                 'combustible_mensual': float(resultado['combustible_mensual']),
                 'peaje_mensual': float(resultado['peaje_mensual']),
+                'pernocta_conductor_mensual': float(resultado['pernocta_conductor_mensual']),
+                'pernocta_auxiliar_mensual': float(resultado['pernocta_auxiliar_mensual']),
+                'parqueadero_mensual': float(resultado['parqueadero_mensual']),
                 'pernocta_mensual': float(resultado['pernocta_mensual']),
                 'total_mensual': float(resultado['total_mensual']),
                 'detalle': resultado['detalle'],
@@ -458,7 +501,10 @@ class CalculadoraLejanias:
             'total_flete_base_mensual': total_flete_base,
             'total_combustible_mensual': total_combustible,
             'total_peaje_mensual': total_peaje,
-            'total_pernocta_mensual': total_pernocta,
+            'total_pernocta_conductor_mensual': total_pernocta_conductor,
+            'total_pernocta_auxiliar_mensual': total_pernocta_auxiliar,
+            'total_parqueadero_mensual': total_parqueadero,
+            'total_pernocta_mensual': total_pernocta,  # Total combinado para compatibilidad
             'total_mensual': total_mensual,
             'total_anual': total_mensual * 12,
             'rutas': detalle_rutas,

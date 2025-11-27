@@ -134,7 +134,10 @@ export interface DetalleRutaLogistica {
   flete_base_mensual: number;
   combustible_mensual: number;
   peaje_mensual: number;
-  pernocta_mensual: number;
+  pernocta_conductor_mensual: number;
+  pernocta_auxiliar_mensual: number;
+  parqueadero_mensual: number;
+  pernocta_mensual: number;  // Total combinado
   total_mensual: number;
   detalle: any;
 }
@@ -159,7 +162,10 @@ export interface DetalleLejaniasLogistica {
   total_flete_base_mensual: number;
   total_combustible_mensual: number;
   total_peaje_mensual: number;
-  total_pernocta_mensual: number;
+  total_pernocta_conductor_mensual: number;
+  total_pernocta_auxiliar_mensual: number;
+  total_parqueadero_mensual: number;
+  total_pernocta_mensual: number;  // Total combinado
   total_mensual: number;
   total_anual: number;
   rutas: DetalleRutaLogistica[];

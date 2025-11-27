@@ -656,11 +656,32 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
                       <span className="font-medium text-gray-800">{formatCurrency(lejaniasLogistica.total_peaje_mensual)}</span>
                     </div>
                   )}
+                  {/* Pernocta desglosado */}
                   {lejaniasLogistica.total_pernocta_mensual > 0 && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Pernocta</span>
-                      <span className="font-medium text-gray-800">{formatCurrency(lejaniasLogistica.total_pernocta_mensual)}</span>
-                    </div>
+                    <>
+                      <div className="flex justify-between pt-1 border-t border-gray-200">
+                        <span className="text-gray-700 font-medium">Pernocta (Total)</span>
+                        <span className="font-medium text-gray-800">{formatCurrency(lejaniasLogistica.total_pernocta_mensual)}</span>
+                      </div>
+                      {(lejaniasLogistica.total_pernocta_conductor_mensual || 0) > 0 && (
+                        <div className="flex justify-between pl-3">
+                          <span className="text-gray-500">Conductor (va al Tercero si aplica)</span>
+                          <span className="text-gray-600">{formatCurrency(lejaniasLogistica.total_pernocta_conductor_mensual || 0)}</span>
+                        </div>
+                      )}
+                      {(lejaniasLogistica.total_pernocta_auxiliar_mensual || 0) > 0 && (
+                        <div className="flex justify-between pl-3">
+                          <span className="text-gray-500">Auxiliar (paga Empresa)</span>
+                          <span className="text-gray-600">{formatCurrency(lejaniasLogistica.total_pernocta_auxiliar_mensual || 0)}</span>
+                        </div>
+                      )}
+                      {(lejaniasLogistica.total_parqueadero_mensual || 0) > 0 && (
+                        <div className="flex justify-between pl-3">
+                          <span className="text-gray-500">Parqueadero</span>
+                          <span className="text-gray-600">{formatCurrency(lejaniasLogistica.total_parqueadero_mensual || 0)}</span>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               )}

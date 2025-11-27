@@ -1016,10 +1016,23 @@ class ConfiguracionLejaniaAdmin(admin.ModelAdmin):
             'fields': ('consumo_galon_km_moto', 'consumo_galon_km_automovil'),
             'description': 'Rendimiento en km por galón (solo para vehículos comerciales). Los logísticos usan el consumo del vehículo.'
         }),
-        ('Gastos Pernocta Logística', {
+        ('Pernocta Logística - Conductor', {
             'fields': (
-                ('desayuno_logistica', 'almuerzo_logistica', 'cena_logistica'),
-                ('alojamiento_logistica', 'parqueadero_logistica'),
+                ('desayuno_conductor', 'almuerzo_conductor', 'cena_conductor'),
+                'alojamiento_conductor',
+            ),
+            'description': 'Gastos del conductor. En esquema Tercero, estos van incluidos en el pago al tercero.'
+        }),
+        ('Pernocta Logística - Auxiliar', {
+            'fields': (
+                ('desayuno_auxiliar', 'almuerzo_auxiliar', 'cena_auxiliar'),
+                'alojamiento_auxiliar',
+            ),
+            'description': 'Gastos del auxiliar. Siempre los paga la empresa (convenios, etc.)'
+        }),
+        ('Gastos Vehículo Logística', {
+            'fields': (
+                'parqueadero_logistica',
                 'es_constitutiva_salario_logistica'
             )
         }),

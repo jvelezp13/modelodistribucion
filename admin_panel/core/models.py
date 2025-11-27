@@ -1467,31 +1467,61 @@ class ConfiguracionLejania(models.Model):
         help_text="Rendimiento automóvil: típicamente 12 km/galón"
     )
 
-    # === GASTOS PERNOCTA LOGÍSTICA ===
-    desayuno_logistica = models.DecimalField(
+    # === GASTOS PERNOCTA LOGÍSTICA - CONDUCTOR ===
+    # Estos gastos van al tercero cuando el esquema es 'tercero'
+    desayuno_conductor = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         default=15000,
-        verbose_name="Desayuno Logística"
+        verbose_name="Desayuno Conductor"
     )
-    almuerzo_logistica = models.DecimalField(
+    almuerzo_conductor = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         default=20000,
-        verbose_name="Almuerzo Logística"
+        verbose_name="Almuerzo Conductor"
     )
-    cena_logistica = models.DecimalField(
+    cena_conductor = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         default=20000,
-        verbose_name="Cena Logística"
+        verbose_name="Cena Conductor"
     )
-    alojamiento_logistica = models.DecimalField(
+    alojamiento_conductor = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         default=80000,
-        verbose_name="Alojamiento Logística"
+        verbose_name="Alojamiento Conductor"
     )
+
+    # === GASTOS PERNOCTA LOGÍSTICA - AUXILIAR ===
+    # Estos gastos siempre los paga la empresa (convenios, etc.)
+    desayuno_auxiliar = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=15000,
+        verbose_name="Desayuno Auxiliar"
+    )
+    almuerzo_auxiliar = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=20000,
+        verbose_name="Almuerzo Auxiliar"
+    )
+    cena_auxiliar = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=20000,
+        verbose_name="Cena Auxiliar"
+    )
+    alojamiento_auxiliar = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=80000,
+        verbose_name="Alojamiento Auxiliar"
+    )
+
+    # === GASTOS VEHÍCULO ===
     parqueadero_logistica = models.DecimalField(
         max_digits=10,
         decimal_places=2,
