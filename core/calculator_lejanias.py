@@ -111,30 +111,25 @@ class CalculadoraLejanias:
 
             combustible_total += combustible_municipio
 
-            # Pernocta (si aplica a nivel de zona)
-            pernocta_municipio = Decimal('0')
-            if zona.requiere_pernocta and zona.noches_pernocta > 0:
-                # Gastos por noche
-                gasto_por_noche = (
-                    self.config.desayuno_comercial +
-                    self.config.almuerzo_comercial +
-                    self.config.cena_comercial +
-                    self.config.alojamiento_comercial
-                )
-
-                # Calcular según frecuencia de zona
-                periodos_mes = zona.periodos_por_mes()
-                pernocta_municipio = gasto_por_noche * zona.noches_pernocta * periodos_mes
-                pernocta_total += pernocta_municipio
-
             detalle_municipios.append({
                 'municipio': municipio.nombre,
                 'municipio_id': municipio.id,
                 'distancia_km': float(matriz.distancia_km),
                 'visitas_mensuales': float(visitas_mensuales),
                 'combustible_mensual': float(combustible_municipio),
-                'pernocta_mensual': float(pernocta_municipio),
             })
+
+        # Pernocta se calcula a nivel de ZONA (una vez por viaje, no por municipio)
+        if zona.requiere_pernocta and zona.noches_pernocta > 0:
+            gasto_por_noche = (
+                self.config.desayuno_comercial +
+                self.config.almuerzo_comercial +
+                self.config.cena_comercial +
+                self.config.alojamiento_comercial
+            )
+            # Pernocta = noches × gasto_por_noche × viajes_por_mes
+            periodos_mes = zona.periodos_por_mes()
+            pernocta_total = gasto_por_noche * zona.noches_pernocta * periodos_mes
 
         total = combustible_total + pernocta_total
 

@@ -202,7 +202,6 @@ export default function LejaniasComercial({ escenarioId, marcaId }: LejaniasCome
                               <th className="px-2 py-1 text-right">Distancia (km)</th>
                               <th className="px-2 py-1 text-right">Visitas/mes</th>
                               <th className="px-2 py-1 text-right">Combustible</th>
-                              <th className="px-2 py-1 text-right">Pernocta</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -213,9 +212,6 @@ export default function LejaniasComercial({ escenarioId, marcaId }: LejaniasCome
                                 <td className="px-2 py-1 text-right">{municipio.visitas_mensuales}</td>
                                 <td className="px-2 py-1 text-right text-blue-600">
                                   {formatCurrency(municipio.combustible_mensual)}
-                                </td>
-                                <td className="px-2 py-1 text-right text-purple-600">
-                                  {formatCurrency(municipio.pernocta_mensual)}
                                 </td>
                               </tr>
                             ))}
