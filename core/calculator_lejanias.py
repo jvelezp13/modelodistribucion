@@ -115,21 +115,34 @@ class CalculadoraLejanias:
                 'municipio': municipio.nombre,
                 'municipio_id': municipio.id,
                 'distancia_km': float(matriz.distancia_km),
+                'visitas_por_periodo': zona_mun.visitas_por_periodo,
                 'visitas_mensuales': float(visitas_mensuales),
                 'combustible_mensual': float(combustible_municipio),
             })
 
         # Pernocta se calcula a nivel de ZONA (una vez por viaje, no por municipio)
+        detalle_pernocta = None
         if zona.requiere_pernocta and zona.noches_pernocta > 0:
-            gasto_por_noche = (
-                self.config.desayuno_comercial +
-                self.config.almuerzo_comercial +
-                self.config.cena_comercial +
-                self.config.alojamiento_comercial
-            )
+            desayuno = self.config.desayuno_comercial
+            almuerzo = self.config.almuerzo_comercial
+            cena = self.config.cena_comercial
+            alojamiento = self.config.alojamiento_comercial
+            gasto_por_noche = desayuno + almuerzo + cena + alojamiento
+
             # Pernocta = noches × gasto_por_noche × viajes_por_mes
             periodos_mes = zona.periodos_por_mes()
             pernocta_total = gasto_por_noche * zona.noches_pernocta * periodos_mes
+
+            detalle_pernocta = {
+                'noches': zona.noches_pernocta,
+                'desayuno': float(desayuno),
+                'almuerzo': float(almuerzo),
+                'cena': float(cena),
+                'alojamiento': float(alojamiento),
+                'gasto_por_noche': float(gasto_por_noche),
+                'periodos_mes': float(periodos_mes),
+                'total_mensual': float(pernocta_total),
+            }
 
         total = combustible_total + pernocta_total
 
@@ -144,6 +157,7 @@ class CalculadoraLejanias:
                 'precio_galon': float(precio_galon),
                 'umbral_km': self.config.umbral_lejania_comercial_km,
                 'municipios': detalle_municipios,
+                'pernocta': detalle_pernocta,
                 'es_constitutiva_salario': self.config.es_constitutiva_salario_comercial,
             }
         }

@@ -167,26 +167,51 @@ export default function LejaniasComercial({ escenarioId, marcaId }: LejaniasCome
               {/* Detalle de zona expandida */}
               {expandida && (
                 <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
-                  <div className="grid grid-cols-3 gap-4 mb-4">
+                  <div className="grid grid-cols-2 gap-4 mb-4">
                     <div>
-                      <div className="text-xs text-gray-500">Combustible</div>
+                      <div className="text-xs text-gray-500">Combustible Mensual</div>
                       <div className="text-sm font-medium text-blue-600">
                         {formatCurrency(zona.combustible_mensual)}
                       </div>
                     </div>
                     <div>
-                      <div className="text-xs text-gray-500">Pernocta</div>
+                      <div className="text-xs text-gray-500">Pernocta Mensual</div>
                       <div className="text-sm font-medium text-purple-600">
                         {formatCurrency(zona.pernocta_mensual)}
                       </div>
                     </div>
-                    <div>
-                      <div className="text-xs text-gray-500">Pernocta Config</div>
-                      <div className="text-sm font-medium text-gray-700">
-                        {zona.requiere_pernocta ? `${zona.noches_pernocta} noches` : 'No'}
+                  </div>
+
+                  {/* Detalle de Pernocta */}
+                  {zona.detalle?.pernocta && (
+                    <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded">
+                      <div className="text-xs font-semibold text-purple-800 mb-2">
+                        Detalle Pernocta ({zona.detalle.pernocta.noches} noche{zona.detalle.pernocta.noches > 1 ? 's' : ''} × {zona.detalle.pernocta.periodos_mes.toFixed(2)} viajes/mes)
+                      </div>
+                      <div className="grid grid-cols-5 gap-2 text-xs">
+                        <div>
+                          <span className="text-gray-500">Desayuno:</span>{' '}
+                          <span className="font-medium">{formatCurrency(zona.detalle.pernocta.desayuno)}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Almuerzo:</span>{' '}
+                          <span className="font-medium">{formatCurrency(zona.detalle.pernocta.almuerzo)}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Cena:</span>{' '}
+                          <span className="font-medium">{formatCurrency(zona.detalle.pernocta.cena)}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Alojamiento:</span>{' '}
+                          <span className="font-medium">{formatCurrency(zona.detalle.pernocta.alojamiento)}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Total/noche:</span>{' '}
+                          <span className="font-medium">{formatCurrency(zona.detalle.pernocta.gasto_por_noche)}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Tabla de municipios */}
                   {zona.detalle?.municipios && zona.detalle.municipios.length > 0 && (
@@ -200,6 +225,7 @@ export default function LejaniasComercial({ escenarioId, marcaId }: LejaniasCome
                             <tr>
                               <th className="px-2 py-1 text-left">Municipio</th>
                               <th className="px-2 py-1 text-right">Distancia (km)</th>
+                              <th className="px-2 py-1 text-right">Visitas/periodo</th>
                               <th className="px-2 py-1 text-right">Visitas/mes</th>
                               <th className="px-2 py-1 text-right">Combustible</th>
                             </tr>
@@ -209,7 +235,12 @@ export default function LejaniasComercial({ escenarioId, marcaId }: LejaniasCome
                               <tr key={idx} className="border-b border-gray-100">
                                 <td className="px-2 py-1">{municipio.municipio}</td>
                                 <td className="px-2 py-1 text-right">{municipio.distancia_km}</td>
-                                <td className="px-2 py-1 text-right">{municipio.visitas_mensuales}</td>
+                                <td className="px-2 py-1 text-right">
+                                  <span className={municipio.visitas_por_periodo > 1 ? 'font-semibold text-orange-600' : ''}>
+                                    {municipio.visitas_por_periodo}
+                                  </span>
+                                </td>
+                                <td className="px-2 py-1 text-right">{municipio.visitas_mensuales.toFixed(1)}</td>
                                 <td className="px-2 py-1 text-right text-blue-600">
                                   {formatCurrency(municipio.combustible_mensual)}
                                 </td>
