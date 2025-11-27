@@ -477,52 +477,6 @@ class Vehiculo(models.Model):
         return f"{self.marca.nombre} - {self.get_tipo_vehiculo_display()} {self.get_esquema_display()} ({self.cantidad})"
 
 
-class ProyeccionVentas(models.Model):
-    """Proyecciones mensuales de ventas por marca"""
-
-    MESES = [
-        ('enero', 'Enero'),
-        ('febrero', 'Febrero'),
-        ('marzo', 'Marzo'),
-        ('abril', 'Abril'),
-        ('mayo', 'Mayo'),
-        ('junio', 'Junio'),
-        ('julio', 'Julio'),
-        ('agosto', 'Agosto'),
-        ('septiembre', 'Septiembre'),
-        ('octubre', 'Octubre'),
-        ('noviembre', 'Noviembre'),
-        ('diciembre', 'Diciembre'),
-    ]
-
-    marca = models.ForeignKey(Marca, on_delete=models.CASCADE, related_name='proyecciones_ventas')
-    escenario = models.ForeignKey(
-        'Escenario',
-        on_delete=models.CASCADE,
-        related_name='proyeccion_ventas_items',
-        verbose_name="Escenario",
-        help_text="Escenario al que pertenece este registro",
-        null=True,
-        blank=True
-    )
-    anio = models.IntegerField(verbose_name="Año")
-    mes = models.CharField(max_length=20, choices=MESES, verbose_name="Mes")
-    ventas = models.DecimalField(max_digits=15, decimal_places=2, verbose_name="Ventas Proyectadas")
-
-    fecha_creacion = models.DateTimeField(auto_now_add=True)
-    fecha_modificacion = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        db_table = 'dxv_proyeccion_ventas'
-        verbose_name = "Proyección de Ventas"
-        verbose_name_plural = "Proyecciones de Ventas"
-        ordering = ['marca', 'anio', 'mes']
-        unique_together = ['marca', 'anio', 'mes']
-
-    def __str__(self):
-        return f"{self.marca.nombre} - {self.get_mes_display()} {self.anio}: ${self.ventas:,.0f}"
-
-
 class ParametrosMacro(models.Model):
     """Parámetros macroeconómicos del sistema"""
 

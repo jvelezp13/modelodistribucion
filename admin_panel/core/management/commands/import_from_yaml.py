@@ -8,7 +8,7 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 from core.models import (
     Marca, PersonalComercial, PersonalLogistico,
-    Vehiculo, ProyeccionVentas,
+    Vehiculo, ProyeccionVentasConfig, ProyeccionManual, Escenario,
     ParametrosMacro, FactorPrestacional
 )
 
@@ -314,7 +314,7 @@ class Command(BaseCommand):
         self.stdout.write(f'    ✓ {count_personal} registros de personal logístico importados')
 
     def import_ventas(self, marca, marca_dir):
-        """Importa proyecciones de ventas de una marca"""
+        """Importa proyecciones de ventas de una marca usando el nuevo modelo"""
         filepath = marca_dir / 'ventas.yaml'
         if not filepath.exists():
             return
@@ -326,19 +326,43 @@ class Command(BaseCommand):
         if not ventas_mensuales:
             return
 
-        # Limpiar proyecciones existentes
-        ProyeccionVentas.objects.filter(marca=marca).delete()
-
-        count = 0
         anio = 2025  # Puedes hacerlo configurable
 
-        for mes, ventas in ventas_mensuales.items():
-            ProyeccionVentas.objects.create(
-                marca=marca,
-                anio=anio,
-                mes=mes,
-                ventas=ventas
-            )
-            count += 1
+        # Obtener o crear escenario por defecto
+        escenario, _ = Escenario.objects.get_or_create(
+            nombre='Planeado 2025',
+            defaults={
+                'tipo': 'planeado',
+                'anio': anio,
+                'activo': True
+            }
+        )
 
-        self.stdout.write(f'    ✓ {count} proyecciones de ventas importadas')
+        # Crear o actualizar ProyeccionVentasConfig con método manual
+        config, created = ProyeccionVentasConfig.objects.update_or_create(
+            marca=marca,
+            escenario=escenario,
+            anio=anio,
+            defaults={'metodo': 'manual'}
+        )
+
+        # Crear o actualizar ProyeccionManual con los valores mensuales
+        ProyeccionManual.objects.update_or_create(
+            config=config,
+            defaults={
+                'enero': ventas_mensuales.get('enero', 0),
+                'febrero': ventas_mensuales.get('febrero', 0),
+                'marzo': ventas_mensuales.get('marzo', 0),
+                'abril': ventas_mensuales.get('abril', 0),
+                'mayo': ventas_mensuales.get('mayo', 0),
+                'junio': ventas_mensuales.get('junio', 0),
+                'julio': ventas_mensuales.get('julio', 0),
+                'agosto': ventas_mensuales.get('agosto', 0),
+                'septiembre': ventas_mensuales.get('septiembre', 0),
+                'octubre': ventas_mensuales.get('octubre', 0),
+                'noviembre': ventas_mensuales.get('noviembre', 0),
+                'diciembre': ventas_mensuales.get('diciembre', 0),
+            }
+        )
+
+        self.stdout.write(f'    ✓ Proyección de ventas importada (método manual)')

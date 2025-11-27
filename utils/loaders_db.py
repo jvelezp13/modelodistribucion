@@ -10,7 +10,7 @@ from . import django_init
 # Importar modelos de Django (ahora core.models será de /app/admin_panel/core/)
 from core.models import (
     Marca, PersonalComercial, PersonalLogistico, PersonalAdministrativo,
-    Vehiculo, ProyeccionVentas,
+    Vehiculo, ProyeccionVentasConfig,
     ParametrosMacro, FactorPrestacional, Escenario,
     GastoComercial, GastoLogistico, GastoAdministrativo
 )
@@ -182,20 +182,19 @@ class DataLoaderDB:
             for p in personal:
                 logger.info(f"[DEBUG] - Tipo: {p.tipo}, Cantidad: {p.cantidad}, ID: {p.id}")
 
-            # Cargar proyección de ventas
-            # Nota: ProyeccionVentas también tiene escenario ahora
-            proyecciones = ProyeccionVentas.objects.filter(marca=marca, **self._get_filter_kwargs())
-            
+            # Cargar proyección de ventas desde ProyeccionVentasConfig
             total_ventas_anuales = 0
-            if proyecciones.exists():
-                total_ventas_anuales = sum(p.ventas for p in proyecciones)
-            else:
-                # Fallback a lógica anterior si no hay proyecciones por escenario (aunque deberían haber)
-                # Si no hay proyecciones específicas del escenario, buscar cualquiera del año
-                escenario = self._get_escenario()
-                if escenario:
-                    proyecciones = ProyeccionVentas.objects.filter(marca=marca, anio=escenario.anio)
-                    total_ventas_anuales = sum(p.ventas for p in proyecciones)
+            escenario = self._get_escenario()
+            if escenario:
+                try:
+                    config = ProyeccionVentasConfig.objects.get(
+                        marca=marca,
+                        escenario=escenario,
+                        anio=escenario.anio
+                    )
+                    total_ventas_anuales = config.get_venta_anual()
+                except ProyeccionVentasConfig.DoesNotExist:
+                    logger.warning(f"No hay ProyeccionVentasConfig para {marca_id} en escenario {escenario.nombre}")
 
             # Agrupar personal por tipo
             recursos_comerciales = {}
@@ -342,20 +341,24 @@ class DataLoaderDB:
         """Carga las proyecciones de ventas de una marca desde PostgreSQL"""
         try:
             marca = Marca.objects.get(marca_id=marca_id)
-            proyecciones = ProyeccionVentas.objects.filter(marca=marca, **self._get_filter_kwargs()).order_by('mes')
-            
-            if not proyecciones.exists():
-                 # Fallback
-                escenario = self._get_escenario()
-                if escenario:
-                     proyecciones = ProyeccionVentas.objects.filter(marca=marca, anio=escenario.anio).order_by('mes')
+            escenario = self._get_escenario()
 
             ventas_mensuales = {}
-            for p in proyecciones:
-                ventas_mensuales[p.mes] = float(p.ventas)
+            total_anual = 0
 
-            total_anual = sum(ventas_mensuales.values())
-            promedio = total_anual / len(ventas_mensuales) if ventas_mensuales else 0
+            if escenario:
+                try:
+                    config = ProyeccionVentasConfig.objects.get(
+                        marca=marca,
+                        escenario=escenario,
+                        anio=escenario.anio
+                    )
+                    ventas_mensuales = config.calcular_ventas_mensuales()
+                    total_anual = sum(ventas_mensuales.values())
+                except ProyeccionVentasConfig.DoesNotExist:
+                    logger.warning(f"No hay ProyeccionVentasConfig para {marca_id}")
+
+            promedio = total_anual / 12 if total_anual > 0 else 0
 
             return {
                 'marca_id': marca.marca_id,

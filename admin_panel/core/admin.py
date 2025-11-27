@@ -5,8 +5,7 @@ from django.contrib import admin
 from django.db.models import Sum, Count
 from .models import (
     Marca, PersonalComercial, PersonalLogistico,
-    Vehiculo, ProyeccionVentas,
-    ParametrosMacro, FactorPrestacional,
+    Vehiculo, ParametrosMacro, FactorPrestacional,
     PersonalAdministrativo, GastoAdministrativo,
     GastoComercial, GastoLogistico, Impuesto,
     ConfiguracionDescuentos, TramoDescuentoFactura,
@@ -322,35 +321,6 @@ class VehiculoAdmin(admin.ModelAdmin):
         except (AttributeError, KeyError):
             pass
         return response
-
-
-class ProyeccionVentasInline(admin.TabularInline):
-    model = ProyeccionVentas
-    extra = 12
-    max_num = 12
-
-
-@admin.register(ProyeccionVentas, site=dxv_admin_site)
-class ProyeccionVentasAdmin(admin.ModelAdmin):
-    list_display = ('marca', 'escenario', 'anio', 'mes', 'ventas_formateadas', 'fecha_modificacion')
-    list_filter = ('escenario', 'marca', 'anio', 'mes')
-    search_fields = ('marca__nombre',)
-    readonly_fields = ('fecha_creacion', 'fecha_modificacion')
-
-    fieldsets = (
-        ('Información Básica', {
-            'fields': ('marca', 'escenario', 'anio', 'mes', 'ventas')
-        }),
-        ('Metadata', {
-            'fields': ('fecha_creacion', 'fecha_modificacion'),
-            'classes': ('collapse',)
-        }),
-    )
-
-    def ventas_formateadas(self, obj):
-        return f"${obj.ventas:,.0f}"
-    ventas_formateadas.short_description = 'Ventas'
-    ventas_formateadas.admin_order_field = 'ventas'
 
 
 @admin.register(ParametrosMacro, site=dxv_admin_site)
