@@ -96,25 +96,27 @@ class CalculadoraLejanias:
                 logger.warning(f"No existe ruta {base_vendedor.nombre} (ID:{base_vendedor.id}) → {municipio.nombre} (ID:{municipio.id})")
                 continue
 
-            # Aplicar umbral
-            if matriz.distancia_km < self.config.umbral_lejania_comercial_km:
-                continue  # No aplica lejanía
-
-            # Calcular combustible por visita (ida y vuelta)
-            distancia_ida_vuelta = matriz.distancia_km * 2
-            galones_por_visita = distancia_ida_vuelta / consumo_km_galon
-            costo_combustible_visita = galones_por_visita * precio_galon
-
             # Visitas mensuales
             visitas_mensuales = zona_mun.visitas_mensuales()
-            combustible_municipio = costo_combustible_visita * visitas_mensuales
 
-            combustible_total += combustible_municipio
+            # Calcular distancia efectiva para lejanía (km después del umbral)
+            umbral = self.config.umbral_lejania_comercial_km
+            distancia_efectiva = max(Decimal('0'), matriz.distancia_km - umbral)
+
+            # Calcular combustible (solo km después del umbral)
+            combustible_municipio = Decimal('0')
+            if distancia_efectiva > 0:
+                distancia_ida_vuelta = distancia_efectiva * 2
+                galones_por_visita = distancia_ida_vuelta / consumo_km_galon
+                costo_combustible_visita = galones_por_visita * precio_galon
+                combustible_municipio = costo_combustible_visita * visitas_mensuales
+                combustible_total += combustible_municipio
 
             detalle_municipios.append({
                 'municipio': municipio.nombre,
                 'municipio_id': municipio.id,
                 'distancia_km': float(matriz.distancia_km),
+                'distancia_efectiva_km': float(distancia_efectiva),
                 'visitas_por_periodo': zona_mun.visitas_por_periodo,
                 'visitas_mensuales': float(visitas_mensuales),
                 'combustible_mensual': float(combustible_municipio),
@@ -286,25 +288,27 @@ class CalculadoraLejanias:
                 logger.warning(f"No existe ruta {bodega.nombre} (ID:{bodega.id}) → {municipio.nombre} (ID:{municipio.id})")
                 continue
 
-            # Aplicar umbral
-            if matriz.distancia_km < self.config.umbral_lejania_logistica_km:
-                continue  # No aplica lejanía
-
             # Entregas mensuales a este municipio
             entregas_mensuales = ruta_mun.entregas_mensuales()
 
-            # Flete base (para terceros principalmente)
+            # Flete base (siempre aplica, independiente del umbral)
             flete_base_municipio = ruta_mun.flete_base or Decimal('0')
             flete_base_total += flete_base_municipio * entregas_mensuales
 
-            # Combustible (aplica para todos los esquemas)
-            distancia_ida_vuelta = matriz.distancia_km * 2
-            galones_por_entrega = distancia_ida_vuelta / consumo_km_galon
-            costo_combustible_entrega = galones_por_entrega * precio_galon
-            combustible_municipio = costo_combustible_entrega * entregas_mensuales
-            combustible_total += combustible_municipio
+            # Calcular distancia efectiva para lejanía (km después del umbral)
+            umbral = self.config.umbral_lejania_logistica_km
+            distancia_efectiva = max(Decimal('0'), matriz.distancia_km - umbral)
 
-            # Peajes (aplica para todos los esquemas)
+            # Combustible (solo km después del umbral)
+            combustible_municipio = Decimal('0')
+            if distancia_efectiva > 0:
+                distancia_ida_vuelta = distancia_efectiva * 2
+                galones_por_entrega = distancia_ida_vuelta / consumo_km_galon
+                costo_combustible_entrega = galones_por_entrega * precio_galon
+                combustible_municipio = costo_combustible_entrega * entregas_mensuales
+                combustible_total += combustible_municipio
+
+            # Peajes (siempre aplica si hay peajes configurados)
             peaje_por_entrega = (matriz.peaje_ida or Decimal('0')) + (matriz.peaje_vuelta or Decimal('0'))
             peaje_municipio = peaje_por_entrega * entregas_mensuales
             peaje_total += peaje_municipio
@@ -326,6 +330,7 @@ class CalculadoraLejanias:
                 'municipio': municipio.nombre,
                 'municipio_id': municipio.id,
                 'distancia_km': float(matriz.distancia_km),
+                'distancia_efectiva_km': float(distancia_efectiva),
                 'tiempo_minutos': matriz.tiempo_minutos,
                 'entregas_por_periodo': ruta_mun.entregas_por_periodo,
                 'entregas_mensuales': float(entregas_mensuales),
