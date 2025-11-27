@@ -239,20 +239,18 @@ class Simulator:
             tipo_vehiculo = vehiculo_data.get('tipo')
             cantidad = vehiculo_data.get('cantidad', 0)
             asignacion_str = vehiculo_data.get('asignacion', 'individual')
+            nombre_vehiculo = vehiculo_data.get('nombre', f"Vehículo {tipo_vehiculo.upper()} (Renting)")
 
             if cantidad == 0:
                 continue
 
-            # Calcular costo
-            costo = self.calc_vehiculos.calcular_costo_renting(
-                tipo_vehiculo=tipo_vehiculo,
-                cantidad=cantidad
-            )
+            # Usar el costo pre-calculado del modelo (solo costos fijos)
+            valor_unitario = vehiculo_data.get('costo_mensual_calculado', 0)
 
             # Crear rubro
             rubro = RubroVehiculo(
                 id=f"vehiculo_{tipo_vehiculo}_renting_{marca.marca_id}",
-                nombre=f"Vehículo {tipo_vehiculo.upper()} (Renting)",
+                nombre=nombre_vehiculo,
                 categoria='logistico',
                 tipo='vehiculo',
                 tipo_asignacion=TipoAsignacion(asignacion_str),
@@ -260,7 +258,7 @@ class Simulator:
                 cantidad=cantidad,
                 tipo_vehiculo=tipo_vehiculo,
                 esquema='renting',
-                valor_unitario=costo.costo_unitario_mensual
+                valor_unitario=valor_unitario
             )
 
             if rubro.es_individual():
@@ -271,23 +269,22 @@ class Simulator:
                 rubro.porcentaje_dedicacion = vehiculo_data.get('porcentaje_uso')
                 self.rubros_compartidos.append(rubro)
 
-        # Tradicional (similar)
+        # Tradicional (Propio)
         for vehiculo_data in vehiculos_config.get('tradicional', []):
             tipo_vehiculo = vehiculo_data.get('tipo')
             cantidad = vehiculo_data.get('cantidad', 0)
             asignacion_str = vehiculo_data.get('asignacion', 'individual')
+            nombre_vehiculo = vehiculo_data.get('nombre', f"Vehículo {tipo_vehiculo.upper()} (Propio)")
 
             if cantidad == 0:
                 continue
 
-            costo = self.calc_vehiculos.calcular_costo_tradicional(
-                tipo_vehiculo=tipo_vehiculo,
-                cantidad=cantidad
-            )
+            # Usar el costo pre-calculado del modelo (solo costos fijos)
+            valor_unitario = vehiculo_data.get('costo_mensual_calculado', 0)
 
             rubro = RubroVehiculo(
                 id=f"vehiculo_{tipo_vehiculo}_tradicional_{marca.marca_id}",
-                nombre=f"Vehículo {tipo_vehiculo.upper()} (Propio)",
+                nombre=nombre_vehiculo,
                 categoria='logistico',
                 tipo='vehiculo',
                 tipo_asignacion=TipoAsignacion(asignacion_str),
@@ -295,7 +292,7 @@ class Simulator:
                 cantidad=cantidad,
                 tipo_vehiculo=tipo_vehiculo,
                 esquema='tradicional',
-                valor_unitario=costo.costo_unitario_mensual
+                valor_unitario=valor_unitario
             )
 
             if rubro.es_individual():
@@ -306,21 +303,24 @@ class Simulator:
                 self.rubros_compartidos.append(rubro)
 
         # Tercero (Flete con terceros)
+        # NOTA: El costo del flete base ahora viene de los Recorridos Logísticos
+        # Aquí solo se registran costos fijos adicionales del vehículo tercero
         for vehiculo_data in vehiculos_config.get('tercero', []):
             tipo_vehiculo = vehiculo_data.get('tipo')
             cantidad = vehiculo_data.get('cantidad', 0)
             asignacion_str = vehiculo_data.get('asignacion', 'individual')
+            nombre_vehiculo = vehiculo_data.get('nombre', f"Vehículo {tipo_vehiculo.upper()} (Tercero)")
 
             if cantidad == 0:
                 continue
 
-            # Para terceros, usar el costo pre-calculado que incluye valor_flete_mensual
+            # Para terceros, el costo fijo es solo monitoreo + seguro mercancía
+            # El flete base viene de los Recorridos Logísticos
             valor_unitario = vehiculo_data.get('costo_mensual_calculado', 0)
-            valor_flete = vehiculo_data.get('valor_flete_mensual', 0)
 
             rubro = RubroVehiculo(
                 id=f"vehiculo_{tipo_vehiculo}_tercero_{marca.marca_id}",
-                nombre=f"Vehículo {tipo_vehiculo.upper()} (Tercero)",
+                nombre=nombre_vehiculo,
                 categoria='logistico',
                 tipo='vehiculo',
                 tipo_asignacion=TipoAsignacion(asignacion_str),
@@ -328,8 +328,7 @@ class Simulator:
                 cantidad=cantidad,
                 tipo_vehiculo=tipo_vehiculo,
                 esquema='tercero',
-                valor_unitario=valor_unitario,
-                valor_flete_mensual=valor_flete
+                valor_unitario=valor_unitario
             )
 
             if rubro.es_individual():

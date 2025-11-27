@@ -273,19 +273,13 @@ export default function PyGDetallado({ marca }: PyGDetalladoProps) {
               </>
             )}
 
-            {/* Desglose para Vehículos */}
+            {/* Desglose para Vehículos Renting (solo costos fijos) */}
             {rubro.tipo === 'vehiculo' && rubro.esquema === 'renting' && (
               <>
                 {rubro.canon_mensual !== undefined && rubro.canon_mensual > 0 && (
                   <div className="flex justify-between">
                     <span>Canon Mensual:</span>
                     <span className="font-medium text-gray-700">{formatCurrency(rubro.canon_mensual * (rubro.cantidad || 1))}</span>
-                  </div>
-                )}
-                {rubro.combustible !== undefined && rubro.combustible > 0 && (
-                  <div className="flex justify-between">
-                    <span>Combustible:</span>
-                    <span className="font-medium text-gray-700">{formatCurrency(rubro.combustible * (rubro.cantidad || 1))}</span>
                   </div>
                 )}
                 {rubro.lavada !== undefined && rubro.lavada > 0 && (
@@ -300,9 +294,13 @@ export default function PyGDetallado({ marca }: PyGDetalladoProps) {
                     <span className="font-medium text-gray-700">{formatCurrency(rubro.reposicion * (rubro.cantidad || 1))}</span>
                   </div>
                 )}
+                <div className="text-gray-500 italic text-[9px] mt-1">
+                  Combustible y peajes en Lejanías Logísticas
+                </div>
               </>
             )}
 
+            {/* Desglose para Vehículos Propios (solo costos fijos) */}
             {rubro.tipo === 'vehiculo' && rubro.esquema === 'tradicional' && (
               <>
                 {rubro.depreciacion !== undefined && rubro.depreciacion > 0 && (
@@ -323,31 +321,23 @@ export default function PyGDetallado({ marca }: PyGDetalladoProps) {
                     <span className="font-medium text-gray-700">{formatCurrency(rubro.seguro * (rubro.cantidad || 1))}</span>
                   </div>
                 )}
-                {rubro.combustible !== undefined && rubro.combustible > 0 && (
-                  <div className="flex justify-between">
-                    <span>Combustible:</span>
-                    <span className="font-medium text-gray-700">{formatCurrency(rubro.combustible * (rubro.cantidad || 1))}</span>
-                  </div>
-                )}
                 {rubro.impuestos !== undefined && rubro.impuestos > 0 && (
                   <div className="flex justify-between">
                     <span>Impuestos (mensual):</span>
                     <span className="font-medium text-gray-700">{formatCurrency((rubro.impuestos / 12) * (rubro.cantidad || 1))}</span>
                   </div>
                 )}
+                <div className="text-gray-500 italic text-[9px] mt-1">
+                  Combustible y peajes en Lejanías Logísticas
+                </div>
               </>
             )}
 
             {/* Desglose para Vehículos Terceros */}
             {rubro.tipo === 'vehiculo' && rubro.esquema === 'tercero' && (
-              <>
-                {rubro.valor_flete_mensual !== undefined && rubro.valor_flete_mensual > 0 && (
-                  <div className="flex justify-between">
-                    <span>Valor Flete Mensual:</span>
-                    <span className="font-medium text-gray-700">{formatCurrency(rubro.valor_flete_mensual * (rubro.cantidad || 1))}</span>
-                  </div>
-                )}
-              </>
+              <div className="text-gray-500 italic">
+                El flete base se calcula en Lejanías Logísticas (Recorridos)
+              </div>
             )}
           </div>
         )}

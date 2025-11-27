@@ -247,19 +247,15 @@ class PersonalLogisticoAdmin(admin.ModelAdmin):
 @admin.register(Vehiculo)
 class VehiculoAdmin(admin.ModelAdmin):
     change_list_template = 'admin/core/change_list_with_total.html'
-    list_display = ('marca', 'escenario', 'tipo_vehiculo', 'esquema', 'cantidad', 'costo_mensual_estimado_formateado')
+    list_display = ('nombre_display', 'marca', 'escenario', 'tipo_vehiculo', 'esquema', 'cantidad', 'costo_mensual_estimado_formateado')
     list_filter = ('escenario', 'marca', 'tipo_vehiculo', 'esquema', 'asignacion')
-    search_fields = ['marca__nombre', 'tipo_vehiculo', 'esquema']  # Para autocomplete en RutaLogistica
+    search_fields = ['nombre', 'marca__nombre', 'tipo_vehiculo', 'esquema']
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
 
     fieldsets = (
         ('Información Básica', {
-            'fields': ('marca', 'escenario', 'tipo_vehiculo', 'esquema', 'cantidad', 'kilometraje_promedio_mensual')
-        }),
-        ('Esquema: Tercero', {
-            'fields': ('valor_flete_mensual',),
-            'description': '⚠️ IMPORTANTE: Para vehículos de terceros (fletes externos), registrar AQUÍ en lugar de usar Gastos Logísticos "flete_tercero". Diligenciar solo si el esquema es "Tercero".',
-            'classes': ('collapse',)
+            'fields': ('nombre', 'marca', 'escenario', 'tipo_vehiculo', 'esquema', 'cantidad'),
+            'description': 'El campo "Nombre" permite identificar el vehículo de forma única (ej: "Turbo 01", "NKR Zona Norte")'
         }),
         ('Esquema: Renting', {
             'fields': ('canon_renting',),
@@ -273,7 +269,7 @@ class VehiculoAdmin(admin.ModelAdmin):
         }),
         ('Consumo de Combustible (Propio/Renting)', {
             'fields': ('tipo_combustible', 'consumo_galon_km'),
-            'description': 'Diligenciar para esquemas Propio y Renting',
+            'description': 'Datos usados para calcular combustible en los Recorridos Logísticos',
             'classes': ('collapse',)
         }),
         ('Otros Costos Operativos (Propio/Renting)', {
@@ -295,6 +291,12 @@ class VehiculoAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+
+    def nombre_display(self, obj):
+        if obj.nombre:
+            return obj.nombre
+        return f"{obj.get_tipo_vehiculo_display()} #{obj.id}"
+    nombre_display.short_description = 'Nombre'
 
     def costo_mensual_estimado_formateado(self, obj):
         costo = obj.calcular_costo_mensual()

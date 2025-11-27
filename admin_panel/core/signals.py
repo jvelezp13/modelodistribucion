@@ -136,15 +136,14 @@ def update_expenses_on_policy_change(sender, instance, **kwargs):
 
 def calculate_logistic_expenses(escenario):
     """
-    Recalcula los gastos logísticos automáticos basados en la flota de vehículos.
+    Recalcula los gastos logísticos FIJOS basados en la flota de vehículos.
+
+    NOTA: El combustible, peajes y flete de terceros se calculan desde los
+    Recorridos Logísticos, no desde aquí. Esta función solo procesa costos
+    fijos del vehículo.
     """
     if not escenario:
         return
-
-    try:
-        macro = ParametrosMacro.objects.get(anio=escenario.anio, activo=True)
-    except ParametrosMacro.DoesNotExist:
-        macro = None
 
     # Obtener todas las marcas con vehículos en este escenario
     qs_vehiculos = Vehiculo.objects.filter(escenario=escenario)
@@ -153,15 +152,13 @@ def calculate_logistic_expenses(escenario):
     for marca_id in marcas_ids:
         marca_obj = Marca.objects.get(pk=marca_id)
         vehiculos_marca = qs_vehiculos.filter(marca=marca_obj)
-        
-        # Inicializar acumuladores por tipo de gasto
-        total_flete = 0
+
+        # Inicializar acumuladores por tipo de gasto (solo costos FIJOS)
         total_renting = 0
         total_depreciacion = 0
         total_mantenimiento = 0
         total_seguros = 0
         total_seguros_mercancia = 0
-        total_combustible = 0
         total_lavado = 0
         total_parqueadero = 0
         total_monitoreo = 0
@@ -172,38 +169,29 @@ def calculate_logistic_expenses(escenario):
             total_seguros_mercancia += v.costo_seguro_mercancia_mensual * v.cantidad
 
             if v.esquema == 'tercero':
-                # Flete: Valor Flete * Cantidad
-                total_flete += v.valor_flete_mensual * v.cantidad
-            
+                # Para terceros, el flete base viene de los Recorridos Logísticos
+                pass
+
             elif v.esquema in ['renting', 'tradicional']:
                 # Costos comunes para Propio y Renting
                 total_lavado += v.costo_lavado_mensual * v.cantidad
                 total_parqueadero += v.costo_parqueadero_mensual * v.cantidad
-                # total_monitoreo ya se sumó arriba
 
-                # Combustible (común)
-                if v.consumo_galon_km > 0 and macro:
-                    galones = v.kilometraje_promedio_mensual / v.consumo_galon_km
-                    # Usar el precio según el tipo de combustible del vehículo
-                    if v.tipo_combustible == 'gasolina':
-                        precio_galon = macro.precio_galon_gasolina
-                    else:  # acpm
-                        precio_galon = macro.precio_galon_acpm
-                    total_combustible += galones * precio_galon * v.cantidad
+                # NOTA: El combustible se calcula en los Recorridos Logísticos
 
                 if v.esquema == 'renting':
                     # Renting: Canon * Cantidad
                     total_renting += v.canon_renting * v.cantidad
-                    
-                elif v.esquema == 'tradicional': # Propio
+
+                elif v.esquema == 'tradicional':  # Propio
                     # Depreciación: (Costo - Residual) / (Vida Util * 12) * Cantidad
                     if v.vida_util_anios > 0:
                         depreciacion_mensual = (v.costo_compra - v.valor_residual) / (v.vida_util_anios * 12)
                         total_depreciacion += depreciacion_mensual * v.cantidad
-                    
+
                     # Mantenimiento
                     total_mantenimiento += v.costo_mantenimiento_mensual * v.cantidad
-                    
+
                     # Seguros
                     total_seguros += v.costo_seguro_mensual * v.cantidad
 
@@ -223,13 +211,12 @@ def calculate_logistic_expenses(escenario):
             else:
                 GastoLogistico.objects.filter(escenario=escenario, tipo=tipo, marca=marca_obj, nombre=nombre).delete()
 
-        # Actualizar cada rubro
-        update_gasto('flete_tercero', 'Flete Transporte (Tercero)', total_flete)
+        # Actualizar cada rubro (solo costos FIJOS del vehículo)
+        # NOTA: flete_tercero y combustible se calculan desde los Recorridos Logísticos
         update_gasto('canon_renting', 'Canon Renting Flota', total_renting)
         update_gasto('depreciacion_vehiculo', 'Depreciación Flota Propia', total_depreciacion)
         update_gasto('mantenimiento_vehiculos', 'Mantenimiento Flota Propia', total_mantenimiento)
-        update_gasto('seguros_carga', 'Seguros Flota Propia', total_seguros) # Usamos seguros_carga o creamos uno nuevo? Reutilicemos por ahora o 'otros'
-        update_gasto('combustible', 'Combustible Flota', total_combustible)
+        update_gasto('seguros_carga', 'Seguros Flota Propia', total_seguros)
         update_gasto('lavado_vehiculos', 'Aseo y Limpieza Vehículos', total_lavado)
         update_gasto('parqueadero_vehiculos', 'Parqueaderos', total_parqueadero)
         update_gasto('monitoreo_satelital', 'Monitoreo Satelital (GPS)', total_monitoreo)

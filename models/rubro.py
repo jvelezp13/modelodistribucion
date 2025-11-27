@@ -198,15 +198,20 @@ class RubroPersonal(Rubro):
 
 @dataclass
 class RubroVehiculo(Rubro):
-    """Rubro especializado para vehículos."""
+    """
+    Rubro especializado para vehículos.
+
+    NOTA: Este rubro solo contiene los costos FIJOS del vehículo.
+    El combustible, peajes y flete base se calculan desde los Recorridos Logísticos
+    y se muestran en el componente de Lejanías Logísticas.
+    """
 
     tipo_vehiculo: str = ""  # nhr, pickup, motocarro, etc.
     esquema: str = "renting"  # renting, tradicional, tercero
 
-    # Costos según esquema
+    # Costos según esquema (solo costos FIJOS)
     # Renting
     canon_mensual: float = 0.0
-    combustible: float = 0.0
     mantenimiento: float = 0.0
     lavada: float = 0.0
     reposicion: float = 0.0
@@ -216,26 +221,15 @@ class RubroVehiculo(Rubro):
     seguro: float = 0.0
     impuestos: float = 0.0
 
-    # Tercero
-    valor_flete_mensual: float = 0.0
+    # Costos comunes
+    monitoreo: float = 0.0
+    seguro_mercancia: float = 0.0
 
     def __post_init__(self):
-        """Calcula el costo total del vehículo."""
-        if self.esquema == "tercero":
-            # Para terceros, usar el valor_flete_mensual
-            self.valor_unitario = self.valor_flete_mensual
-        elif self.esquema == "renting":
-            self.valor_unitario = (
-                self.canon_mensual + self.combustible +
-                self.lavada + self.reposicion
-            )
-        else:  # tradicional
-            self.valor_unitario = (
-                self.depreciacion + self.mantenimiento +
-                self.seguro + self.combustible +
-                self.impuestos / 12  # Impuestos anuales a mensual
-            )
-
+        """
+        El valor_unitario ya viene pre-calculado desde el modelo Django.
+        Solo necesitamos llamar al __post_init__ padre.
+        """
         super().__post_init__()
 
     def to_dict(self) -> Dict[str, Any]:
@@ -245,13 +239,13 @@ class RubroVehiculo(Rubro):
             'tipo_vehiculo': self.tipo_vehiculo,
             'esquema': self.esquema,
             'canon_mensual': self.canon_mensual,
-            'combustible': self.combustible,
             'mantenimiento': self.mantenimiento,
             'lavada': self.lavada,
             'reposicion': self.reposicion,
             'depreciacion': self.depreciacion,
             'seguro': self.seguro,
             'impuestos': self.impuestos,
-            'valor_flete_mensual': self.valor_flete_mensual,
+            'monitoreo': self.monitoreo,
+            'seguro_mercancia': self.seguro_mercancia,
         })
         return base_dict

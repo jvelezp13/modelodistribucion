@@ -270,18 +270,21 @@ class DataLoaderDB:
 
             for v in vehiculos_qs:
                 vehiculo_data = {
+                    'id': v.id,
+                    'nombre': v.nombre or f"{v.get_tipo_vehiculo_display()} #{v.id}",
                     'tipo': v.tipo_vehiculo,
                     'cantidad': v.cantidad,
                     'asignacion': v.asignacion,
-                    'kilometraje_promedio_mensual': v.kilometraje_promedio_mensual,
                     'porcentaje_uso': float(v.porcentaje_uso) if v.porcentaje_uso else None,
                     'criterio_prorrateo': v.criterio_prorrateo,
-                    'costo_mensual_calculado': float(v.calcular_costo_mensual()),  # ⭐ USAR método del modelo (incluye seguro mercancía)
+                    'costo_mensual_calculado': float(v.calcular_costo_mensual()),
                     # Campos adicionales para referencia
                     'costo_seguro_mercancia_mensual': float(v.costo_seguro_mercancia_mensual) if v.costo_seguro_mercancia_mensual else 0,
                     'costo_monitoreo_mensual': float(v.costo_monitoreo_mensual) if v.costo_monitoreo_mensual else 0,
-                    # Campo específico para terceros
-                    'valor_flete_mensual': float(v.valor_flete_mensual) if v.valor_flete_mensual else 0,
+                    # Campos para cálculo de combustible en recorridos
+                    'tipo_combustible': v.tipo_combustible,
+                    'consumo_galon_km': float(v.consumo_galon_km) if v.consumo_galon_km else 0,
+                    'esquema': v.esquema,
                 }
                 vehiculos_dict[v.esquema].append(vehiculo_data)
 

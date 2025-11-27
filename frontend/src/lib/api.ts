@@ -59,18 +59,18 @@ export interface Rubro {
   subsidio_transporte?: number;
   factor_prestacional?: number;
 
-  // Campos para vehículos
+  // Campos para vehículos (solo costos fijos)
   tipo_vehiculo?: string;
   esquema?: string;
   canon_mensual?: number;
-  combustible?: number;
   mantenimiento?: number;
   lavada?: number;
   reposicion?: number;
   depreciacion?: number;
   seguro?: number;
   impuestos?: number;
-  valor_flete_mensual?: number;
+  monitoreo?: number;
+  seguro_mercancia?: number;
 }
 
 export interface Consolidado {

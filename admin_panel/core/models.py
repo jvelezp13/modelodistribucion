@@ -346,14 +346,17 @@ class Vehiculo(models.Model):
         null=True,
         blank=True
     )
+    nombre = models.CharField(
+        max_length=100,
+        verbose_name="Nombre/Identificador",
+        help_text="Identificador único del vehículo. Ej: 'Turbo 01', 'NKR Zona Norte'",
+        default='',
+        blank=True
+    )
     tipo_vehiculo = models.CharField(max_length=50, choices=TIPO_VEHICULO_CHOICES, verbose_name="Tipo de Vehículo")
     esquema = models.CharField(max_length=20, choices=ESQUEMA_CHOICES, verbose_name="Esquema")
     cantidad = models.IntegerField(validators=[MinValueValidator(1)], verbose_name="Cantidad")
     asignacion = models.CharField(max_length=20, choices=ASIGNACION_CHOICES, default='individual')
-    kilometraje_promedio_mensual = models.IntegerField(default=3000, verbose_name="Km Promedio Mensual")
-    
-    # Campos para esquema Tercero
-    valor_flete_mensual = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Valor Flete Mensual", help_text="Costo total mensual si es esquema Tercero")
 
     # Campos para esquema Renting
     canon_renting = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Canon Renting Mensual")
@@ -425,42 +428,29 @@ class Vehiculo(models.Model):
         ordering = ['marca', 'tipo_vehiculo']
 
     def calcular_costo_mensual(self):
-        """Calcula el costo mensual total para este vehículo"""
+        """
+        Calcula el costo mensual FIJO del vehículo.
+
+        NOTA: El combustible y costos variables se calculan desde los Recorridos Logísticos,
+        no desde este método. Este método solo incluye costos fijos del vehículo.
+        """
         try:
             total = 0
             cantidad = self.cantidad or 0
-
-            # Obtener precio combustible del escenario según tipo
-            precio_galon = 0
-            if self.escenario:
-                try:
-                    macro = ParametrosMacro.objects.get(anio=self.escenario.anio, activo=True)
-                    # Usar el precio según el tipo de combustible
-                    if self.tipo_combustible == 'gasolina':
-                        precio_galon = macro.precio_galon_gasolina or 0
-                    else:  # acpm
-                        precio_galon = macro.precio_galon_acpm or 0
-                except ParametrosMacro.DoesNotExist:
-                    pass
 
             # Costos comunes a todos los esquemas
             total += (self.costo_monitoreo_mensual or 0) * cantidad
             total += (self.costo_seguro_mercancia_mensual or 0) * cantidad
 
             if self.esquema == 'tercero':
-                total += (self.valor_flete_mensual or 0) * cantidad
+                # Para terceros, el costo viene del flete base en los recorridos
+                # Aquí solo se incluyen costos adicionales fijos si los hay
+                pass
 
             elif self.esquema in ['renting', 'tradicional']:
                 # Costos comunes Propio/Renting
                 total += (self.costo_lavado_mensual or 0) * cantidad
                 total += (self.costo_parqueadero_mensual or 0) * cantidad
-
-                # Combustible
-                consumo = self.consumo_galon_km or 0
-                km_mensual = self.kilometraje_promedio_mensual or 0
-                if consumo > 0:
-                    galones = km_mensual / consumo
-                    total += galones * precio_galon * cantidad
 
                 if self.esquema == 'renting':
                     total += (self.canon_renting or 0) * cantidad
@@ -482,6 +472,8 @@ class Vehiculo(models.Model):
             return 0
 
     def __str__(self):
+        if self.nombre:
+            return f"{self.nombre} ({self.get_tipo_vehiculo_display()} - {self.get_esquema_display()})"
         return f"{self.marca.nombre} - {self.get_tipo_vehiculo_display()} {self.get_esquema_display()} ({self.cantidad})"
 
 
