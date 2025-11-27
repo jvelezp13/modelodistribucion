@@ -299,9 +299,10 @@ export default function LejaniasLogistica({ escenarioId, marcaId }: LejaniasLogi
                           <thead className="bg-gray-100">
                             <tr>
                               <th className="px-2 py-1 text-left">Municipio</th>
-                              <th className="px-2 py-1 text-right">Distancia (km)</th>
-                              <th className="px-2 py-1 text-right">Entregas/periodo</th>
-                              <th className="px-2 py-1 text-right">Entregas/mes</th>
+                              <th className="px-2 py-1 text-right">Dist. (km)</th>
+                              <th className="px-2 py-1 text-right">Km Lejanía</th>
+                              <th className="px-2 py-1 text-right">Ent/periodo</th>
+                              <th className="px-2 py-1 text-right">Ent/mes</th>
                               <th className="px-2 py-1 text-right">Flete Base</th>
                               <th className="px-2 py-1 text-right">Combustible</th>
                               <th className="px-2 py-1 text-right">Peaje</th>
@@ -314,6 +315,11 @@ export default function LejaniasLogistica({ escenarioId, marcaId }: LejaniasLogi
                               <tr key={idx} className="border-b border-gray-100">
                                 <td className="px-2 py-1">{municipio.municipio}</td>
                                 <td className="px-2 py-1 text-right">{municipio.distancia_km}</td>
+                                <td className="px-2 py-1 text-right">
+                                  <span className={municipio.distancia_efectiva_km > 0 ? 'font-semibold text-blue-600' : 'text-gray-400'}>
+                                    {municipio.distancia_efectiva_km?.toFixed(1) || '0'}
+                                  </span>
+                                </td>
                                 <td className="px-2 py-1 text-right">
                                   <span className={municipio.entregas_por_periodo > 1 ? 'font-semibold text-orange-600' : ''}>
                                     {municipio.entregas_por_periodo}
