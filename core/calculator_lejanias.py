@@ -80,7 +80,7 @@ class CalculadoraLejanias:
             consumo_km_galon = self.config.consumo_galon_km_automovil
 
         # Precio gasolina (comerciales usan gasolina)
-        precio_galon = self.params_macro.precio_galon_gasolina
+        precio_galon = self.config.precio_galon_gasolina
 
         # Calcular para cada municipio de la zona (usando related_name 'municipios')
         for zona_mun in zona.municipios.all():
@@ -268,9 +268,9 @@ class CalculadoraLejanias:
         # Consumo y precio según vehículo
         consumo_km_galon = vehiculo.consumo_galon_km or Decimal('30')
         if vehiculo.tipo_combustible == 'gasolina':
-            precio_galon = self.params_macro.precio_galon_gasolina
+            precio_galon = self.config.precio_galon_gasolina
         else:  # acpm
-            precio_galon = self.params_macro.precio_galon_acpm
+            precio_galon = self.config.precio_galon_acpm
         tipo_combustible = vehiculo.tipo_combustible
         esquema_vehiculo = vehiculo.esquema
 

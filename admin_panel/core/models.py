@@ -1535,6 +1535,22 @@ class ConfiguracionLejania(models.Model):
         help_text="Si marca Sí, se incluye en prestaciones sociales"
     )
 
+    # === PRECIOS DE COMBUSTIBLE ===
+    precio_galon_gasolina = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=15000,
+        verbose_name="Precio Galón Gasolina",
+        help_text="Precio promedio galón de gasolina (para comerciales y vehículos gasolina)"
+    )
+    precio_galon_acpm = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=10000,
+        verbose_name="Precio Galón ACPM",
+        help_text="Precio promedio galón de ACPM/Diesel (para vehículos logísticos)"
+    )
+
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_modificacion = models.DateTimeField(auto_now=True)
 

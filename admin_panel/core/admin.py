@@ -1008,9 +1008,13 @@ class ConfiguracionLejaniaAdmin(admin.ModelAdmin):
             'fields': ('umbral_lejania_logistica_km', 'umbral_lejania_comercial_km'),
             'description': 'Distancia mínima en km para aplicar cálculo de lejanía'
         }),
+        ('Precios de Combustible', {
+            'fields': ('precio_galon_gasolina', 'precio_galon_acpm'),
+            'description': 'Precios usados para calcular combustible en Recorridos Logísticos y Zonas Comerciales'
+        }),
         ('Consumo Combustible Comercial', {
             'fields': ('consumo_galon_km_moto', 'consumo_galon_km_automovil'),
-            'description': 'Rendimiento en km por galón de gasolina'
+            'description': 'Rendimiento en km por galón (solo para vehículos comerciales). Los logísticos usan el consumo del vehículo.'
         }),
         ('Gastos Pernocta Logística', {
             'fields': (
