@@ -24,6 +24,7 @@ export default function DashboardPage() {
   const [activeView, setActiveView] = useState<ViewType>('pyg');
   const [selectedMarcaPyG, setSelectedMarcaPyG] = useState<string | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     cargarDatosIniciales();
@@ -75,6 +76,7 @@ export default function DashboardPage() {
 
   const recargarDatos = async () => {
     setResultado(null);
+    setRefreshKey(prev => prev + 1);
     await cargarDatosIniciales();
   };
 
@@ -240,6 +242,7 @@ export default function DashboardPage() {
           {/* Vista Lejanías Comerciales */}
           {activeView === 'lejanias-comercial' && selectedScenarioId && marcasSeleccionadas.length > 0 && (
             <LejaniasComercial
+              key={`lejanias-comercial-${refreshKey}`}
               escenarioId={selectedScenarioId}
               marcaId={marcasSeleccionadas[0]}
             />
@@ -248,6 +251,7 @@ export default function DashboardPage() {
           {/* Vista Lejanías Logísticas */}
           {activeView === 'lejanias-logistica' && selectedScenarioId && marcasSeleccionadas.length > 0 && (
             <LejaniasLogistica
+              key={`lejanias-logistica-${refreshKey}`}
               escenarioId={selectedScenarioId}
               marcaId={marcasSeleccionadas[0]}
             />
