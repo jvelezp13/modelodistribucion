@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Marca, Rubro } from '@/lib/api';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Marca, Rubro, DetalleLejaniasLogistica, apiClient } from '@/lib/api';
+import { ChevronDown, ChevronRight, Truck } from 'lucide-react';
 
 interface PyGDetalladoProps {
   marca: Marca;
+  escenarioId: number;
 }
 
 interface SeccionState {
@@ -22,11 +23,19 @@ interface SubSeccionState {
   logisticoVehiculos: boolean;
   logisticoPersonal: boolean;
   logisticoGastos: boolean;
+  logisticoLejanias: boolean;
   administrativoPersonal: boolean;
   administrativoGastos: boolean;
 }
 
-export default function PyGDetallado({ marca }: PyGDetalladoProps) {
+// Interfaz para vehículo con flete base agregado
+interface VehiculoConFlete {
+  rubro: Rubro;
+  fleteBase: number;
+  totalConFlete: number;
+}
+
+export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) {
   const [seccionesAbiertas, setSeccionesAbiertas] = useState<SeccionState>({
     ingresos: true,
     comercial: false,
@@ -41,9 +50,33 @@ export default function PyGDetallado({ marca }: PyGDetalladoProps) {
     logisticoVehiculos: false,
     logisticoPersonal: false,
     logisticoGastos: false,
+    logisticoLejanias: false,
     administrativoPersonal: false,
     administrativoGastos: false,
   });
+
+  const [lejaniasLogistica, setLejaniasLogistica] = useState<DetalleLejaniasLogistica | null>(null);
+  const [loadingLejanias, setLoadingLejanias] = useState(false);
+
+  // Cargar datos de lejanías logísticas
+  useEffect(() => {
+    const fetchLejanias = async () => {
+      if (!escenarioId || !marca.marca_id) return;
+
+      setLoadingLejanias(true);
+      try {
+        const data = await apiClient.getDetalleLejaniasLogistica(escenarioId, marca.marca_id);
+        setLejaniasLogistica(data);
+      } catch (error) {
+        console.error('Error cargando lejanías logísticas:', error);
+        setLejaniasLogistica(null);
+      } finally {
+        setLoadingLejanias(false);
+      }
+    };
+
+    fetchLejanias();
+  }, [escenarioId, marca.marca_id]);
 
   const toggleSeccion = (seccion: keyof SeccionState) => {
     setSeccionesAbiertas(prev => ({ ...prev, [seccion]: !prev[seccion] }));
@@ -100,15 +133,68 @@ export default function PyGDetallado({ marca }: PyGDetalladoProps) {
 
   const grupos = agruparRubros();
 
+  // Calcular flete base por vehículo desde las rutas logísticas
+  const calcularFleteBasePorVehiculo = (): Map<string, number> => {
+    const fletesPorVehiculo = new Map<string, number>();
+
+    if (lejaniasLogistica?.rutas) {
+      lejaniasLogistica.rutas.forEach(ruta => {
+        if (ruta.vehiculo) {
+          const vehiculoKey = ruta.vehiculo;
+          const fleteActual = fletesPorVehiculo.get(vehiculoKey) || 0;
+          fletesPorVehiculo.set(vehiculoKey, fleteActual + ruta.flete_base_mensual);
+        }
+      });
+    }
+
+    return fletesPorVehiculo;
+  };
+
+  const fleteBasePorVehiculo = calcularFleteBasePorVehiculo();
+
+  // Combinar vehículos con su flete base
+  const vehiculosConFlete: VehiculoConFlete[] = grupos.logisticoVehiculos.map(rubro => {
+    // Buscar el flete base que corresponde a este vehículo
+    let fleteBase = 0;
+    fleteBasePorVehiculo.forEach((flete, vehiculoNombre) => {
+      // Intentar hacer match por nombre del rubro o ID
+      if (vehiculoNombre.includes(rubro.nombre) || rubro.nombre.includes(vehiculoNombre.split(' (')[0])) {
+        fleteBase += flete;
+      }
+    });
+
+    // Si no encontramos match por nombre, intentar por índice (para terceros)
+    if (fleteBase === 0 && rubro.esquema === 'tercero' && lejaniasLogistica?.rutas) {
+      // Para terceros, sumar todos los fletes de rutas con ese esquema
+      const rutasTercero = lejaniasLogistica.rutas.filter(r => r.esquema === 'tercero');
+      fleteBase = rutasTercero.reduce((sum, r) => sum + r.flete_base_mensual, 0);
+    }
+
+    return {
+      rubro,
+      fleteBase,
+      totalConFlete: rubro.valor_total + fleteBase
+    };
+  });
+
   // Calcular subtotales
   const subtotalComercialPersonal = grupos.comercialPersonal.reduce((sum, r) => sum + r.valor_total, 0);
   const subtotalComercialGastos = grupos.comercialGastos.reduce((sum, r) => sum + r.valor_total, 0);
-  const totalComercial = subtotalComercialPersonal + subtotalComercialGastos;
+  const totalComercial = subtotalComercialPersonal + subtotalComercialGastos + (marca.lejania_comercial || 0);
 
-  const subtotalLogisticoVehiculos = grupos.logisticoVehiculos.reduce((sum, r) => sum + r.valor_total, 0);
+  // Subtotal de vehículos ahora incluye flete base
+  const subtotalLogisticoVehiculos = vehiculosConFlete.reduce((sum, v) => sum + v.totalConFlete, 0);
   const subtotalLogisticoPersonal = grupos.logisticoPersonal.reduce((sum, r) => sum + r.valor_total, 0);
   const subtotalLogisticoGastos = grupos.logisticoGastos.reduce((sum, r) => sum + r.valor_total, 0);
-  const totalLogistico = subtotalLogisticoVehiculos + subtotalLogisticoPersonal + subtotalLogisticoGastos;
+
+  // Lejanías logísticas ahora solo incluye combustible + peajes + pernocta (sin flete base)
+  const subtotalLejanias = lejaniasLogistica
+    ? (lejaniasLogistica.total_combustible_mensual || 0) +
+      (lejaniasLogistica.total_peaje_mensual || 0) +
+      (lejaniasLogistica.total_pernocta_mensual || 0)
+    : 0;
+
+  const totalLogistico = subtotalLogisticoVehiculos + subtotalLogisticoPersonal + subtotalLogisticoGastos + subtotalLejanias;
 
   const subtotalAdministrativoPersonal = grupos.administrativoPersonal.reduce((sum, r) => sum + r.valor_total, 0);
   const subtotalAdministrativoGastos = grupos.administrativoGastos.reduce((sum, r) => sum + r.valor_total, 0);
@@ -197,12 +283,123 @@ export default function PyGDetallado({ marca }: PyGDetalladoProps) {
     );
   };
 
+  // Componente para mostrar vehículo con flete base integrado
+  const VehiculoItem = ({ vehiculo }: { vehiculo: VehiculoConFlete }) => {
+    const [expandido, setExpandido] = useState(false);
+    const { rubro, fleteBase, totalConFlete } = vehiculo;
+
+    const esCompartido = rubro.tipo_asignacion === 'compartido';
+
+    return (
+      <div className="border-b border-gray-100">
+        {/* Línea principal */}
+        <div
+          className="flex justify-between items-center py-1.5 px-3 hover:bg-gray-50 text-xs cursor-pointer"
+          onClick={() => setExpandido(!expandido)}
+        >
+          <div className="flex-1 flex items-center gap-2">
+            <Truck size={12} className="text-gray-400" />
+            <span className="text-gray-700">{rubro.nombre}</span>
+            {rubro.cantidad && rubro.cantidad > 1 && (
+              <span className="text-gray-500 text-xs">(x{rubro.cantidad})</span>
+            )}
+            {esCompartido && (
+              <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-medium rounded">
+                Compartido
+              </span>
+            )}
+            <span className="px-1.5 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-medium rounded">
+              {rubro.esquema === 'renting' ? 'Renting' : rubro.esquema === 'tercero' ? 'Tercero' : 'Propio'}
+            </span>
+            {rubro.tipo_vehiculo && (
+              <span className="text-gray-500 text-[10px]">[{rubro.tipo_vehiculo.toUpperCase()}]</span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-gray-900">{formatCurrency(totalConFlete)}</span>
+            <ChevronDown
+              size={12}
+              className={`text-gray-400 transition-transform ${expandido ? 'rotate-180' : ''}`}
+            />
+          </div>
+        </div>
+
+        {/* Detalles expandidos */}
+        {expandido && (
+          <div className="px-3 py-1.5 bg-gray-50 text-[10px] text-gray-600 space-y-0.5">
+            {/* Costos fijos del vehículo */}
+            {rubro.valor_total > 0 && (
+              <div className="flex justify-between">
+                <span>Costos Fijos (GPS, Seguro, etc.):</span>
+                <span className="font-medium text-gray-700">{formatCurrency(rubro.valor_total)}</span>
+              </div>
+            )}
+
+            {/* Desglose de costos fijos según esquema */}
+            {rubro.esquema === 'renting' && (
+              <>
+                {rubro.canon_mensual !== undefined && rubro.canon_mensual > 0 && (
+                  <div className="flex justify-between pl-3">
+                    <span className="text-gray-500">Canon Mensual:</span>
+                    <span className="text-gray-600">{formatCurrency(rubro.canon_mensual * (rubro.cantidad || 1))}</span>
+                  </div>
+                )}
+                {rubro.lavada !== undefined && rubro.lavada > 0 && (
+                  <div className="flex justify-between pl-3">
+                    <span className="text-gray-500">Lavado:</span>
+                    <span className="text-gray-600">{formatCurrency(rubro.lavada * (rubro.cantidad || 1))}</span>
+                  </div>
+                )}
+              </>
+            )}
+
+            {rubro.esquema === 'tradicional' && (
+              <>
+                {rubro.depreciacion !== undefined && rubro.depreciacion > 0 && (
+                  <div className="flex justify-between pl-3">
+                    <span className="text-gray-500">Depreciación:</span>
+                    <span className="text-gray-600">{formatCurrency(rubro.depreciacion * (rubro.cantidad || 1))}</span>
+                  </div>
+                )}
+                {rubro.mantenimiento !== undefined && rubro.mantenimiento > 0 && (
+                  <div className="flex justify-between pl-3">
+                    <span className="text-gray-500">Mantenimiento:</span>
+                    <span className="text-gray-600">{formatCurrency(rubro.mantenimiento * (rubro.cantidad || 1))}</span>
+                  </div>
+                )}
+                {rubro.seguro !== undefined && rubro.seguro > 0 && (
+                  <div className="flex justify-between pl-3">
+                    <span className="text-gray-500">Seguro:</span>
+                    <span className="text-gray-600">{formatCurrency(rubro.seguro * (rubro.cantidad || 1))}</span>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Flete base de recorridos */}
+            {fleteBase > 0 && (
+              <div className="flex justify-between border-t border-gray-200 pt-1 mt-1">
+                <span>Flete Base (de Recorridos):</span>
+                <span className="font-medium text-gray-700">{formatCurrency(fleteBase)}</span>
+              </div>
+            )}
+
+            {/* Total */}
+            <div className="flex justify-between border-t border-gray-300 pt-1 mt-1 font-semibold">
+              <span>Total Vehículo:</span>
+              <span className="text-gray-800">{formatCurrency(totalConFlete)}</span>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const RubroItem = ({ rubro }: { rubro: Rubro }) => {
     const [expandido, setExpandido] = useState(false);
 
     // Determinar si tiene detalles para expandir
-    const tieneDetalles = (rubro.tipo === 'personal' && rubro.salario_base) ||
-                          (rubro.tipo === 'vehiculo' && rubro.tipo_vehiculo);
+    const tieneDetalles = rubro.tipo === 'personal' && rubro.salario_base;
 
     const esCompartido = rubro.tipo_asignacion === 'compartido';
 
@@ -222,14 +419,6 @@ export default function PyGDetallado({ marca }: PyGDetalladoProps) {
               <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-medium rounded">
                 Compartido{rubro.criterio_prorrateo ? ` - ${rubro.criterio_prorrateo}` : ''}
               </span>
-            )}
-            {rubro.tipo === 'vehiculo' && rubro.esquema && (
-              <span className="px-1.5 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-medium rounded">
-                {rubro.esquema === 'renting' ? 'Renting' : rubro.esquema === 'tercero' ? 'Tercero' : 'Propio'}
-              </span>
-            )}
-            {rubro.tipo_vehiculo && (
-              <span className="text-gray-500 text-[10px]">[{rubro.tipo_vehiculo.toUpperCase()}]</span>
             )}
           </div>
           <div className="flex items-center gap-2">
@@ -260,7 +449,7 @@ export default function PyGDetallado({ marca }: PyGDetalladoProps) {
                 </div>
                 {rubro.prestaciones !== undefined && rubro.prestaciones > 0 && (
                   <div className="flex justify-between">
-                    <span>Prestaciones ({(rubro.factor_prestacional || 0) * 100}%):</span>
+                    <span>Prestaciones ({((rubro.factor_prestacional || 0) * 100).toFixed(1)}%):</span>
                     <span className="font-medium text-gray-700">{formatCurrency(rubro.prestaciones * (rubro.cantidad || 1))}</span>
                   </div>
                 )}
@@ -271,73 +460,6 @@ export default function PyGDetallado({ marca }: PyGDetalladoProps) {
                   </div>
                 )}
               </>
-            )}
-
-            {/* Desglose para Vehículos Renting (solo costos fijos) */}
-            {rubro.tipo === 'vehiculo' && rubro.esquema === 'renting' && (
-              <>
-                {rubro.canon_mensual !== undefined && rubro.canon_mensual > 0 && (
-                  <div className="flex justify-between">
-                    <span>Canon Mensual:</span>
-                    <span className="font-medium text-gray-700">{formatCurrency(rubro.canon_mensual * (rubro.cantidad || 1))}</span>
-                  </div>
-                )}
-                {rubro.lavada !== undefined && rubro.lavada > 0 && (
-                  <div className="flex justify-between">
-                    <span>Lavada:</span>
-                    <span className="font-medium text-gray-700">{formatCurrency(rubro.lavada * (rubro.cantidad || 1))}</span>
-                  </div>
-                )}
-                {rubro.reposicion !== undefined && rubro.reposicion > 0 && (
-                  <div className="flex justify-between">
-                    <span>Reposición:</span>
-                    <span className="font-medium text-gray-700">{formatCurrency(rubro.reposicion * (rubro.cantidad || 1))}</span>
-                  </div>
-                )}
-                <div className="text-gray-500 italic text-[9px] mt-1">
-                  Combustible y peajes en Lejanías Logísticas
-                </div>
-              </>
-            )}
-
-            {/* Desglose para Vehículos Propios (solo costos fijos) */}
-            {rubro.tipo === 'vehiculo' && rubro.esquema === 'tradicional' && (
-              <>
-                {rubro.depreciacion !== undefined && rubro.depreciacion > 0 && (
-                  <div className="flex justify-between">
-                    <span>Depreciación:</span>
-                    <span className="font-medium text-gray-700">{formatCurrency(rubro.depreciacion * (rubro.cantidad || 1))}</span>
-                  </div>
-                )}
-                {rubro.mantenimiento !== undefined && rubro.mantenimiento > 0 && (
-                  <div className="flex justify-between">
-                    <span>Mantenimiento:</span>
-                    <span className="font-medium text-gray-700">{formatCurrency(rubro.mantenimiento * (rubro.cantidad || 1))}</span>
-                  </div>
-                )}
-                {rubro.seguro !== undefined && rubro.seguro > 0 && (
-                  <div className="flex justify-between">
-                    <span>Seguro:</span>
-                    <span className="font-medium text-gray-700">{formatCurrency(rubro.seguro * (rubro.cantidad || 1))}</span>
-                  </div>
-                )}
-                {rubro.impuestos !== undefined && rubro.impuestos > 0 && (
-                  <div className="flex justify-between">
-                    <span>Impuestos (mensual):</span>
-                    <span className="font-medium text-gray-700">{formatCurrency((rubro.impuestos / 12) * (rubro.cantidad || 1))}</span>
-                  </div>
-                )}
-                <div className="text-gray-500 italic text-[9px] mt-1">
-                  Combustible y peajes en Lejanías Logísticas
-                </div>
-              </>
-            )}
-
-            {/* Desglose para Vehículos Terceros */}
-            {rubro.tipo === 'vehiculo' && rubro.esquema === 'tercero' && (
-              <div className="text-gray-500 italic">
-                El flete base se calcula en Lejanías Logísticas (Recorridos)
-              </div>
             )}
           </div>
         )}
@@ -447,7 +569,7 @@ export default function PyGDetallado({ marca }: PyGDetalladoProps) {
 
           {/* Lejanías Comerciales */}
           {typeof marca.lejania_comercial === 'number' && marca.lejania_comercial > 0 && (
-            <LineaItem titulo="Lejanías Comerciales (Rutas)" valor={marca.lejania_comercial} indent={1} />
+            <LineaItem titulo="Lejanías Comerciales (Combustible + Pernocta)" valor={marca.lejania_comercial} indent={1} />
           )}
 
           <LineaItem titulo="Total Costos Comerciales" valor={totalComercial} bold />
@@ -458,8 +580,8 @@ export default function PyGDetallado({ marca }: PyGDetalladoProps) {
       <SeccionHeader titulo="Costos Logísticos" seccion="logistico" valor={totalLogistico} bgColor="bg-gray-700" />
       {seccionesAbiertas.logistico && (
         <div>
-          {/* Vehículos */}
-          {grupos.logisticoVehiculos.length > 0 && (
+          {/* Flota de Vehículos (ahora incluye flete base) */}
+          {vehiculosConFlete.length > 0 && (
             <>
               <SubSeccionHeader
                 titulo="Flota de Vehículos"
@@ -468,8 +590,8 @@ export default function PyGDetallado({ marca }: PyGDetalladoProps) {
               />
               {subSeccionesAbiertas.logisticoVehiculos && (
                 <>
-                  {grupos.logisticoVehiculos.map((rubro, idx) => (
-                    <RubroItem key={`log-veh-${idx}`} rubro={rubro} />
+                  {vehiculosConFlete.map((vehiculo, idx) => (
+                    <VehiculoItem key={`log-veh-${idx}`} vehiculo={vehiculo} />
                   ))}
                 </>
               )}
@@ -512,9 +634,43 @@ export default function PyGDetallado({ marca }: PyGDetalladoProps) {
             </>
           )}
 
-          {/* Lejanías Logísticas */}
-          {typeof marca.lejania_logistica === 'number' && marca.lejania_logistica > 0 && (
-            <LineaItem titulo="Lejanías Logísticas (Rutas)" valor={marca.lejania_logistica} indent={1} />
+          {/* Lejanías Logísticas (solo costos variables: combustible, peajes, pernocta) */}
+          {subtotalLejanias > 0 && (
+            <>
+              <SubSeccionHeader
+                titulo="Lejanías Logísticas (Costos Variables)"
+                subSeccion="logisticoLejanias"
+                valor={subtotalLejanias}
+              />
+              {subSeccionesAbiertas.logisticoLejanias && lejaniasLogistica && (
+                <div className="px-3 py-1.5 bg-gray-50 text-xs space-y-1">
+                  {lejaniasLogistica.total_combustible_mensual > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Combustible</span>
+                      <span className="font-medium text-gray-800">{formatCurrency(lejaniasLogistica.total_combustible_mensual)}</span>
+                    </div>
+                  )}
+                  {lejaniasLogistica.total_peaje_mensual > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Peajes</span>
+                      <span className="font-medium text-gray-800">{formatCurrency(lejaniasLogistica.total_peaje_mensual)}</span>
+                    </div>
+                  )}
+                  {lejaniasLogistica.total_pernocta_mensual > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Pernocta</span>
+                      <span className="font-medium text-gray-800">{formatCurrency(lejaniasLogistica.total_pernocta_mensual)}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+
+          {loadingLejanias && (
+            <div className="px-3 py-2 text-xs text-gray-500 italic">
+              Cargando datos de lejanías...
+            </div>
           )}
 
           <LineaItem titulo="Total Costos Logísticos" valor={totalLogistico} bold />

@@ -221,7 +221,7 @@ export default function DashboardPage() {
                     );
 
                     return marcaSeleccionada ? (
-                      <PyGDetallado marca={marcaSeleccionada} />
+                      <PyGDetallado marca={marcaSeleccionada} escenarioId={selectedScenarioId!} />
                     ) : (
                       <div className="bg-white border border-gray-200 rounded p-8 text-center">
                         <p className="text-sm text-gray-600">No se pudo cargar el P&G detallado</p>
