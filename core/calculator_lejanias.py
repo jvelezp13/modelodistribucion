@@ -297,21 +297,17 @@ class CalculadoraLejanias:
             flete_base_municipio = ruta_mun.flete_base or Decimal('0')
             flete_base_total += flete_base_municipio * entregas_mensuales
 
-            # Combustible (aplica para propios y renting, no para terceros)
-            combustible_municipio = Decimal('0')
-            if esquema_vehiculo in ['tradicional', 'renting']:
-                distancia_ida_vuelta = matriz.distancia_km * 2
-                galones_por_entrega = distancia_ida_vuelta / consumo_km_galon
-                costo_combustible_entrega = galones_por_entrega * precio_galon
-                combustible_municipio = costo_combustible_entrega * entregas_mensuales
-                combustible_total += combustible_municipio
+            # Combustible (aplica para todos los esquemas)
+            distancia_ida_vuelta = matriz.distancia_km * 2
+            galones_por_entrega = distancia_ida_vuelta / consumo_km_galon
+            costo_combustible_entrega = galones_por_entrega * precio_galon
+            combustible_municipio = costo_combustible_entrega * entregas_mensuales
+            combustible_total += combustible_municipio
 
-            # Peajes (aplica para propios y renting)
-            peaje_municipio = Decimal('0')
-            if esquema_vehiculo in ['tradicional', 'renting']:
-                peaje_por_entrega = (matriz.peaje_ida or Decimal('0')) + (matriz.peaje_vuelta or Decimal('0'))
-                peaje_municipio = peaje_por_entrega * entregas_mensuales
-                peaje_total += peaje_municipio
+            # Peajes (aplica para todos los esquemas)
+            peaje_por_entrega = (matriz.peaje_ida or Decimal('0')) + (matriz.peaje_vuelta or Decimal('0'))
+            peaje_municipio = peaje_por_entrega * entregas_mensuales
+            peaje_total += peaje_municipio
 
             # Pernocta por municipio
             pernocta_municipio = Decimal('0')
