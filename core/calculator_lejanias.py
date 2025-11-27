@@ -86,14 +86,14 @@ class CalculadoraLejanias:
         for zona_mun in zona.municipios.all():
             municipio = zona_mun.municipio
 
-            # Buscar ruta en matriz
+            # Buscar ruta en matriz (por ID para evitar problemas de comparación de objetos)
             try:
                 matriz = MatrizDesplazamiento.objects.get(
-                    origen=base_vendedor,
-                    destino=municipio
+                    origen_id=base_vendedor.id,
+                    destino_id=municipio.id
                 )
             except MatrizDesplazamiento.DoesNotExist:
-                logger.warning(f"No existe ruta {base_vendedor} → {municipio}")
+                logger.warning(f"No existe ruta {base_vendedor.nombre} (ID:{base_vendedor.id}) → {municipio.nombre} (ID:{municipio.id})")
                 continue
 
             # Aplicar umbral
@@ -264,14 +264,14 @@ class CalculadoraLejanias:
         for ruta_mun in ruta.municipios.all():
             municipio = ruta_mun.municipio
 
-            # Buscar ruta en matriz
+            # Buscar ruta en matriz (por ID para evitar problemas de comparación de objetos)
             try:
                 matriz = MatrizDesplazamiento.objects.get(
-                    origen=bodega,
-                    destino=municipio
+                    origen_id=bodega.id,
+                    destino_id=municipio.id
                 )
             except MatrizDesplazamiento.DoesNotExist:
-                logger.warning(f"No existe ruta {bodega} → {municipio}")
+                logger.warning(f"No existe ruta {bodega.nombre} (ID:{bodega.id}) → {municipio.nombre} (ID:{municipio.id})")
                 continue
 
             # Aplicar umbral
