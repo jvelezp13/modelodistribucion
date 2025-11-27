@@ -267,10 +267,9 @@ class VehiculoAdmin(admin.ModelAdmin):
             'description': 'Diligenciar solo si el esquema es "Tradicional (Propio)"',
             'classes': ('collapse',)
         }),
-        ('Consumo de Combustible (Propio/Renting)', {
+        ('Consumo de Combustible (Todos los Esquemas)', {
             'fields': ('tipo_combustible', 'consumo_galon_km'),
-            'description': 'Datos usados para calcular combustible en los Recorridos Logísticos',
-            'classes': ('collapse',)
+            'description': 'Requerido para calcular combustible en Recorridos Logísticos. Aplica a Propio, Renting y Tercero.',
         }),
         ('Otros Costos Operativos (Propio/Renting)', {
             'fields': ('costo_lavado_mensual', 'costo_parqueadero_mensual'),
