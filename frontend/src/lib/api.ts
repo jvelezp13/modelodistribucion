@@ -108,7 +108,6 @@ export interface VentasData {
 export interface DetalleZonaComercial {
   zona_id: number;
   zona_nombre: string;
-  zona_codigo: string;
   vendedor: string;
   tipo_vehiculo: string;
   frecuencia: string;
@@ -120,11 +119,20 @@ export interface DetalleZonaComercial {
   detalle: any;
 }
 
-export interface DetalleZonaLogistica {
-  zona_id: number;
-  zona_nombre: string;
-  zona_codigo: string;
+export interface DetalleRutaLogistica {
+  ruta_id: number;
+  ruta_nombre: string;
+  ruta_codigo: string;
+  vehiculo: string | null;
+  vehiculo_id: number | null;
+  esquema: string | null;
+  tipo_vehiculo: string | null;
+  frecuencia: string;
+  requiere_pernocta: boolean;
+  noches_pernocta: number;
+  flete_base_mensual: number;
   combustible_mensual: number;
+  peaje_mensual: number;
   pernocta_mensual: number;
   total_mensual: number;
   detalle: any;
@@ -147,11 +155,13 @@ export interface DetalleLejaniasLogistica {
   marca_nombre: string;
   escenario_id: number;
   escenario_nombre: string;
+  total_flete_base_mensual: number;
   total_combustible_mensual: number;
+  total_peaje_mensual: number;
   total_pernocta_mensual: number;
   total_mensual: number;
   total_anual: number;
-  zonas: DetalleZonaLogistica[];
+  rutas: DetalleRutaLogistica[];
 }
 
 class APIClient {

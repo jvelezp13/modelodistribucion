@@ -156,7 +156,6 @@ def obtener_detalle_lejanias_comercial(
             detalle_zonas.append({
                 'zona_id': zona.id,
                 'zona_nombre': zona.nombre,
-                'zona_codigo': zona.codigo,
                 'vendedor': zona.vendedor.nombre if zona.vendedor else 'Sin asignar',
                 'tipo_vehiculo': zona.tipo_vehiculo_comercial,
                 'frecuencia': zona.get_frecuencia_display(),
@@ -194,17 +193,17 @@ def obtener_detalle_lejanias_logistica(
     marca_id: str
 ) -> Dict[str, Any]:
     """
-    Obtiene el detalle de lejanías logísticas por zona.
+    Obtiene el detalle de lejanías logísticas por ruta/vehículo.
 
     Args:
         escenario_id: ID del escenario
         marca_id: ID de la marca
 
     Returns:
-        Detalle de lejanías logísticas por zona
+        Detalle de lejanías logísticas por ruta (vehículo/tercero)
     """
     try:
-        from core.models import Escenario, Marca, Zona
+        from core.models import Escenario, Marca, RutaLogistica
         from core.calculator_lejanias import CalculadoraLejanias
 
         # Obtener escenario y marca
@@ -214,44 +213,61 @@ def obtener_detalle_lejanias_logistica(
         # Inicializar calculadora
         calc = CalculadoraLejanias(escenario)
 
-        # Obtener zonas de la marca
-        zonas = Zona.objects.filter(
+        # Obtener rutas logísticas de la marca
+        rutas = RutaLogistica.objects.filter(
             marca=marca,
             escenario=escenario,
             activo=True
-        ).prefetch_related('zonamunicipio_set__municipio')
+        ).prefetch_related('municipios__municipio').select_related('vehiculo')
 
-        # Calcular para cada zona
-        detalle_zonas = []
+        # Calcular para cada ruta
+        detalle_rutas = []
+        total_flete_base = 0.0
         total_combustible = 0.0
+        total_peaje = 0.0
         total_pernocta = 0.0
 
-        for zona in zonas:
-            resultado = calc.calcular_lejania_logistica_zona(zona)
+        for ruta in rutas:
+            resultado = calc.calcular_lejania_logistica_ruta(ruta)
 
-            detalle_zonas.append({
-                'zona_id': zona.id,
-                'zona_nombre': zona.nombre,
-                'zona_codigo': zona.codigo,
+            detalle_rutas.append({
+                'ruta_id': ruta.id,
+                'ruta_nombre': ruta.nombre,
+                'ruta_codigo': ruta.codigo,
+                'vehiculo': str(ruta.vehiculo) if ruta.vehiculo else None,
+                'vehiculo_id': ruta.vehiculo.id if ruta.vehiculo else None,
+                'esquema': ruta.vehiculo.esquema if ruta.vehiculo else None,
+                'tipo_vehiculo': ruta.vehiculo.tipo_vehiculo if ruta.vehiculo else None,
+                'frecuencia': ruta.get_frecuencia_display(),
+                'requiere_pernocta': ruta.requiere_pernocta,
+                'noches_pernocta': ruta.noches_pernocta,
+                'flete_base_mensual': float(resultado['flete_base_mensual']),
                 'combustible_mensual': float(resultado['combustible_mensual']),
+                'peaje_mensual': float(resultado['peaje_mensual']),
                 'pernocta_mensual': float(resultado['pernocta_mensual']),
                 'total_mensual': float(resultado['total_mensual']),
                 'detalle': resultado['detalle']
             })
 
+            total_flete_base += float(resultado['flete_base_mensual'])
             total_combustible += float(resultado['combustible_mensual'])
+            total_peaje += float(resultado['peaje_mensual'])
             total_pernocta += float(resultado['pernocta_mensual'])
+
+        total_mensual = total_flete_base + total_combustible + total_peaje + total_pernocta
 
         return {
             'marca_id': marca_id,
             'marca_nombre': marca.nombre,
             'escenario_id': escenario_id,
             'escenario_nombre': escenario.nombre,
+            'total_flete_base_mensual': total_flete_base,
             'total_combustible_mensual': total_combustible,
+            'total_peaje_mensual': total_peaje,
             'total_pernocta_mensual': total_pernocta,
-            'total_mensual': total_combustible + total_pernocta,
-            'total_anual': (total_combustible + total_pernocta) * 12,
-            'zonas': detalle_zonas
+            'total_mensual': total_mensual,
+            'total_anual': total_mensual * 12,
+            'rutas': detalle_rutas
         }
 
     except Exception as e:
