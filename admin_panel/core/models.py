@@ -1558,14 +1558,13 @@ class ConfiguracionLejania(models.Model):
 class Zona(models.Model):
     """Zonas comerciales (grupos de municipios atendidos por vendedores)"""
     nombre = models.CharField(max_length=100, verbose_name="Nombre")
-    codigo = models.CharField(max_length=20, verbose_name="Código")
-    descripcion = models.TextField(blank=True, verbose_name="Descripción")
 
     vendedor = models.ForeignKey(
         'PersonalComercial',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
+        related_name='zonas_asignadas',
         verbose_name="Vendedor Asignado"
     )
     marca = models.ForeignKey(

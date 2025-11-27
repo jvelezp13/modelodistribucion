@@ -1051,16 +1051,16 @@ class ZonaMunicipioInline(admin.TabularInline):
 @admin.register(Zona)
 class ZonaAdmin(admin.ModelAdmin):
     """Admin para Zonas Comerciales (vendedores)"""
-    list_display = ('nombre', 'codigo', 'marca', 'vendedor', 'tipo_vehiculo_comercial', 'frecuencia', 'requiere_pernocta', 'activo')
-    list_filter = ('marca', 'frecuencia', 'requiere_pernocta', 'tipo_vehiculo_comercial', 'activo')
-    search_fields = ('nombre', 'codigo', 'descripcion')
+    list_display = ('nombre', 'marca', 'vendedor', 'tipo_vehiculo_comercial', 'frecuencia', 'requiere_pernocta', 'activo')
+    list_filter = ('marca', 'escenario', 'frecuencia', 'requiere_pernocta', 'tipo_vehiculo_comercial', 'activo')
+    search_fields = ['nombre', 'vendedor__nombre', 'marca__nombre']
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
     autocomplete_fields = ['vendedor', 'municipio_base_vendedor']
     inlines = [ZonaMunicipioInline]
 
     fieldsets = (
         ('Información Básica', {
-            'fields': ('nombre', 'codigo', 'descripcion', 'activo')
+            'fields': ('nombre', 'activo')
         }),
         ('Asignación', {
             'fields': ('marca', 'escenario', 'vendedor', 'municipio_base_vendedor')
