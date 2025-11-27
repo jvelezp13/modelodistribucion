@@ -236,6 +236,9 @@ def obtener_detalle_lejanias_logistica(
         total_flete_base = 0.0
         total_combustible = 0.0
         total_peaje = 0.0
+        total_pernocta_conductor = 0.0
+        total_pernocta_auxiliar = 0.0
+        total_parqueadero = 0.0
         total_pernocta = 0.0
 
         for ruta in rutas:
@@ -249,9 +252,14 @@ def obtener_detalle_lejanias_logistica(
                 'esquema': ruta.vehiculo.esquema if ruta.vehiculo else None,
                 'tipo_vehiculo': ruta.vehiculo.tipo_vehiculo if ruta.vehiculo else None,
                 'frecuencia': ruta.get_frecuencia_display(),
+                'requiere_pernocta': ruta.requiere_pernocta,
+                'noches_pernocta': ruta.noches_pernocta,
                 'flete_base_mensual': float(resultado['flete_base_mensual']),
                 'combustible_mensual': float(resultado['combustible_mensual']),
                 'peaje_mensual': float(resultado['peaje_mensual']),
+                'pernocta_conductor_mensual': float(resultado['pernocta_conductor_mensual']),
+                'pernocta_auxiliar_mensual': float(resultado['pernocta_auxiliar_mensual']),
+                'parqueadero_mensual': float(resultado['parqueadero_mensual']),
                 'pernocta_mensual': float(resultado['pernocta_mensual']),
                 'total_mensual': float(resultado['total_mensual']),
                 'detalle': resultado['detalle']
@@ -260,6 +268,9 @@ def obtener_detalle_lejanias_logistica(
             total_flete_base += float(resultado['flete_base_mensual'])
             total_combustible += float(resultado['combustible_mensual'])
             total_peaje += float(resultado['peaje_mensual'])
+            total_pernocta_conductor += float(resultado['pernocta_conductor_mensual'])
+            total_pernocta_auxiliar += float(resultado['pernocta_auxiliar_mensual'])
+            total_parqueadero += float(resultado['parqueadero_mensual'])
             total_pernocta += float(resultado['pernocta_mensual'])
 
         total_mensual = total_flete_base + total_combustible + total_peaje + total_pernocta
@@ -272,6 +283,9 @@ def obtener_detalle_lejanias_logistica(
             'total_flete_base_mensual': total_flete_base,
             'total_combustible_mensual': total_combustible,
             'total_peaje_mensual': total_peaje,
+            'total_pernocta_conductor_mensual': total_pernocta_conductor,
+            'total_pernocta_auxiliar_mensual': total_pernocta_auxiliar,
+            'total_parqueadero_mensual': total_parqueadero,
             'total_pernocta_mensual': total_pernocta,
             'total_mensual': total_mensual,
             'total_anual': total_mensual * 12,
