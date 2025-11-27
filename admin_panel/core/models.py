@@ -1828,3 +1828,708 @@ class RutaMunicipio(models.Model):
 
     def __str__(self):
         return f"{self.ruta.nombre} → {self.orden_visita}. {self.municipio}"
+
+
+# =============================================================================
+# MÓDULO DE PROYECCIÓN DE VENTAS
+# =============================================================================
+
+class CanalVenta(models.Model):
+    """Canales de venta personalizables"""
+
+    nombre = models.CharField(max_length=100, unique=True, verbose_name="Nombre del Canal")
+    descripcion = models.TextField(blank=True, verbose_name="Descripción")
+    activo = models.BooleanField(default=True, verbose_name="Activo")
+
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_modificacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'dxv_canal_venta'
+        verbose_name = "Canal de Venta"
+        verbose_name_plural = "Canales de Venta"
+        ordering = ['nombre']
+
+    def __str__(self):
+        return self.nombre
+
+
+class CategoriaProducto(models.Model):
+    """Categorías de productos para proyección agregada"""
+
+    nombre = models.CharField(max_length=100, verbose_name="Nombre de Categoría")
+    descripcion = models.TextField(blank=True, verbose_name="Descripción")
+    marca = models.ForeignKey(
+        Marca,
+        on_delete=models.CASCADE,
+        related_name='categorias_producto',
+        verbose_name="Marca",
+        null=True,
+        blank=True,
+        help_text="Dejar vacío para categoría compartida entre marcas"
+    )
+    precio_promedio = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        verbose_name="Precio Promedio",
+        help_text="Precio promedio por unidad en esta categoría"
+    )
+    activo = models.BooleanField(default=True, verbose_name="Activo")
+
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_modificacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'dxv_categoria_producto'
+        verbose_name = "Categoría de Producto"
+        verbose_name_plural = "Categorías de Producto"
+        ordering = ['marca', 'nombre']
+
+    def __str__(self):
+        if self.marca:
+            return f"{self.marca.nombre} - {self.nombre}"
+        return self.nombre
+
+
+class Producto(models.Model):
+    """Productos/SKUs individuales para proyección detallada"""
+
+    sku = models.CharField(max_length=50, verbose_name="SKU")
+    nombre = models.CharField(max_length=200, verbose_name="Nombre del Producto")
+    marca = models.ForeignKey(
+        Marca,
+        on_delete=models.CASCADE,
+        related_name='productos',
+        verbose_name="Marca"
+    )
+    categoria = models.ForeignKey(
+        CategoriaProducto,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='productos',
+        verbose_name="Categoría"
+    )
+    precio_unitario = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        verbose_name="Precio Unitario"
+    )
+    activo = models.BooleanField(default=True, verbose_name="Activo")
+
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_modificacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'dxv_producto'
+        verbose_name = "Producto"
+        verbose_name_plural = "Productos"
+        unique_together = ['marca', 'sku']
+        ordering = ['marca', 'categoria', 'nombre']
+
+    def __str__(self):
+        return f"{self.sku} - {self.nombre}"
+
+
+class PlantillaEstacional(models.Model):
+    """Plantillas de distribución mensual para estacionalidad"""
+
+    nombre = models.CharField(max_length=100, verbose_name="Nombre de Plantilla")
+    descripcion = models.TextField(blank=True, verbose_name="Descripción")
+    marca = models.ForeignKey(
+        Marca,
+        on_delete=models.CASCADE,
+        related_name='plantillas_estacionales',
+        verbose_name="Marca",
+        null=True,
+        blank=True,
+        help_text="Dejar vacío para plantilla global"
+    )
+
+    # Porcentajes por mes (deben sumar 100%)
+    enero = models.DecimalField(max_digits=5, decimal_places=2, default=8.33, verbose_name="Enero %")
+    febrero = models.DecimalField(max_digits=5, decimal_places=2, default=8.33, verbose_name="Febrero %")
+    marzo = models.DecimalField(max_digits=5, decimal_places=2, default=8.33, verbose_name="Marzo %")
+    abril = models.DecimalField(max_digits=5, decimal_places=2, default=8.33, verbose_name="Abril %")
+    mayo = models.DecimalField(max_digits=5, decimal_places=2, default=8.33, verbose_name="Mayo %")
+    junio = models.DecimalField(max_digits=5, decimal_places=2, default=8.33, verbose_name="Junio %")
+    julio = models.DecimalField(max_digits=5, decimal_places=2, default=8.33, verbose_name="Julio %")
+    agosto = models.DecimalField(max_digits=5, decimal_places=2, default=8.33, verbose_name="Agosto %")
+    septiembre = models.DecimalField(max_digits=5, decimal_places=2, default=8.33, verbose_name="Septiembre %")
+    octubre = models.DecimalField(max_digits=5, decimal_places=2, default=8.33, verbose_name="Octubre %")
+    noviembre = models.DecimalField(max_digits=5, decimal_places=2, default=8.33, verbose_name="Noviembre %")
+    diciembre = models.DecimalField(max_digits=5, decimal_places=2, default=8.37, verbose_name="Diciembre %")
+
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_modificacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'dxv_plantilla_estacional'
+        verbose_name = "Plantilla Estacional"
+        verbose_name_plural = "Plantillas Estacionales"
+        ordering = ['marca', 'nombre']
+
+    def __str__(self):
+        if self.marca:
+            return f"{self.marca.nombre} - {self.nombre}"
+        return f"{self.nombre} (Global)"
+
+    def total_porcentaje(self):
+        """Retorna la suma de todos los porcentajes"""
+        return (self.enero + self.febrero + self.marzo + self.abril +
+                self.mayo + self.junio + self.julio + self.agosto +
+                self.septiembre + self.octubre + self.noviembre + self.diciembre)
+
+    def get_distribucion(self):
+        """Retorna diccionario con la distribución mensual"""
+        return {
+            'enero': float(self.enero) / 100,
+            'febrero': float(self.febrero) / 100,
+            'marzo': float(self.marzo) / 100,
+            'abril': float(self.abril) / 100,
+            'mayo': float(self.mayo) / 100,
+            'junio': float(self.junio) / 100,
+            'julio': float(self.julio) / 100,
+            'agosto': float(self.agosto) / 100,
+            'septiembre': float(self.septiembre) / 100,
+            'octubre': float(self.octubre) / 100,
+            'noviembre': float(self.noviembre) / 100,
+            'diciembre': float(self.diciembre) / 100,
+        }
+
+
+class DefinicionMercado(models.Model):
+    """Definición de mercados objetivo para proyección por penetración"""
+
+    TIPO_CHOICES = [
+        ('geografico', 'Geográfico (región/ciudad)'),
+        ('segmento', 'Segmento de Mercado'),
+        ('clientes', 'Base de Clientes'),
+        ('categoria', 'Categoría de Producto'),
+    ]
+
+    nombre = models.CharField(max_length=100, verbose_name="Nombre del Mercado")
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, verbose_name="Tipo de Mercado")
+    descripcion = models.TextField(blank=True, verbose_name="Descripción")
+
+    tamano_mercado = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        verbose_name="Tamaño del Mercado ($)",
+        help_text="Valor total del mercado en pesos"
+    )
+    crecimiento_anual = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        verbose_name="Crecimiento Anual %",
+        help_text="Tasa de crecimiento esperada del mercado"
+    )
+    ticket_promedio = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Ticket Promedio",
+        help_text="Para tipo 'clientes': valor promedio por cliente"
+    )
+    numero_clientes_potenciales = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name="Clientes Potenciales",
+        help_text="Para tipo 'clientes': número total de clientes en el mercado"
+    )
+
+    activo = models.BooleanField(default=True, verbose_name="Activo")
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_modificacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'dxv_definicion_mercado'
+        verbose_name = "Definición de Mercado"
+        verbose_name_plural = "Definiciones de Mercado"
+        ordering = ['tipo', 'nombre']
+
+    def __str__(self):
+        return f"{self.nombre} ({self.get_tipo_display()})"
+
+
+class ProyeccionVentasConfig(models.Model):
+    """Configuración principal de proyección de ventas por marca/escenario"""
+
+    METODO_CHOICES = [
+        ('manual', 'Entrada Manual Directa'),
+        ('crecimiento', 'Crecimiento sobre Base'),
+        ('precio_unidades', 'Precio × Unidades'),
+        ('canal', 'Por Canal de Venta'),
+        ('penetracion', 'Penetración de Mercado'),
+    ]
+
+    marca = models.ForeignKey(
+        Marca,
+        on_delete=models.CASCADE,
+        related_name='proyecciones_config',
+        verbose_name="Marca"
+    )
+    escenario = models.ForeignKey(
+        'Escenario',
+        on_delete=models.CASCADE,
+        related_name='proyecciones_config',
+        verbose_name="Escenario"
+    )
+    anio = models.IntegerField(verbose_name="Año de Proyección")
+    metodo = models.CharField(
+        max_length=20,
+        choices=METODO_CHOICES,
+        verbose_name="Método de Proyección"
+    )
+
+    # Configuración opcional de estacionalidad
+    plantilla_estacional = models.ForeignKey(
+        PlantillaEstacional,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='proyecciones',
+        verbose_name="Plantilla Estacional",
+        help_text="Distribución mensual a aplicar (si aplica al método)"
+    )
+
+    notas = models.TextField(blank=True, verbose_name="Notas")
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_modificacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'dxv_proyeccion_ventas_config'
+        verbose_name = "Configuración de Proyección"
+        verbose_name_plural = "Configuraciones de Proyección"
+        unique_together = ['marca', 'escenario', 'anio']
+        ordering = ['marca', 'escenario', 'anio']
+
+    def __str__(self):
+        return f"{self.marca.nombre} - {self.escenario.nombre} - {self.anio} ({self.get_metodo_display()})"
+
+    def calcular_ventas_mensuales(self):
+        """Calcula las ventas mensuales según el método configurado"""
+        if self.metodo == 'manual':
+            return self._calcular_manual()
+        elif self.metodo == 'crecimiento':
+            return self._calcular_crecimiento()
+        elif self.metodo == 'precio_unidades':
+            return self._calcular_precio_unidades()
+        elif self.metodo == 'canal':
+            return self._calcular_canal()
+        elif self.metodo == 'penetracion':
+            return self._calcular_penetracion()
+        return {}
+
+    def _calcular_manual(self):
+        """Obtiene ventas de ProyeccionManual"""
+        try:
+            manual = self.proyeccion_manual
+            return manual.get_ventas_mensuales()
+        except ProyeccionManual.DoesNotExist:
+            return {}
+
+    def _calcular_crecimiento(self):
+        """Calcula ventas basado en crecimiento sobre base"""
+        try:
+            crec = self.proyeccion_crecimiento
+            return crec.calcular_ventas_mensuales()
+        except ProyeccionCrecimiento.DoesNotExist:
+            return {}
+
+    def _calcular_precio_unidades(self):
+        """Suma ventas de todos los productos/categorías"""
+        detalles = self.proyecciones_producto.all()
+        ventas = {}
+        meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+
+        for mes in meses:
+            ventas[mes] = sum(
+                float(getattr(d, f'unidades_{mes}', 0) or 0) * float(d.precio_unitario)
+                for d in detalles
+            )
+        return ventas
+
+    def _calcular_canal(self):
+        """Suma ventas de todos los canales"""
+        detalles = self.proyecciones_canal.all()
+        ventas = {}
+        meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+
+        for mes in meses:
+            ventas[mes] = sum(
+                float(getattr(d, mes, 0) or 0)
+                for d in detalles
+            )
+        return ventas
+
+    def _calcular_penetracion(self):
+        """Calcula ventas basado en penetración de mercado"""
+        try:
+            pene = self.proyeccion_penetracion
+            return pene.calcular_ventas_mensuales()
+        except ProyeccionPenetracion.DoesNotExist:
+            return {}
+
+    def get_venta_anual(self):
+        """Retorna el total anual proyectado"""
+        ventas = self.calcular_ventas_mensuales()
+        return sum(ventas.values())
+
+
+class ProyeccionManual(models.Model):
+    """Proyección manual con vista anual compacta (12 meses en 1 registro)"""
+
+    config = models.OneToOneField(
+        ProyeccionVentasConfig,
+        on_delete=models.CASCADE,
+        related_name='proyeccion_manual',
+        verbose_name="Configuración"
+    )
+
+    # Ventas por mes
+    enero = models.DecimalField(max_digits=15, decimal_places=2, default=0, verbose_name="Enero")
+    febrero = models.DecimalField(max_digits=15, decimal_places=2, default=0, verbose_name="Febrero")
+    marzo = models.DecimalField(max_digits=15, decimal_places=2, default=0, verbose_name="Marzo")
+    abril = models.DecimalField(max_digits=15, decimal_places=2, default=0, verbose_name="Abril")
+    mayo = models.DecimalField(max_digits=15, decimal_places=2, default=0, verbose_name="Mayo")
+    junio = models.DecimalField(max_digits=15, decimal_places=2, default=0, verbose_name="Junio")
+    julio = models.DecimalField(max_digits=15, decimal_places=2, default=0, verbose_name="Julio")
+    agosto = models.DecimalField(max_digits=15, decimal_places=2, default=0, verbose_name="Agosto")
+    septiembre = models.DecimalField(max_digits=15, decimal_places=2, default=0, verbose_name="Septiembre")
+    octubre = models.DecimalField(max_digits=15, decimal_places=2, default=0, verbose_name="Octubre")
+    noviembre = models.DecimalField(max_digits=15, decimal_places=2, default=0, verbose_name="Noviembre")
+    diciembre = models.DecimalField(max_digits=15, decimal_places=2, default=0, verbose_name="Diciembre")
+
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_modificacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'dxv_proyeccion_manual'
+        verbose_name = "Proyección Manual"
+        verbose_name_plural = "Proyecciones Manuales"
+
+    def __str__(self):
+        return f"Manual: {self.config}"
+
+    def get_ventas_mensuales(self):
+        """Retorna diccionario con ventas por mes"""
+        return {
+            'enero': float(self.enero),
+            'febrero': float(self.febrero),
+            'marzo': float(self.marzo),
+            'abril': float(self.abril),
+            'mayo': float(self.mayo),
+            'junio': float(self.junio),
+            'julio': float(self.julio),
+            'agosto': float(self.agosto),
+            'septiembre': float(self.septiembre),
+            'octubre': float(self.octubre),
+            'noviembre': float(self.noviembre),
+            'diciembre': float(self.diciembre),
+        }
+
+    def get_total_anual(self):
+        """Retorna el total anual"""
+        return sum(self.get_ventas_mensuales().values())
+
+
+class ProyeccionCrecimiento(models.Model):
+    """Proyección basada en crecimiento sobre una base"""
+
+    config = models.OneToOneField(
+        ProyeccionVentasConfig,
+        on_delete=models.CASCADE,
+        related_name='proyeccion_crecimiento',
+        verbose_name="Configuración"
+    )
+
+    ventas_base_anual = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        verbose_name="Ventas Base Anual",
+        help_text="Valor de ventas del año base (año anterior o referencia)"
+    )
+    anio_base = models.IntegerField(
+        verbose_name="Año Base",
+        help_text="Año de referencia para el crecimiento"
+    )
+    factor_crecimiento = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        default=0,
+        verbose_name="Factor de Crecimiento %",
+        help_text="Porcentaje de crecimiento esperado (ej: 10 para 10%)"
+    )
+
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_modificacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'dxv_proyeccion_crecimiento'
+        verbose_name = "Proyección por Crecimiento"
+        verbose_name_plural = "Proyecciones por Crecimiento"
+
+    def __str__(self):
+        return f"Crecimiento: {self.config} ({self.factor_crecimiento}%)"
+
+    def get_venta_anual_proyectada(self):
+        """Calcula la venta anual aplicando el factor de crecimiento"""
+        factor = 1 + (float(self.factor_crecimiento) / 100)
+        return float(self.ventas_base_anual) * factor
+
+    def calcular_ventas_mensuales(self):
+        """Distribuye la venta anual según la plantilla estacional"""
+        venta_anual = self.get_venta_anual_proyectada()
+
+        # Usar plantilla estacional si existe
+        if self.config.plantilla_estacional:
+            distribucion = self.config.plantilla_estacional.get_distribucion()
+        else:
+            # Distribución uniforme
+            distribucion = {mes: 1/12 for mes in [
+                'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+            ]}
+
+        return {mes: venta_anual * pct for mes, pct in distribucion.items()}
+
+
+class ProyeccionProducto(models.Model):
+    """Proyección por producto/categoría con precio × unidades"""
+
+    TIPO_CHOICES = [
+        ('producto', 'Producto (SKU)'),
+        ('categoria', 'Categoría'),
+    ]
+
+    config = models.ForeignKey(
+        ProyeccionVentasConfig,
+        on_delete=models.CASCADE,
+        related_name='proyecciones_producto',
+        verbose_name="Configuración"
+    )
+
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, verbose_name="Tipo")
+    producto = models.ForeignKey(
+        Producto,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='proyecciones',
+        verbose_name="Producto",
+        help_text="Seleccionar si tipo es 'Producto'"
+    )
+    categoria = models.ForeignKey(
+        CategoriaProducto,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='proyecciones',
+        verbose_name="Categoría",
+        help_text="Seleccionar si tipo es 'Categoría'"
+    )
+    precio_unitario = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        verbose_name="Precio Unitario",
+        help_text="Precio por unidad (se auto-completa del producto/categoría)"
+    )
+
+    # Unidades por mes
+    unidades_enero = models.IntegerField(default=0, verbose_name="Unid. Enero")
+    unidades_febrero = models.IntegerField(default=0, verbose_name="Unid. Febrero")
+    unidades_marzo = models.IntegerField(default=0, verbose_name="Unid. Marzo")
+    unidades_abril = models.IntegerField(default=0, verbose_name="Unid. Abril")
+    unidades_mayo = models.IntegerField(default=0, verbose_name="Unid. Mayo")
+    unidades_junio = models.IntegerField(default=0, verbose_name="Unid. Junio")
+    unidades_julio = models.IntegerField(default=0, verbose_name="Unid. Julio")
+    unidades_agosto = models.IntegerField(default=0, verbose_name="Unid. Agosto")
+    unidades_septiembre = models.IntegerField(default=0, verbose_name="Unid. Septiembre")
+    unidades_octubre = models.IntegerField(default=0, verbose_name="Unid. Octubre")
+    unidades_noviembre = models.IntegerField(default=0, verbose_name="Unid. Noviembre")
+    unidades_diciembre = models.IntegerField(default=0, verbose_name="Unid. Diciembre")
+
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_modificacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'dxv_proyeccion_producto'
+        verbose_name = "Proyección por Producto"
+        verbose_name_plural = "Proyecciones por Producto"
+
+    def __str__(self):
+        if self.tipo == 'producto' and self.producto:
+            return f"{self.producto.nombre}"
+        elif self.tipo == 'categoria' and self.categoria:
+            return f"{self.categoria.nombre}"
+        return f"Proyección Producto #{self.pk}"
+
+    def get_unidades_mensuales(self):
+        """Retorna diccionario con unidades por mes"""
+        return {
+            'enero': self.unidades_enero,
+            'febrero': self.unidades_febrero,
+            'marzo': self.unidades_marzo,
+            'abril': self.unidades_abril,
+            'mayo': self.unidades_mayo,
+            'junio': self.unidades_junio,
+            'julio': self.unidades_julio,
+            'agosto': self.unidades_agosto,
+            'septiembre': self.unidades_septiembre,
+            'octubre': self.unidades_octubre,
+            'noviembre': self.unidades_noviembre,
+            'diciembre': self.unidades_diciembre,
+        }
+
+    def get_ventas_mensuales(self):
+        """Calcula ventas = precio × unidades por mes"""
+        unidades = self.get_unidades_mensuales()
+        precio = float(self.precio_unitario)
+        return {mes: unid * precio for mes, unid in unidades.items()}
+
+    def get_total_unidades(self):
+        """Total de unidades en el año"""
+        return sum(self.get_unidades_mensuales().values())
+
+    def get_total_ventas(self):
+        """Total de ventas en el año"""
+        return sum(self.get_ventas_mensuales().values())
+
+
+class ProyeccionCanal(models.Model):
+    """Proyección de ventas por canal"""
+
+    config = models.ForeignKey(
+        ProyeccionVentasConfig,
+        on_delete=models.CASCADE,
+        related_name='proyecciones_canal',
+        verbose_name="Configuración"
+    )
+    canal = models.ForeignKey(
+        CanalVenta,
+        on_delete=models.CASCADE,
+        related_name='proyecciones',
+        verbose_name="Canal de Venta"
+    )
+
+    # Ventas por mes para este canal
+    enero = models.DecimalField(max_digits=15, decimal_places=2, default=0, verbose_name="Enero")
+    febrero = models.DecimalField(max_digits=15, decimal_places=2, default=0, verbose_name="Febrero")
+    marzo = models.DecimalField(max_digits=15, decimal_places=2, default=0, verbose_name="Marzo")
+    abril = models.DecimalField(max_digits=15, decimal_places=2, default=0, verbose_name="Abril")
+    mayo = models.DecimalField(max_digits=15, decimal_places=2, default=0, verbose_name="Mayo")
+    junio = models.DecimalField(max_digits=15, decimal_places=2, default=0, verbose_name="Junio")
+    julio = models.DecimalField(max_digits=15, decimal_places=2, default=0, verbose_name="Julio")
+    agosto = models.DecimalField(max_digits=15, decimal_places=2, default=0, verbose_name="Agosto")
+    septiembre = models.DecimalField(max_digits=15, decimal_places=2, default=0, verbose_name="Septiembre")
+    octubre = models.DecimalField(max_digits=15, decimal_places=2, default=0, verbose_name="Octubre")
+    noviembre = models.DecimalField(max_digits=15, decimal_places=2, default=0, verbose_name="Noviembre")
+    diciembre = models.DecimalField(max_digits=15, decimal_places=2, default=0, verbose_name="Diciembre")
+
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_modificacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'dxv_proyeccion_canal'
+        verbose_name = "Proyección por Canal"
+        verbose_name_plural = "Proyecciones por Canal"
+        unique_together = ['config', 'canal']
+
+    def __str__(self):
+        return f"{self.canal.nombre}: {self.config}"
+
+    def get_ventas_mensuales(self):
+        """Retorna diccionario con ventas por mes"""
+        return {
+            'enero': float(self.enero),
+            'febrero': float(self.febrero),
+            'marzo': float(self.marzo),
+            'abril': float(self.abril),
+            'mayo': float(self.mayo),
+            'junio': float(self.junio),
+            'julio': float(self.julio),
+            'agosto': float(self.agosto),
+            'septiembre': float(self.septiembre),
+            'octubre': float(self.octubre),
+            'noviembre': float(self.noviembre),
+            'diciembre': float(self.diciembre),
+        }
+
+    def get_total_anual(self):
+        """Total anual para este canal"""
+        return sum(self.get_ventas_mensuales().values())
+
+
+class ProyeccionPenetracion(models.Model):
+    """Proyección basada en penetración de mercado"""
+
+    config = models.OneToOneField(
+        ProyeccionVentasConfig,
+        on_delete=models.CASCADE,
+        related_name='proyeccion_penetracion',
+        verbose_name="Configuración"
+    )
+    mercado = models.ForeignKey(
+        DefinicionMercado,
+        on_delete=models.CASCADE,
+        related_name='proyecciones',
+        verbose_name="Mercado Objetivo"
+    )
+
+    penetracion_inicial = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        verbose_name="Penetración Inicial %",
+        help_text="Porcentaje del mercado que se espera capturar al inicio del año"
+    )
+    penetracion_final = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        verbose_name="Penetración Final %",
+        help_text="Porcentaje del mercado que se espera capturar al final del año"
+    )
+
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_modificacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'dxv_proyeccion_penetracion'
+        verbose_name = "Proyección por Penetración"
+        verbose_name_plural = "Proyecciones por Penetración"
+
+    def __str__(self):
+        return f"Penetración: {self.config} - {self.mercado.nombre}"
+
+    def get_venta_anual_proyectada(self):
+        """Calcula ventas basado en penetración promedio del mercado"""
+        tamano = float(self.mercado.tamano_mercado)
+        penetracion_promedio = (float(self.penetracion_inicial) + float(self.penetracion_final)) / 2 / 100
+        return tamano * penetracion_promedio
+
+    def calcular_ventas_mensuales(self):
+        """Distribuye ventas con crecimiento gradual de penetración"""
+        tamano = float(self.mercado.tamano_mercado)
+        pct_inicial = float(self.penetracion_inicial) / 100
+        pct_final = float(self.penetracion_final) / 100
+        incremento_mensual = (pct_final - pct_inicial) / 11  # 11 incrementos para 12 meses
+
+        meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+
+        # Usar plantilla estacional si existe, sino distribución uniforme
+        if self.config.plantilla_estacional:
+            distribucion = self.config.plantilla_estacional.get_distribucion()
+            venta_anual = self.get_venta_anual_proyectada()
+            return {mes: venta_anual * distribucion[mes] for mes in meses}
+        else:
+            # Sin plantilla: crecimiento lineal de penetración
+            ventas = {}
+            for i, mes in enumerate(meses):
+                penetracion_mes = pct_inicial + (incremento_mensual * i)
+                ventas[mes] = (tamano * penetracion_mes) / 12
+            return ventas

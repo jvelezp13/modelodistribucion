@@ -23,7 +23,15 @@ class DxVAdminSite(admin.AdminSite):
             'PoliticaRecursosHumanos',
         ],
         'Ventas y Proyecciones': [
+            'ProyeccionVentasConfig',
             'ProyeccionVentas',
+            'PlantillaEstacional',
+        ],
+        'Catálogos de Ventas': [
+            'CanalVenta',
+            'CategoriaProducto',
+            'Producto',
+            'DefinicionMercado',
         ],
         'Comercial': [
             'PersonalComercial',
