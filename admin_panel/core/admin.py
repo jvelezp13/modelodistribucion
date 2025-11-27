@@ -1115,26 +1115,27 @@ class ZonaMunicipioAdmin(admin.ModelAdmin):
 
 
 # ============================================================================
-# ADMINS PARA RUTAS LOGÍSTICAS
+# ADMINS PARA RECORRIDOS LOGÍSTICOS
 # ============================================================================
 
-class RutaMunicipioInline(admin.TabularInline):
-    """Inline para municipios de una ruta logística"""
+class RecorridoMunicipioInline(admin.TabularInline):
+    """Inline para municipios de un recorrido logístico"""
     model = RutaMunicipio
     extra = 1
     autocomplete_fields = ['municipio']
-    fields = ('municipio', 'entregas_por_periodo', 'flete_base', 'requiere_pernocta', 'noches_pernocta')
+    fields = ('orden_visita', 'municipio', 'entregas_por_periodo', 'flete_base')
+    ordering = ['orden_visita']
 
 
 @admin.register(RutaLogistica)
-class RutaLogisticaAdmin(admin.ModelAdmin):
-    """Admin para Rutas Logísticas (vehículos/terceros)"""
-    list_display = ('nombre', 'marca', 'vehiculo', 'esquema_vehiculo', 'frecuencia', 'viajes_por_periodo', 'activo')
-    list_filter = ('marca', 'escenario', 'vehiculo__esquema', 'frecuencia', 'activo')
+class RecorridoLogisticoAdmin(admin.ModelAdmin):
+    """Admin para Recorridos Logísticos (circuitos que hace un vehículo)"""
+    list_display = ('nombre', 'marca', 'vehiculo', 'esquema_vehiculo', 'frecuencia', 'viajes_por_periodo', 'requiere_pernocta', 'activo')
+    list_filter = ('marca', 'escenario', 'vehiculo__esquema', 'frecuencia', 'requiere_pernocta', 'activo')
     search_fields = ['nombre', 'vehiculo__tipo_vehiculo']
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
     autocomplete_fields = ['vehiculo']
-    inlines = [RutaMunicipioInline]
+    inlines = [RecorridoMunicipioInline]
 
     fieldsets = (
         ('Información Básica', {
@@ -1144,9 +1145,13 @@ class RutaLogisticaAdmin(admin.ModelAdmin):
             'fields': ('marca', 'escenario', 'vehiculo'),
             'description': 'El vehículo puede ser propio, renting o tercero'
         }),
-        ('Frecuencia y Viajes', {
+        ('Frecuencia', {
             'fields': ('frecuencia', 'viajes_por_periodo'),
-            'description': 'Frecuencia del periodo y cantidad de viajes completos (ida+vuelta) por periodo'
+            'description': 'Cuántas veces por periodo (semana/quincena/mes) se hace este recorrido completo'
+        }),
+        ('Pernocta', {
+            'fields': ('requiere_pernocta', 'noches_pernocta'),
+            'description': 'Si el recorrido completo requiere que el conductor pase la noche fuera'
         }),
         ('Metadata', {
             'fields': ('fecha_creacion', 'fecha_modificacion'),
@@ -1163,25 +1168,23 @@ class RutaLogisticaAdmin(admin.ModelAdmin):
 
 
 @admin.register(RutaMunicipio)
-class RutaMunicipioAdmin(admin.ModelAdmin):
-    """Admin para relación Ruta-Municipio (logística)"""
-    list_display = ('ruta', 'municipio', 'entregas_por_periodo', 'entregas_mensuales_calc', 'requiere_pernocta', 'noches_pernocta', 'flete_base_formateado')
-    list_filter = ('ruta__marca', 'ruta__vehiculo__esquema', 'ruta__frecuencia', 'requiere_pernocta')
+class RecorridoMunicipioAdmin(admin.ModelAdmin):
+    """Admin para Municipios de un Recorrido (logística)"""
+    list_display = ('ruta', 'orden_visita', 'municipio', 'entregas_por_periodo', 'flete_base_formateado')
+    list_filter = ('ruta__marca', 'ruta__vehiculo__esquema', 'ruta__frecuencia')
     search_fields = ('ruta__nombre', 'municipio__nombre')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
     autocomplete_fields = ['ruta', 'municipio']
+    ordering = ['ruta', 'orden_visita']
 
     fieldsets = (
-        ('Relación', {
-            'fields': ('ruta', 'municipio')
+        ('Recorrido', {
+            'fields': ('ruta', 'orden_visita', 'municipio'),
+            'description': 'El orden de visita define la secuencia del circuito'
         }),
         ('Entregas', {
             'fields': ('entregas_por_periodo',),
-            'description': 'Cantidad de entregas por periodo según la frecuencia de la ruta'
-        }),
-        ('Pernocta', {
-            'fields': ('requiere_pernocta', 'noches_pernocta'),
-            'description': 'Si la entrega a este municipio requiere que el conductor pase la noche'
+            'description': 'Cuántas entregas a este municipio cada vez que se hace el recorrido'
         }),
         ('Flete (Solo Terceros)', {
             'fields': ('flete_base',),
@@ -1192,10 +1195,6 @@ class RutaMunicipioAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
-
-    def entregas_mensuales_calc(self, obj):
-        return obj.entregas_mensuales()
-    entregas_mensuales_calc.short_description = 'Entregas/Mes'
 
     def flete_base_formateado(self, obj):
         if obj.flete_base:

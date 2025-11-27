@@ -224,10 +224,13 @@ class CalculadoraLejanias:
 
     def calcular_lejania_logistica_ruta(self, ruta) -> Dict:
         """
-        Calcula lejanía logística mensual para una ruta
+        Calcula lejanía logística mensual para un recorrido (circuito)
+
+        El cálculo usa el orden de visita para calcular distancias reales:
+        Bodega → Municipio1 → Municipio2 → ... → Bodega
 
         Args:
-            ruta: Instancia de RutaLogistica
+            ruta: Instancia de RutaLogistica (recorrido)
 
         Returns:
             {
@@ -247,8 +250,8 @@ class CalculadoraLejanias:
         flete_base_total = Decimal('0')
         combustible_total = Decimal('0')
         peaje_total = Decimal('0')
-        pernocta_total = Decimal('0')
         detalle_municipios = []
+        detalle_tramos = []
 
         # Bodega (desde donde parten los vehículos)
         bodega = self.config.municipio_bodega
@@ -256,10 +259,10 @@ class CalculadoraLejanias:
             logger.warning(f"No hay bodega configurada para el escenario {self.escenario}")
             return self._resultado_vacio_logistica()
 
-        # Vehículo de la ruta
+        # Vehículo del recorrido
         vehiculo = ruta.vehiculo
         if not vehiculo:
-            logger.warning(f"Ruta {ruta} no tiene vehículo asignado")
+            logger.warning(f"Recorrido {ruta} no tiene vehículo asignado")
             return self._resultado_vacio_logistica()
 
         # Consumo y precio según vehículo
@@ -271,80 +274,81 @@ class CalculadoraLejanias:
         tipo_combustible = vehiculo.tipo_combustible
         esquema_vehiculo = vehiculo.esquema
 
-        # Viajes mensuales de la ruta (ida+vuelta completos)
-        viajes_mensuales = ruta.viajes_mensuales()
+        # Recorridos mensuales (cuántas veces se hace el circuito completo por mes)
+        recorridos_mensuales = ruta.recorridos_mensuales()
 
-        # Calcular para cada municipio de la ruta (usando related_name 'municipios')
-        for ruta_mun in ruta.municipios.all():
-            municipio = ruta_mun.municipio
+        # Obtener municipios ordenados por orden_visita
+        municipios_ordenados = list(ruta.municipios.all().order_by('orden_visita'))
 
-            # Buscar ruta en matriz (por ID para evitar problemas de comparación de objetos)
-            try:
-                matriz = MatrizDesplazamiento.objects.get(
-                    origen_id=bodega.id,
-                    destino_id=municipio.id
-                )
-            except MatrizDesplazamiento.DoesNotExist:
-                logger.warning(f"No existe ruta {bodega.nombre} (ID:{bodega.id}) → {municipio.nombre} (ID:{municipio.id})")
-                continue
+        if not municipios_ordenados:
+            return self._resultado_vacio_logistica()
 
-            # Entregas mensuales a este municipio
-            entregas_mensuales = ruta_mun.entregas_mensuales()
-
-            # Flete base (siempre aplica, independiente del umbral)
+        # Calcular flete base por municipio (se suma por cada recorrido)
+        for ruta_mun in municipios_ordenados:
             flete_base_municipio = ruta_mun.flete_base or Decimal('0')
+            # Multiplicar por entregas_por_periodo × recorridos para obtener mensual
+            entregas_mensuales = ruta_mun.entregas_por_periodo * recorridos_mensuales
             flete_base_total += flete_base_municipio * entregas_mensuales
 
-            # Calcular distancia efectiva para lejanía (km después del umbral)
-            umbral = self.config.umbral_lejania_logistica_km
-            distancia_efectiva = max(Decimal('0'), matriz.distancia_km - umbral)
-
-            # Combustible (solo km después del umbral)
-            combustible_municipio = Decimal('0')
-            if distancia_efectiva > 0:
-                distancia_ida_vuelta = distancia_efectiva * 2
-                galones_por_entrega = distancia_ida_vuelta / consumo_km_galon
-                costo_combustible_entrega = galones_por_entrega * precio_galon
-                combustible_municipio = costo_combustible_entrega * entregas_mensuales
-                combustible_total += combustible_municipio
-
-            # Peajes (siempre aplica si hay peajes configurados)
-            peaje_por_entrega = (matriz.peaje_ida or Decimal('0')) + (matriz.peaje_vuelta or Decimal('0'))
-            peaje_municipio = peaje_por_entrega * entregas_mensuales
-            peaje_total += peaje_municipio
-
-            # Pernocta por municipio
-            pernocta_municipio = Decimal('0')
-            if ruta_mun.requiere_pernocta and ruta_mun.noches_pernocta > 0:
-                gasto_por_noche = (
-                    self.config.desayuno_logistica +
-                    self.config.almuerzo_logistica +
-                    self.config.cena_logistica +
-                    self.config.alojamiento_logistica +
-                    self.config.parqueadero_logistica
-                )
-                pernocta_municipio = gasto_por_noche * ruta_mun.noches_pernocta * entregas_mensuales
-                pernocta_total += pernocta_municipio
-
             detalle_municipios.append({
-                'municipio': municipio.nombre,
-                'municipio_id': municipio.id,
-                'distancia_km': float(matriz.distancia_km),
-                'distancia_efectiva_km': float(distancia_efectiva),
-                'tiempo_minutos': matriz.tiempo_minutos,
+                'orden': ruta_mun.orden_visita,
+                'municipio': ruta_mun.municipio.nombre,
+                'municipio_id': ruta_mun.municipio.id,
                 'entregas_por_periodo': ruta_mun.entregas_por_periodo,
-                'entregas_mensuales': float(entregas_mensuales),
                 'flete_base': float(flete_base_municipio),
-                'combustible_mensual': float(combustible_municipio),
-                'peaje_mensual': float(peaje_municipio),
-                'requiere_pernocta': ruta_mun.requiere_pernocta,
-                'noches_pernocta': ruta_mun.noches_pernocta,
-                'pernocta_mensual': float(pernocta_municipio),
             })
 
-        # Detalle de costos de pernocta (para mostrar en frontend)
+        # Calcular circuito: Bodega → Mun1 → Mun2 → ... → MunN → Bodega
+        # Construir lista de puntos del circuito
+        puntos_circuito = [bodega] + [rm.municipio for rm in municipios_ordenados] + [bodega]
+
+        distancia_total_circuito = Decimal('0')
+        peaje_total_circuito = Decimal('0')
+        umbral = self.config.umbral_lejania_logistica_km
+
+        # Calcular cada tramo del circuito
+        for i in range(len(puntos_circuito) - 1):
+            origen = puntos_circuito[i]
+            destino = puntos_circuito[i + 1]
+
+            try:
+                matriz = MatrizDesplazamiento.objects.get(
+                    origen_id=origen.id,
+                    destino_id=destino.id
+                )
+                distancia_tramo = matriz.distancia_km
+                peaje_tramo = matriz.peaje_ida or Decimal('0')
+            except MatrizDesplazamiento.DoesNotExist:
+                logger.warning(f"No existe tramo {origen.nombre} → {destino.nombre} en matriz")
+                distancia_tramo = Decimal('0')
+                peaje_tramo = Decimal('0')
+
+            distancia_total_circuito += distancia_tramo
+            peaje_total_circuito += peaje_tramo
+
+            detalle_tramos.append({
+                'origen': origen.nombre,
+                'destino': destino.nombre,
+                'distancia_km': float(distancia_tramo),
+                'peaje': float(peaje_tramo),
+            })
+
+        # Aplicar umbral a la distancia total del circuito
+        distancia_efectiva = max(Decimal('0'), distancia_total_circuito - umbral)
+
+        # Combustible del circuito (solo km después del umbral)
+        if distancia_efectiva > 0:
+            galones_por_circuito = distancia_efectiva / consumo_km_galon
+            costo_combustible_circuito = galones_por_circuito * precio_galon
+            combustible_total = costo_combustible_circuito * recorridos_mensuales
+
+        # Peajes del circuito
+        peaje_total = peaje_total_circuito * recorridos_mensuales
+
+        # Pernocta del recorrido (a nivel de recorrido, no municipio)
+        pernocta_total = Decimal('0')
         detalle_pernocta = None
-        if pernocta_total > 0:
+        if ruta.requiere_pernocta and ruta.noches_pernocta > 0:
             desayuno = self.config.desayuno_logistica
             almuerzo = self.config.almuerzo_logistica
             cena = self.config.cena_logistica
@@ -352,7 +356,10 @@ class CalculadoraLejanias:
             parqueadero = self.config.parqueadero_logistica
             gasto_por_noche = desayuno + almuerzo + cena + alojamiento + parqueadero
 
+            pernocta_total = gasto_por_noche * ruta.noches_pernocta * recorridos_mensuales
+
             detalle_pernocta = {
+                'noches': ruta.noches_pernocta,
                 'desayuno': float(desayuno),
                 'almuerzo': float(almuerzo),
                 'cena': float(cena),
@@ -380,9 +387,12 @@ class CalculadoraLejanias:
                 'consumo_km_galon': float(consumo_km_galon),
                 'precio_galon': float(precio_galon),
                 'umbral_km': self.config.umbral_lejania_logistica_km,
-                'viajes_por_periodo': ruta.viajes_por_periodo,
-                'viajes_mensuales': float(viajes_mensuales),
+                'recorridos_por_periodo': ruta.viajes_por_periodo,
+                'recorridos_mensuales': float(recorridos_mensuales),
+                'distancia_circuito_km': float(distancia_total_circuito),
+                'distancia_efectiva_km': float(distancia_efectiva),
                 'municipios': detalle_municipios,
+                'tramos': detalle_tramos,
                 'pernocta': detalle_pernocta,
                 'es_constitutiva_salario': self.config.es_constitutiva_salario_logistica,
             }

@@ -1697,7 +1697,7 @@ class ZonaMunicipio(models.Model):
 # ============================================================================
 
 class RutaLogistica(models.Model):
-    """Rutas de distribución logística (por vehículo/tercero)"""
+    """Recorridos de distribución logística (circuitos que hace un vehículo)"""
 
     FRECUENCIA_CHOICES = [
         ('SEMANAL', 'Semanal (4.33 periodos/mes)'),
@@ -1705,49 +1705,61 @@ class RutaLogistica(models.Model):
         ('MENSUAL', 'Mensual (1 periodo/mes)'),
     ]
 
-    nombre = models.CharField(max_length=100, verbose_name="Nombre de la Ruta")
+    nombre = models.CharField(max_length=100, verbose_name="Nombre del Recorrido")
 
     vehiculo = models.ForeignKey(
         'Vehiculo',
         on_delete=models.CASCADE,
-        related_name='rutas_logisticas',
+        related_name='recorridos',
         verbose_name="Vehículo Asignado",
-        help_text="Vehículo (propio, renting o tercero) que realiza esta ruta"
+        help_text="Vehículo (propio, renting o tercero) que realiza este recorrido"
     )
     marca = models.ForeignKey(
         'Marca',
         on_delete=models.CASCADE,
-        related_name='rutas_logisticas',
+        related_name='recorridos',
         verbose_name="Marca"
     )
     escenario = models.ForeignKey(
         'Escenario',
         on_delete=models.CASCADE,
-        related_name='rutas_logisticas',
+        related_name='recorridos',
         verbose_name="Escenario"
     )
 
-    # Frecuencia de entregas
+    # Frecuencia del recorrido
     frecuencia = models.CharField(
         max_length=20,
         choices=FRECUENCIA_CHOICES,
         default='SEMANAL',
-        verbose_name="Frecuencia de Entregas"
+        verbose_name="Frecuencia"
     )
     viajes_por_periodo = models.IntegerField(
         default=1,
-        verbose_name="Viajes por Periodo",
-        help_text="Cantidad de viajes completos (ida+vuelta) por periodo"
+        verbose_name="Veces por Periodo",
+        help_text="Cuántas veces se hace este recorrido por periodo. Ej: 2 veces/semana"
     )
 
-    activo = models.BooleanField(default=True, verbose_name="Activa")
+    # Pernocta del recorrido
+    requiere_pernocta = models.BooleanField(
+        default=False,
+        verbose_name="¿Requiere Pernocta?",
+        help_text="Si el recorrido requiere que el conductor pase la noche fuera"
+    )
+    noches_pernocta = models.IntegerField(
+        default=0,
+        verbose_name="Noches de Pernocta",
+        help_text="Cantidad de noches por recorrido completo"
+    )
+
+    activo = models.BooleanField(default=True, verbose_name="Activo")
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_modificacion = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = 'dxv_ruta_logistica'
-        verbose_name = "Ruta Logística"
-        verbose_name_plural = "Rutas Logísticas"
+        verbose_name = "Recorrido Logístico"
+        verbose_name_plural = "Recorridos Logísticos"
         ordering = ['marca', 'vehiculo', 'nombre']
 
     def __str__(self):
@@ -1762,18 +1774,18 @@ class RutaLogistica(models.Model):
         else:  # MENSUAL
             return Decimal('1.00')
 
-    def viajes_mensuales(self):
-        """Retorna cuántos viajes completos (ida+vuelta) hay por mes."""
+    def recorridos_mensuales(self):
+        """Retorna cuántas veces se hace el recorrido completo por mes."""
         return self.viajes_por_periodo * self.periodos_por_mes()
 
 
 class RutaMunicipio(models.Model):
-    """Municipios que atiende cada ruta logística"""
+    """Municipios que atiende cada recorrido logístico"""
     ruta = models.ForeignKey(
         'RutaLogistica',
         on_delete=models.CASCADE,
         related_name='municipios',
-        verbose_name="Ruta"
+        verbose_name="Recorrido"
     )
     municipio = models.ForeignKey(
         'Municipio',
@@ -1781,11 +1793,18 @@ class RutaMunicipio(models.Model):
         verbose_name="Municipio"
     )
 
+    # Orden de visita en el recorrido (para calcular circuito)
+    orden_visita = models.IntegerField(
+        default=1,
+        verbose_name="Orden de Visita",
+        help_text="Secuencia en el recorrido: 1=primer municipio, 2=segundo, etc."
+    )
+
     # Frecuencia de entregas por periodo
     entregas_por_periodo = models.IntegerField(
         default=1,
         verbose_name="Entregas por Periodo",
-        help_text="Ej: Si la ruta es semanal, cuántas entregas por semana a este municipio"
+        help_text="Cuántas entregas a este municipio cada vez que se hace el recorrido"
     )
 
     # Flete base para terceros
@@ -1797,30 +1816,18 @@ class RutaMunicipio(models.Model):
         help_text="Valor base del flete para este municipio (aplica para vehículos terceros)"
     )
 
-    # Pernocta por municipio
-    requiere_pernocta = models.BooleanField(
-        default=False,
-        verbose_name="¿Requiere Pernocta?",
-        help_text="Si la entrega a este municipio requiere que el conductor pase la noche"
-    )
-    noches_pernocta = models.IntegerField(
-        default=0,
-        verbose_name="Noches de Pernocta",
-        help_text="Cantidad de noches por viaje a este municipio"
-    )
-
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_modificacion = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = 'dxv_ruta_municipio'
-        verbose_name = "Ruta-Municipio"
-        verbose_name_plural = "Rutas-Municipios"
+        verbose_name = "Municipio del Recorrido"
+        verbose_name_plural = "Municipios del Recorrido"
         unique_together = ('ruta', 'municipio')
-        ordering = ['ruta', 'municipio__nombre']
+        ordering = ['ruta', 'orden_visita']
 
     def __str__(self):
-        return f"{self.ruta.nombre} → {self.municipio}"
+        return f"{self.ruta.nombre} → {self.orden_visita}. {self.municipio}"
 
     def entregas_mensuales(self):
         """Calcula entregas mensuales a este municipio"""
