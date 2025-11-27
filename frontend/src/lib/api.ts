@@ -109,6 +109,7 @@ export interface DetalleZonaComercial {
   zona_id: number;
   zona_nombre: string;
   vendedor: string;
+  ciudad_base: string;
   tipo_vehiculo: string;
   frecuencia: string;
   requiere_pernocta: boolean;

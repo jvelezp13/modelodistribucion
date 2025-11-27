@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { apiClient, DetalleLejaniasComercial, DetalleZonaComercial } from '@/lib/api';
-import { ChevronDown, ChevronRight, MapPin, User, Car } from 'lucide-react';
+import { ChevronDown, ChevronRight, MapPin, User, Car, Home } from 'lucide-react';
 
 interface LejaniasComercialProps {
   escenarioId: number;
@@ -139,6 +139,10 @@ export default function LejaniasComercial({ escenarioId, marcaId }: LejaniasCome
                         <span className="flex items-center gap-1">
                           <User size={12} />
                           {zona.vendedor}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Home size={12} />
+                          {zona.ciudad_base}
                         </span>
                         <span className="flex items-center gap-1">
                           <Car size={12} />

@@ -167,6 +167,7 @@ def obtener_detalle_lejanias_comercial(
                 'zona_id': zona.id,
                 'zona_nombre': zona.nombre,
                 'vendedor': zona.vendedor.nombre if zona.vendedor else 'Sin asignar',
+                'ciudad_base': zona.municipio_base_vendedor.nombre if zona.municipio_base_vendedor else 'Sin configurar',
                 'tipo_vehiculo': zona.tipo_vehiculo_comercial,
                 'frecuencia': zona.get_frecuencia_display(),
                 'requiere_pernocta': zona.requiere_pernocta,
