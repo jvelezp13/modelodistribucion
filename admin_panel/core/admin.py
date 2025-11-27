@@ -1129,28 +1129,28 @@ class RutaMunicipioInline(admin.TabularInline):
 @admin.register(RutaLogistica)
 class RutaLogisticaAdmin(admin.ModelAdmin):
     """Admin para Rutas Logísticas (vehículos/terceros)"""
-    list_display = ('nombre', 'codigo', 'marca', 'vehiculo', 'esquema_vehiculo', 'frecuencia', 'requiere_pernocta', 'activo')
+    list_display = ('nombre', 'marca', 'vehiculo', 'esquema_vehiculo', 'frecuencia', 'viajes_por_periodo', 'requiere_pernocta', 'activo')
     list_filter = ('marca', 'escenario', 'vehiculo__esquema', 'frecuencia', 'requiere_pernocta', 'activo')
-    search_fields = ['nombre', 'codigo', 'descripcion', 'vehiculo__tipo_vehiculo']  # Para autocomplete
+    search_fields = ['nombre', 'vehiculo__tipo_vehiculo']
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
     autocomplete_fields = ['vehiculo']
     inlines = [RutaMunicipioInline]
 
     fieldsets = (
         ('Información Básica', {
-            'fields': ('nombre', 'codigo', 'descripcion', 'activo')
+            'fields': ('nombre', 'activo')
         }),
         ('Asignación', {
             'fields': ('marca', 'escenario', 'vehiculo'),
             'description': 'El vehículo puede ser propio, renting o tercero'
         }),
-        ('Frecuencia de Entregas', {
-            'fields': ('frecuencia',),
-            'description': 'Con qué frecuencia se realizan las entregas de esta ruta'
+        ('Frecuencia y Viajes', {
+            'fields': ('frecuencia', 'viajes_por_periodo'),
+            'description': 'Frecuencia del periodo y cantidad de viajes completos (ida+vuelta) por periodo. Ej: Semanal con 2 viajes = va 2 veces por semana'
         }),
         ('Pernocta Logística', {
             'fields': ('requiere_pernocta', 'noches_pernocta'),
-            'description': 'Si el conductor requiere pernoctar fuera (para rutas largas)'
+            'description': 'Si el conductor requiere pernoctar fuera. Las noches son por cada viaje.'
         }),
         ('Metadata', {
             'fields': ('fecha_creacion', 'fecha_modificacion'),

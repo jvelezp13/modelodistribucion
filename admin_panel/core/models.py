@@ -1706,8 +1706,6 @@ class RutaLogistica(models.Model):
     ]
 
     nombre = models.CharField(max_length=100, verbose_name="Nombre de la Ruta")
-    codigo = models.CharField(max_length=20, verbose_name="Código", blank=True)
-    descripcion = models.TextField(blank=True, verbose_name="Descripción")
 
     vehiculo = models.ForeignKey(
         'Vehiculo',
@@ -1735,6 +1733,11 @@ class RutaLogistica(models.Model):
         choices=FRECUENCIA_CHOICES,
         default='SEMANAL',
         verbose_name="Frecuencia de Entregas"
+    )
+    viajes_por_periodo = models.IntegerField(
+        default=1,
+        verbose_name="Viajes por Periodo",
+        help_text="Cantidad de viajes completos (ida+vuelta) por periodo. Ej: Si pernocta, puede ser 2 viajes/semana en lugar de 4"
     )
 
     # Pernocta logística
@@ -1770,6 +1773,10 @@ class RutaLogistica(models.Model):
             return Decimal('2.00')
         else:  # MENSUAL
             return Decimal('1.00')
+
+    def viajes_mensuales(self):
+        """Retorna cuántos viajes completos (ida+vuelta) hay por mes."""
+        return self.viajes_por_periodo * self.periodos_por_mes()
 
 
 class RutaMunicipio(models.Model):

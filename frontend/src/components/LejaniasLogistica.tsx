@@ -228,7 +228,7 @@ export default function LejaniasLogistica({ escenarioId, marcaId }: LejaniasLogi
                   {/* Info del vehículo */}
                   {ruta.detalle && (
                     <div className="mb-4 p-2 bg-white rounded border border-gray-200">
-                      <div className="grid grid-cols-4 gap-2 text-xs">
+                      <div className="grid grid-cols-5 gap-2 text-xs">
                         <div>
                           <span className="text-gray-500">Bodega:</span>{' '}
                           <span className="font-medium">{ruta.detalle.bodega || 'N/A'}</span>
@@ -244,6 +244,45 @@ export default function LejaniasLogistica({ escenarioId, marcaId }: LejaniasLogi
                         <div>
                           <span className="text-gray-500">Rendimiento:</span>{' '}
                           <span className="font-medium">{ruta.detalle.consumo_km_galon || 0} km/gal</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Viajes/mes:</span>{' '}
+                          <span className="font-medium">{ruta.detalle.viajes_mensuales?.toFixed(1) || 'N/A'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Detalle de Pernocta */}
+                  {ruta.detalle?.pernocta && (
+                    <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded">
+                      <div className="text-xs font-semibold text-purple-800 mb-2">
+                        Detalle Pernocta ({ruta.detalle.pernocta.noches} noche{ruta.detalle.pernocta.noches > 1 ? 's' : ''} × {ruta.detalle.pernocta.viajes_mensuales.toFixed(1)} viajes/mes)
+                      </div>
+                      <div className="grid grid-cols-6 gap-2 text-xs">
+                        <div>
+                          <span className="text-gray-500">Desayuno:</span>{' '}
+                          <span className="font-medium">{formatCurrency(ruta.detalle.pernocta.desayuno)}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Almuerzo:</span>{' '}
+                          <span className="font-medium">{formatCurrency(ruta.detalle.pernocta.almuerzo)}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Cena:</span>{' '}
+                          <span className="font-medium">{formatCurrency(ruta.detalle.pernocta.cena)}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Alojamiento:</span>{' '}
+                          <span className="font-medium">{formatCurrency(ruta.detalle.pernocta.alojamiento)}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Parqueadero:</span>{' '}
+                          <span className="font-medium">{formatCurrency(ruta.detalle.pernocta.parqueadero)}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Total/noche:</span>{' '}
+                          <span className="font-medium">{formatCurrency(ruta.detalle.pernocta.gasto_por_noche)}</span>
                         </div>
                       </div>
                     </div>
@@ -261,12 +300,11 @@ export default function LejaniasLogistica({ escenarioId, marcaId }: LejaniasLogi
                             <tr>
                               <th className="px-2 py-1 text-left">Municipio</th>
                               <th className="px-2 py-1 text-right">Distancia (km)</th>
+                              <th className="px-2 py-1 text-right">Entregas/periodo</th>
                               <th className="px-2 py-1 text-right">Entregas/mes</th>
                               <th className="px-2 py-1 text-right">Flete Base</th>
                               <th className="px-2 py-1 text-right">Combustible</th>
                               <th className="px-2 py-1 text-right">Peaje</th>
-                              <th className="px-2 py-1 text-right">Pernocta</th>
-                              <th className="px-2 py-1 text-center">Req. Pernocta</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -274,7 +312,12 @@ export default function LejaniasLogistica({ escenarioId, marcaId }: LejaniasLogi
                               <tr key={idx} className="border-b border-gray-100">
                                 <td className="px-2 py-1">{municipio.municipio}</td>
                                 <td className="px-2 py-1 text-right">{municipio.distancia_km}</td>
-                                <td className="px-2 py-1 text-right">{municipio.entregas_mensuales}</td>
+                                <td className="px-2 py-1 text-right">
+                                  <span className={municipio.entregas_por_periodo > 1 ? 'font-semibold text-orange-600' : ''}>
+                                    {municipio.entregas_por_periodo}
+                                  </span>
+                                </td>
+                                <td className="px-2 py-1 text-right">{municipio.entregas_mensuales.toFixed(1)}</td>
                                 <td className="px-2 py-1 text-right text-orange-600">
                                   {formatCurrency(municipio.flete_base || 0)}
                                 </td>
@@ -283,12 +326,6 @@ export default function LejaniasLogistica({ escenarioId, marcaId }: LejaniasLogi
                                 </td>
                                 <td className="px-2 py-1 text-right text-yellow-600">
                                   {formatCurrency(municipio.peaje_mensual || 0)}
-                                </td>
-                                <td className="px-2 py-1 text-right text-purple-600">
-                                  {formatCurrency(municipio.pernocta_mensual)}
-                                </td>
-                                <td className="px-2 py-1 text-center">
-                                  {municipio.requiere_pernocta ? '✓' : '-'}
                                 </td>
                               </tr>
                             ))}

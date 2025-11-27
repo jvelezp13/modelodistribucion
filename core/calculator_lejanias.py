@@ -269,6 +269,9 @@ class CalculadoraLejanias:
         tipo_combustible = vehiculo.tipo_combustible
         esquema_vehiculo = vehiculo.esquema
 
+        # Viajes mensuales de la ruta (ida+vuelta completos)
+        viajes_mensuales = ruta.viajes_mensuales()
+
         # Calcular para cada municipio de la ruta (usando related_name 'municipios')
         for ruta_mun in ruta.municipios.all():
             municipio = ruta_mun.municipio
@@ -287,7 +290,7 @@ class CalculadoraLejanias:
             if matriz.distancia_km < self.config.umbral_lejania_logistica_km:
                 continue  # No aplica lejanía
 
-            # Entregas mensuales
+            # Entregas mensuales a este municipio
             entregas_mensuales = ruta_mun.entregas_mensuales()
 
             # Flete base (para terceros principalmente)
@@ -310,34 +313,42 @@ class CalculadoraLejanias:
                 peaje_municipio = peaje_por_entrega * entregas_mensuales
                 peaje_total += peaje_municipio
 
-            # Pernocta (si la ruta lo requiere o es muy larga)
-            pernocta_municipio = Decimal('0')
-            requiere_pernocta_mun = ruta.requiere_pernocta or matriz.distancia_km > 150 or matriz.tiempo_minutos > 240
-
-            if requiere_pernocta_mun:
-                noches = ruta.noches_pernocta if ruta.noches_pernocta > 0 else 1
-                gasto_por_noche = (
-                    self.config.desayuno_logistica +
-                    self.config.almuerzo_logistica +
-                    self.config.cena_logistica +
-                    self.config.alojamiento_logistica +
-                    self.config.parqueadero_logistica
-                )
-                pernocta_municipio = gasto_por_noche * noches * entregas_mensuales
-                pernocta_total += pernocta_municipio
-
             detalle_municipios.append({
                 'municipio': municipio.nombre,
                 'municipio_id': municipio.id,
                 'distancia_km': float(matriz.distancia_km),
                 'tiempo_minutos': matriz.tiempo_minutos,
+                'entregas_por_periodo': ruta_mun.entregas_por_periodo,
                 'entregas_mensuales': float(entregas_mensuales),
                 'flete_base': float(flete_base_municipio),
                 'combustible_mensual': float(combustible_municipio),
                 'peaje_mensual': float(peaje_municipio),
-                'pernocta_mensual': float(pernocta_municipio),
-                'requiere_pernocta': requiere_pernocta_mun,
             })
+
+        # Pernocta se calcula a nivel de RUTA (una vez por viaje, no por municipio)
+        detalle_pernocta = None
+        if ruta.requiere_pernocta and ruta.noches_pernocta > 0:
+            desayuno = self.config.desayuno_logistica
+            almuerzo = self.config.almuerzo_logistica
+            cena = self.config.cena_logistica
+            alojamiento = self.config.alojamiento_logistica
+            parqueadero = self.config.parqueadero_logistica
+            gasto_por_noche = desayuno + almuerzo + cena + alojamiento + parqueadero
+
+            # Pernocta = noches × gasto_por_noche × viajes_mensuales
+            pernocta_total = gasto_por_noche * ruta.noches_pernocta * viajes_mensuales
+
+            detalle_pernocta = {
+                'noches': ruta.noches_pernocta,
+                'desayuno': float(desayuno),
+                'almuerzo': float(almuerzo),
+                'cena': float(cena),
+                'alojamiento': float(alojamiento),
+                'parqueadero': float(parqueadero),
+                'gasto_por_noche': float(gasto_por_noche),
+                'viajes_mensuales': float(viajes_mensuales),
+                'total_mensual': float(pernocta_total),
+            }
 
         total = flete_base_total + combustible_total + peaje_total + pernocta_total
 
@@ -357,7 +368,10 @@ class CalculadoraLejanias:
                 'consumo_km_galon': float(consumo_km_galon),
                 'precio_galon': float(precio_galon),
                 'umbral_km': self.config.umbral_lejania_logistica_km,
+                'viajes_por_periodo': ruta.viajes_por_periodo,
+                'viajes_mensuales': float(viajes_mensuales),
                 'municipios': detalle_municipios,
+                'pernocta': detalle_pernocta,
                 'es_constitutiva_salario': self.config.es_constitutiva_salario_logistica,
             }
         }
