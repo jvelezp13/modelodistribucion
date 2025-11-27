@@ -961,7 +961,7 @@ class MunicipioAdmin(admin.ModelAdmin):
 
 @admin.register(MatrizDesplazamiento, site=dxv_admin_site)
 class MatrizDesplazamientoAdmin(admin.ModelAdmin):
-    list_display = ('origen', 'destino', 'distancia_km', 'tiempo_minutos', 'tiempo_horas', 'peaje_ida', 'peaje_vuelta')
+    list_display = ('origen', 'destino', 'distancia_km', 'tiempo_minutos', 'tiempo_horas', 'peaje_formateado')
     list_filter = ('origen__departamento',)
     search_fields = ('origen__nombre', 'destino__nombre')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
@@ -969,14 +969,15 @@ class MatrizDesplazamientoAdmin(admin.ModelAdmin):
 
     fieldsets = (
         ('Ruta', {
-            'fields': ('origen', 'destino')
+            'fields': ('origen', 'destino'),
+            'description': 'Cada tramo es unidireccional. Ej: Amagá→Medellín es diferente de Medellín→Amagá'
         }),
         ('Distancia y Tiempo', {
             'fields': ('distancia_km', 'tiempo_minutos')
         }),
         ('Peajes (Solo para Logística)', {
-            'fields': ('peaje_ida', 'peaje_vuelta'),
-            'description': 'Costos de peajes en la ruta. Solo aplica para vehículos logísticos (no para motos comerciales).'
+            'fields': ('peaje_ida',),
+            'description': 'Costo de peajes en este tramo. Solo aplica para vehículos logísticos (no para motos comerciales).'
         }),
         ('Notas', {
             'fields': ('notas',),
@@ -987,6 +988,12 @@ class MatrizDesplazamientoAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+
+    def peaje_formateado(self, obj):
+        if obj.peaje_ida:
+            return f"${obj.peaje_ida:,.0f}"
+        return "-"
+    peaje_formateado.short_description = 'Peaje'
 
     def tiempo_horas(self, obj):
         return f"{obj.tiempo_minutos / 60:.1f}h"

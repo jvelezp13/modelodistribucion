@@ -1397,15 +1397,8 @@ class MatrizDesplazamiento(models.Model):
         max_digits=10,
         decimal_places=2,
         default=0,
-        verbose_name="Peaje Ida",
-        help_text="Costo total de peajes en el trayecto de ida"
-    )
-    peaje_vuelta = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        default=0,
-        verbose_name="Peaje Vuelta",
-        help_text="Costo total de peajes en el trayecto de vuelta (puede ser diferente o 0)"
+        verbose_name="Peaje",
+        help_text="Costo total de peajes en este tramo (cada tramo es unidireccional)"
     )
 
     notas = models.TextField(blank=True, verbose_name="Notas")
