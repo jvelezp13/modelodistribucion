@@ -240,21 +240,83 @@ export default function DashboardPage() {
           )}
 
           {/* Vista Lejanías Comerciales */}
-          {activeView === 'lejanias-comercial' && selectedScenarioId && marcasSeleccionadas.length > 0 && (
-            <LejaniasComercial
-              key={`lejanias-comercial-${refreshKey}`}
-              escenarioId={selectedScenarioId}
-              marcaId={marcasSeleccionadas[0]}
-            />
+          {activeView === 'lejanias-comercial' && (
+            <>
+              {resultado ? (
+                <>
+                  {/* Selector de marca si hay múltiples */}
+                  {resultado.marcas.length > 1 && (
+                    <div className="mb-3 bg-white border border-gray-200 rounded p-2">
+                      <label className="text-xs font-medium text-gray-700 block mb-1">
+                        Selecciona una marca:
+                      </label>
+                      <select
+                        value={selectedMarcaPyG || resultado.marcas[0]?.marca_id || ''}
+                        onChange={(e) => setSelectedMarcaPyG(e.target.value)}
+                        className="w-full text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      >
+                        {resultado.marcas.map((marca) => (
+                          <option key={marca.marca_id} value={marca.marca_id}>
+                            {marca.nombre}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  <LejaniasComercial
+                    key={`lejanias-comercial-${refreshKey}`}
+                    escenarioId={selectedScenarioId!}
+                    marcaId={selectedMarcaPyG || resultado.marcas[0]?.marca_id}
+                  />
+                </>
+              ) : (
+                <div className="bg-white border border-gray-200 rounded p-12 text-center">
+                  <p className="text-sm text-gray-600">
+                    Selecciona las marcas y ejecuta la simulación para ver los resultados
+                  </p>
+                </div>
+              )}
+            </>
           )}
 
           {/* Vista Lejanías Logísticas */}
-          {activeView === 'lejanias-logistica' && selectedScenarioId && marcasSeleccionadas.length > 0 && (
-            <LejaniasLogistica
-              key={`lejanias-logistica-${refreshKey}`}
-              escenarioId={selectedScenarioId}
-              marcaId={marcasSeleccionadas[0]}
-            />
+          {activeView === 'lejanias-logistica' && (
+            <>
+              {resultado ? (
+                <>
+                  {/* Selector de marca si hay múltiples */}
+                  {resultado.marcas.length > 1 && (
+                    <div className="mb-3 bg-white border border-gray-200 rounded p-2">
+                      <label className="text-xs font-medium text-gray-700 block mb-1">
+                        Selecciona una marca:
+                      </label>
+                      <select
+                        value={selectedMarcaPyG || resultado.marcas[0]?.marca_id || ''}
+                        onChange={(e) => setSelectedMarcaPyG(e.target.value)}
+                        className="w-full text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      >
+                        {resultado.marcas.map((marca) => (
+                          <option key={marca.marca_id} value={marca.marca_id}>
+                            {marca.nombre}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  <LejaniasLogistica
+                    key={`lejanias-logistica-${refreshKey}`}
+                    escenarioId={selectedScenarioId!}
+                    marcaId={selectedMarcaPyG || resultado.marcas[0]?.marca_id}
+                  />
+                </>
+              ) : (
+                <div className="bg-white border border-gray-200 rounded p-12 text-center">
+                  <p className="text-sm text-gray-600">
+                    Selecciona las marcas y ejecuta la simulación para ver los resultados
+                  </p>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
