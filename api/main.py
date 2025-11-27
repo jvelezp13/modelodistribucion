@@ -143,7 +143,7 @@ def obtener_detalle_lejanias_comercial(
             marca=marca,
             escenario=escenario,
             activo=True
-        ).prefetch_related('zonamunicipio_set__municipio', 'vendedor')
+        ).prefetch_related('municipios__municipio').select_related('vendedor')
 
         # Calcular para cada zona
         detalle_zonas = []
