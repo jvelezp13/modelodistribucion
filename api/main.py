@@ -138,12 +138,17 @@ def obtener_detalle_lejanias_comercial(
         # Inicializar calculadora
         calc = CalculadoraLejanias(escenario)
 
+        # Debug: verificar configuración
+        logger.info(f"Config lejanías: {calc.config}, Params macro: {calc.params_macro}")
+
         # Obtener zonas de la marca
         zonas = Zona.objects.filter(
             marca=marca,
             escenario=escenario,
             activo=True
-        ).prefetch_related('municipios__municipio').select_related('vendedor')
+        ).prefetch_related('municipios__municipio').select_related('vendedor', 'municipio_base_vendedor')
+
+        logger.info(f"Zonas encontradas: {zonas.count()}")
 
         # Calcular para cada zona
         detalle_zonas = []
@@ -151,7 +156,12 @@ def obtener_detalle_lejanias_comercial(
         total_pernocta = 0.0
 
         for zona in zonas:
+            # Debug: verificar datos de la zona
+            municipios_count = zona.municipios.count()
+            logger.info(f"Zona: {zona.nombre}, Base vendedor: {zona.municipio_base_vendedor}, Municipios: {municipios_count}")
+
             resultado = calc.calcular_lejania_comercial_zona(zona)
+            logger.info(f"Resultado zona {zona.nombre}: {resultado}")
 
             detalle_zonas.append({
                 'zona_id': zona.id,

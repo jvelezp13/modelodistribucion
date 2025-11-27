@@ -456,7 +456,7 @@ export default function PyGDetallado({ marca }: PyGDetalladoProps) {
           )}
 
           {/* Lejanías Comerciales */}
-          {marca.lejania_comercial && marca.lejania_comercial > 0 && (
+          {typeof marca.lejania_comercial === 'number' && marca.lejania_comercial > 0 && (
             <LineaItem titulo="Lejanías Comerciales (Rutas)" valor={marca.lejania_comercial} indent={1} />
           )}
 
@@ -523,7 +523,7 @@ export default function PyGDetallado({ marca }: PyGDetalladoProps) {
           )}
 
           {/* Lejanías Logísticas */}
-          {marca.lejania_logistica && marca.lejania_logistica > 0 && (
+          {typeof marca.lejania_logistica === 'number' && marca.lejania_logistica > 0 && (
             <LineaItem titulo="Lejanías Logísticas (Rutas)" valor={marca.lejania_logistica} indent={1} />
           )}
 
