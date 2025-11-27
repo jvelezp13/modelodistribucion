@@ -24,7 +24,6 @@ class DxVAdminSite(admin.AdminSite):
         ],
         'Ventas y Proyecciones': [
             'ProyeccionVentas',
-            'VolumenOperacion',
         ],
         'Comercial': [
             'PersonalComercial',

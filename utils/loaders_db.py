@@ -10,7 +10,7 @@ from . import django_init
 # Importar modelos de Django (ahora core.models será de /app/admin_panel/core/)
 from core.models import (
     Marca, PersonalComercial, PersonalLogistico, PersonalAdministrativo,
-    Vehiculo, ProyeccionVentas, VolumenOperacion,
+    Vehiculo, ProyeccionVentas,
     ParametrosMacro, FactorPrestacional, Escenario,
     GastoComercial, GastoLogistico, GastoAdministrativo
 )
@@ -309,18 +309,6 @@ class DataLoaderDB:
                     'costo_mensual_calculado': float(p.calcular_costo_mensual()),  # ⭐ USAR método del modelo
                 })
 
-            # Cargar volumen de operación
-            try:
-                volumen = VolumenOperacion.objects.get(marca=marca)
-                proyeccion_volumen = {
-                    'pallets_mensuales': volumen.pallets_mensuales,
-                    'metros_cubicos_mensuales': float(volumen.metros_cubicos_mensuales),
-                    'toneladas_mensuales': float(volumen.toneladas_mensuales),
-                    'entregas_mensuales': volumen.entregas_mensuales,
-                }
-            except VolumenOperacion.DoesNotExist:
-                proyeccion_volumen = {}
-
             # Cargar gastos logísticos
             gastos_logisticos = []
             gastos_qs = GastoLogistico.objects.filter(marca=marca, **self._get_filter_kwargs())
@@ -340,7 +328,6 @@ class DataLoaderDB:
                 'marca_id': marca.marca_id,
                 'vehiculos': vehiculos_dict,
                 'personal': personal_dict,
-                'proyeccion_volumen': proyeccion_volumen,
                 'gastos_logisticos': gastos_logisticos,
             }
 

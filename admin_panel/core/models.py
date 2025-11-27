@@ -523,30 +523,6 @@ class ProyeccionVentas(models.Model):
         return f"{self.marca.nombre} - {self.get_mes_display()} {self.anio}: ${self.ventas:,.0f}"
 
 
-class VolumenOperacion(models.Model):
-    """Volumen de operación logística por marca"""
-
-    marca = models.OneToOneField(Marca, on_delete=models.CASCADE, related_name='volumen_operacion')
-    pallets_mensuales = models.IntegerField(default=0, verbose_name="Pallets Mensuales")
-    metros_cubicos_mensuales = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="M³ Mensuales")
-
-    toneladas_mensuales = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="Toneladas Mensuales")
-    entregas_mensuales = models.IntegerField(default=0, verbose_name="Entregas Mensuales")
-    rutas_activas = models.IntegerField(default=0, verbose_name="Rutas Activas")
-    zonas_cobertura = models.IntegerField(default=0, verbose_name="Zonas de Cobertura")
-
-    fecha_creacion = models.DateTimeField(auto_now_add=True)
-    fecha_modificacion = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        db_table = 'dxv_volumen_operacion'
-        verbose_name = "Volumen de Operación"
-        verbose_name_plural = "Volúmenes de Operación"
-
-    def __str__(self):
-        return f"{self.marca.nombre} - Volumen Operación"
-
-
 class ParametrosMacro(models.Model):
     """Parámetros macroeconómicos del sistema"""
 

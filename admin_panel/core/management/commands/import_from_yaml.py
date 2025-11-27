@@ -8,7 +8,7 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 from core.models import (
     Marca, PersonalComercial, PersonalLogistico,
-    Vehiculo, ProyeccionVentas, VolumenOperacion,
+    Vehiculo, ProyeccionVentas,
     ParametrosMacro, FactorPrestacional
 )
 
@@ -312,22 +312,6 @@ class Command(BaseCommand):
                 count_personal += 1
 
         self.stdout.write(f'    ✓ {count_personal} registros de personal logístico importados')
-
-        # Importar volumen de operación
-        volumen_data = data.get('proyeccion_volumen', {})
-        if volumen_data:
-            VolumenOperacion.objects.update_or_create(
-                marca=marca,
-                defaults={
-                    'pallets_mensuales': volumen_data.get('pallets_mensuales', 0),
-                    'metros_cubicos_mensuales': volumen_data.get('metros_cubicos_mensuales', 0),
-                    'toneladas_mensuales': volumen_data.get('toneladas_mensuales', 0),
-                    'entregas_mensuales': volumen_data.get('entregas_mensuales', 0),
-                    'rutas_activas': 0,  # No está en YAML
-                    'zonas_cobertura': 0,  # No está en YAML
-                }
-            )
-            self.stdout.write(f'    ✓ Volumen de operación importado')
 
     def import_ventas(self, marca, marca_dir):
         """Importa proyecciones de ventas de una marca"""

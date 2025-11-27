@@ -5,7 +5,7 @@ from django.contrib import admin
 from django.db.models import Sum, Count
 from .models import (
     Marca, PersonalComercial, PersonalLogistico,
-    Vehiculo, ProyeccionVentas, VolumenOperacion,
+    Vehiculo, ProyeccionVentas,
     ParametrosMacro, FactorPrestacional,
     PersonalAdministrativo, GastoAdministrativo,
     GastoComercial, GastoLogistico, Impuesto,
@@ -346,41 +346,6 @@ class ProyeccionVentasAdmin(admin.ModelAdmin):
         return f"${obj.ventas:,.0f}"
     ventas_formateadas.short_description = 'Ventas'
     ventas_formateadas.admin_order_field = 'ventas'
-
-
-@admin.register(VolumenOperacion, site=dxv_admin_site)
-class VolumenOperacionAdmin(admin.ModelAdmin):
-    list_display = (
-        'marca',
-        'pallets_mensuales',
-        'toneladas_mensuales',
-        'entregas_mensuales',
-        'rutas_activas'
-    )
-    list_filter = ('marca',)
-    search_fields = ('marca__nombre',)
-    readonly_fields = ('fecha_creacion', 'fecha_modificacion')
-
-    fieldsets = (
-        ('Marca', {
-            'fields': ('marca',)
-        }),
-        ('Volumen', {
-            'fields': (
-                'pallets_mensuales',
-                'metros_cubicos_mensuales',
-                'toneladas_mensuales',
-                'entregas_mensuales'
-            )
-        }),
-        ('Cobertura', {
-            'fields': ('rutas_activas', 'zonas_cobertura')
-        }),
-        ('Metadata', {
-            'fields': ('fecha_creacion', 'fecha_modificacion'),
-            'classes': ('collapse',)
-        }),
-    )
 
 
 @admin.register(ParametrosMacro, site=dxv_admin_site)
