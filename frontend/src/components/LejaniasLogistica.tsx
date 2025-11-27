@@ -183,9 +183,9 @@ export default function LejaniasLogistica({ escenarioId, marcaId }: LejaniasLogi
                           <MapPin size={12} />
                           {recorrido.detalle?.municipios?.length || 0} municipios
                         </span>
-                        {recorrido.detalle?.distancia_circuito_km && (
+                        {recorrido.detalle?.distancia_circuito_km != null && (
                           <span className="text-blue-600 font-medium">
-                            {recorrido.detalle.distancia_circuito_km.toFixed(1)} km/circuito
+                            {Number(recorrido.detalle.distancia_circuito_km).toFixed(1)} km/circuito
                           </span>
                         )}
                       </div>
@@ -252,11 +252,11 @@ export default function LejaniasLogistica({ escenarioId, marcaId }: LejaniasLogi
                         </div>
                         <div>
                           <span className="text-gray-500">Recorridos/mes:</span>{' '}
-                          <span className="font-medium">{recorrido.detalle.recorridos_mensuales?.toFixed(1) || 'N/A'}</span>
+                          <span className="font-medium">{recorrido.detalle.recorridos_mensuales != null ? Number(recorrido.detalle.recorridos_mensuales).toFixed(1) : 'N/A'}</span>
                         </div>
                         <div>
                           <span className="text-gray-500">Km lejanía:</span>{' '}
-                          <span className="font-medium text-blue-600">{recorrido.detalle.distancia_efectiva_km?.toFixed(1) || 0}</span>
+                          <span className="font-medium text-blue-600">{recorrido.detalle.distancia_efectiva_km != null ? Number(recorrido.detalle.distancia_efectiva_km).toFixed(1) : '0'}</span>
                         </div>
                       </div>
                     </div>
@@ -266,7 +266,7 @@ export default function LejaniasLogistica({ escenarioId, marcaId }: LejaniasLogi
                   {recorrido.detalle?.tramos && recorrido.detalle.tramos.length > 0 && (
                     <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded">
                       <div className="text-xs font-semibold text-blue-800 mb-2">
-                        Circuito ({recorrido.detalle.distancia_circuito_km?.toFixed(1)} km total)
+                        Circuito ({recorrido.detalle.distancia_circuito_km != null ? Number(recorrido.detalle.distancia_circuito_km).toFixed(1) : '0'} km total)
                       </div>
                       <div className="flex flex-wrap items-center gap-1 text-xs">
                         {recorrido.detalle.tramos.map((tramo: any, idx: number) => (
@@ -276,7 +276,7 @@ export default function LejaniasLogistica({ escenarioId, marcaId }: LejaniasLogi
                             )}
                             <span className="flex items-center gap-1 text-blue-600">
                               <ArrowRight size={12} />
-                              <span className="text-gray-500">{tramo.distancia_km} km</span>
+                              <span className="text-gray-500">{tramo.distancia_km || 0} km</span>
                             </span>
                             <span className="font-medium text-gray-700">{tramo.destino}</span>
                           </React.Fragment>
