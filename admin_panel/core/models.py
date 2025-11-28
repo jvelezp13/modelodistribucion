@@ -677,7 +677,7 @@ class FactorPrestacional(models.Model):
         max_digits=5, decimal_places=2,
         validators=[MinValueValidator(0), MaxValueValidator(100)],
         verbose_name="Vacaciones (%)",
-        help_text="Base: SOLO salario. Provisión: 4.17% (15 días/360). Si usa supernumerario, considere 8.34%"
+        help_text="Base: SOLO salario. Usar 0% si supernumerarios se modelan aparte (recomendado). Usar 4.17% solo para provisión contable."
     )
 
     fecha_creacion = models.DateTimeField(auto_now_add=True)
