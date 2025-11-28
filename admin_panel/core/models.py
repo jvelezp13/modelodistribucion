@@ -480,9 +480,81 @@ class ParametrosMacro(models.Model):
     """Parámetros macroeconómicos del sistema"""
 
     anio = models.IntegerField(unique=True, verbose_name="Año")
-    ipc = models.DecimalField(max_digits=6, decimal_places=5, verbose_name="IPC (%)", help_text="Índice de Precios al Consumidor")
-    ipt = models.DecimalField(max_digits=6, decimal_places=5, verbose_name="IPT (%)", help_text="Índice de Precios al Transportador")
-    salario_minimo_legal = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Salario Mínimo Legal")
+
+    # Índices de incremento (0-100, ej: 9.5 = 9.5%)
+    ipc = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        verbose_name="IPC (%)",
+        help_text="Índice de Precios al Consumidor (ej: 9.5 para 9.5%)"
+    )
+    ipt = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        verbose_name="IPT (%)",
+        help_text="Índice de Precios al Transportador (ej: 8.0 para 8%)"
+    )
+    incremento_salarios = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        verbose_name="Incremento Salarios (%)",
+        help_text="Incremento general de salarios (ej: 10.0 para 10%)"
+    )
+    incremento_salario_minimo = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        verbose_name="Incremento Salario Mínimo (%)",
+        help_text="Incremento específico del salario mínimo (ej: 12.0 para 12%)"
+    )
+    incremento_combustible = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        verbose_name="Incremento Combustible (%)",
+        help_text="Índice de incremento de combustibles (ej: 5.0 para 5%)"
+    )
+    incremento_arriendos = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        verbose_name="Incremento Arriendos (%)",
+        help_text="Usualmente igual al IPC (ej: 9.5 para 9.5%)"
+    )
+    incremento_personalizado_1 = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        verbose_name="Índice Personalizado 1 (%)"
+    )
+    nombre_personalizado_1 = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name="Nombre Índice Personalizado 1",
+        help_text="Ej: 'Incremento Tecnología', 'Incremento Servicios Públicos'"
+    )
+    incremento_personalizado_2 = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        verbose_name="Índice Personalizado 2 (%)"
+    )
+    nombre_personalizado_2 = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name="Nombre Índice Personalizado 2",
+        help_text="Ej: 'Incremento Seguros', 'Incremento Mantenimiento'"
+    )
+
+    # Valores monetarios
     salario_minimo_legal = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Salario Mínimo Legal")
     subsidio_transporte = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Subsidio de Transporte")
     precio_galon_gasolina = models.DecimalField(
@@ -498,54 +570,6 @@ class ParametrosMacro(models.Model):
         default=14000,
         verbose_name="Precio Galón ACPM (Diesel)",
         help_text="Precio promedio galón de ACPM/diesel"
-    )
-    incremento_salarios = models.DecimalField(max_digits=6, decimal_places=5, verbose_name="Incremento Salarios General (%)", help_text="Incremento general de salarios")
-    
-    # Nuevos índices para proyecciones
-    incremento_salario_minimo = models.DecimalField(
-        max_digits=6,
-        decimal_places=5,
-        default=0,
-        verbose_name="Incremento Salario Mínimo (%)",
-        help_text="Incremento específico del salario mínimo (puede diferir del general)"
-    )
-    incremento_combustible = models.DecimalField(
-        max_digits=6,
-        decimal_places=5,
-        default=0,
-        verbose_name="Incremento Combustible (%)",
-        help_text="Índice de incremento de combustibles"
-    )
-    incremento_arriendos = models.DecimalField(
-        max_digits=6,
-        decimal_places=5,
-        default=0,
-        verbose_name="Incremento Arriendos (%)",
-        help_text="Usualmente igual al IPC"
-    )
-    incremento_personalizado_1 = models.DecimalField(
-        max_digits=6,
-        decimal_places=5,
-        default=0,
-        verbose_name="Índice Personalizado 1 (%)"
-    )
-    nombre_personalizado_1 = models.CharField(
-        max_length=100,
-        blank=True,
-        verbose_name="Nombre Índice Personalizado 1",
-        help_text="Ej: 'Incremento Tecnología', 'Incremento Servicios Públicos'"
-    )
-    incremento_personalizado_2 = models.DecimalField(
-        max_digits=6,
-        decimal_places=5,
-        default=0,
-        verbose_name="Índice Personalizado 2 (%)"
-    )
-    nombre_personalizado_2 = models.CharField(
-        max_length=100,
-        blank=True,
-        verbose_name="Nombre Índice Personalizado 2",
-        help_text="Ej: 'Incremento Seguros', 'Incremento Mantenimiento'"
     )
 
     activo = models.BooleanField(default=True, verbose_name="Activo")
@@ -563,7 +587,12 @@ class ParametrosMacro(models.Model):
 
 
 class FactorPrestacional(models.Model):
-    """Factores prestacionales por perfil"""
+    """
+    Factores prestacionales por perfil.
+
+    Todos los porcentajes se almacenan en formato 0-100 (ej: 8.5 = 8.5%).
+    El factor_total retorna el valor en decimal para usar en cálculos.
+    """
 
     PERFIL_CHOICES = [
         ('comercial', 'Comercial'),
@@ -575,16 +604,70 @@ class FactorPrestacional(models.Model):
     ]
 
     perfil = models.CharField(max_length=50, choices=PERFIL_CHOICES, unique=True, verbose_name="Perfil")
-    salud = models.DecimalField(max_digits=6, decimal_places=5, verbose_name="Salud (%)")
-    pension = models.DecimalField(max_digits=6, decimal_places=5, verbose_name="Pensión (%)")
-    arl = models.DecimalField(max_digits=6, decimal_places=5, verbose_name="ARL (%)")
-    caja_compensacion = models.DecimalField(max_digits=6, decimal_places=5, verbose_name="Caja Compensación (%)")
-    icbf = models.DecimalField(max_digits=6, decimal_places=5, verbose_name="ICBF (%)")
-    sena = models.DecimalField(max_digits=6, decimal_places=5, verbose_name="SENA (%)")
-    cesantias = models.DecimalField(max_digits=6, decimal_places=5, verbose_name="Cesantías (%)")
-    intereses_cesantias = models.DecimalField(max_digits=6, decimal_places=5, verbose_name="Int. Cesantías (%)")
-    prima = models.DecimalField(max_digits=6, decimal_places=5, verbose_name="Prima (%)")
-    vacaciones = models.DecimalField(max_digits=6, decimal_places=5, verbose_name="Vacaciones (%)")
+
+    # Aportes patronales (0-100, ej: 8.5 = 8.5%)
+    salud = models.DecimalField(
+        max_digits=5, decimal_places=2,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        verbose_name="Salud (%)",
+        help_text="Aporte patronal a salud (ej: 8.5 para 8.5%)"
+    )
+    pension = models.DecimalField(
+        max_digits=5, decimal_places=2,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        verbose_name="Pensión (%)",
+        help_text="Aporte patronal a pensión (ej: 12.0 para 12%)"
+    )
+    arl = models.DecimalField(
+        max_digits=5, decimal_places=2,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        verbose_name="ARL (%)",
+        help_text="Según nivel de riesgo (ej: 0.522 para riesgo I)"
+    )
+    caja_compensacion = models.DecimalField(
+        max_digits=5, decimal_places=2,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        verbose_name="Caja Compensación (%)",
+        help_text="Aporte a caja de compensación (ej: 4.0 para 4%)"
+    )
+    icbf = models.DecimalField(
+        max_digits=5, decimal_places=2,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        verbose_name="ICBF (%)",
+        help_text="Aporte ICBF (ej: 3.0 para 3%)"
+    )
+    sena = models.DecimalField(
+        max_digits=5, decimal_places=2,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        verbose_name="SENA (%)",
+        help_text="Aporte SENA (ej: 2.0 para 2%)"
+    )
+
+    # Prestaciones sociales (0-100)
+    cesantias = models.DecimalField(
+        max_digits=5, decimal_places=2,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        verbose_name="Cesantías (%)",
+        help_text="Provisión cesantías (ej: 8.33 para 8.33%)"
+    )
+    intereses_cesantias = models.DecimalField(
+        max_digits=5, decimal_places=2,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        verbose_name="Int. Cesantías (%)",
+        help_text="Intereses sobre cesantías (ej: 1.0 para 1%)"
+    )
+    prima = models.DecimalField(
+        max_digits=5, decimal_places=2,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        verbose_name="Prima (%)",
+        help_text="Provisión prima de servicios (ej: 8.33 para 8.33%)"
+    )
+    vacaciones = models.DecimalField(
+        max_digits=5, decimal_places=2,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        verbose_name="Vacaciones (%)",
+        help_text="Provisión vacaciones (ej: 4.17 para 4.17%)"
+    )
 
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_modificacion = models.DateTimeField(auto_now=True)
@@ -597,7 +680,20 @@ class FactorPrestacional(models.Model):
 
     @property
     def factor_total(self):
-        """Calcula automáticamente el factor total sumando todos los componentes"""
+        """
+        Calcula el factor total sumando todos los componentes.
+        Retorna en formato decimal (0.52 para 52%) para usar en cálculos.
+        """
+        suma_porcentajes = (
+            self.salud + self.pension + self.arl + self.caja_compensacion +
+            self.icbf + self.sena + self.cesantias + self.intereses_cesantias +
+            self.prima + self.vacaciones
+        )
+        return float(suma_porcentajes) / 100.0
+
+    @property
+    def factor_total_porcentaje(self):
+        """Retorna el factor total en formato porcentaje (52.0 para 52%)"""
         return (
             self.salud + self.pension + self.arl + self.caja_compensacion +
             self.icbf + self.sena + self.cesantias + self.intereses_cesantias +
@@ -605,7 +701,7 @@ class FactorPrestacional(models.Model):
         )
 
     def __str__(self):
-        return f"{self.get_perfil_display()} - {self.factor_total * 100:.2f}%"
+        return f"{self.get_perfil_display()} - {self.factor_total_porcentaje:.2f}%"
 
 
 class PersonalAdministrativo(models.Model):

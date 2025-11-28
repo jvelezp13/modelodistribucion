@@ -490,21 +490,21 @@ class FactorPrestacionalAdmin(admin.ModelAdmin):
     def factor_total_display(self, obj):
         """Muestra el factor total calculado (solo para objetos guardados)"""
         if obj and obj.pk:
-            return f"{obj.factor_total * 100:.2f}%"
+            return f"{obj.factor_total_porcentaje:.2f}%"
         return "Se calculará al guardar"
     factor_total_display.short_description = 'Factor Total'
 
     def factor_total_percent(self, obj):
-        return f"{obj.factor_total * 100:.2f}%"
+        return f"{obj.factor_total_porcentaje:.2f}%"
     factor_total_percent.short_description = 'Factor Total'
 
     def pension_percent(self, obj):
-        return f"{obj.pension * 100:.2f}%"
+        return f"{obj.pension:.2f}%"
     pension_percent.short_description = 'Pensión'
     pension_percent.admin_order_field = 'pension'
 
     def salud_percent(self, obj):
-        return f"{obj.salud * 100:.2f}%"
+        return f"{obj.salud:.2f}%"
     salud_percent.short_description = 'Salud'
     salud_percent.admin_order_field = 'salud'
 

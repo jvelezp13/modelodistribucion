@@ -20,6 +20,9 @@ class EscenarioService:
         """
         Obtiene el valor decimal del incremento basado en el nombre del índice
         y los parámetros macroeconómicos del año destino.
+
+        Los valores en ParametrosMacro están en formato 0-100 (ej: 9.5 = 9.5%).
+        Esta función los convierte a decimal (0.095) para usar en cálculos.
         """
         if not macros:
             return 0
@@ -38,7 +41,9 @@ class EscenarioService:
             'personalizado_2': macros.incremento_personalizado_2,
         }
 
-        return mapping.get(indice_nombre, 0)
+        valor = mapping.get(indice_nombre, 0)
+        # Convertir de porcentaje (0-100) a decimal (0-1)
+        return float(valor) / 100.0 if valor else 0
 
     @classmethod
     def duplicar_escenario(cls, escenario_id, nuevo_nombre=None):
