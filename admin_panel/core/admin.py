@@ -208,8 +208,12 @@ class PersonalComercialAdmin(DuplicarMixin, admin.ModelAdmin):
         ('Información Básica', {
             'fields': ('marca', 'escenario', 'nombre', 'tipo', 'cantidad', 'salario_base', 'perfil_prestacional')
         }),
-        ('Asignación', {
+        ('Asignación por Marca', {
             'fields': ('asignacion', 'porcentaje_dedicacion', 'criterio_prorrateo')
+        }),
+        ('Asignación Geográfica (P&G por Zona)', {
+            'fields': ('tipo_asignacion_geo', 'zona'),
+            'description': 'Cómo se distribuye este costo entre las zonas comerciales'
         }),
         ('Adicionales', {
             'fields': ('auxilio_adicional',),
@@ -235,7 +239,7 @@ class PersonalComercialAdmin(DuplicarMixin, admin.ModelAdmin):
         try:
             factor = FactorPrestacional.objects.get(perfil=obj.perfil_prestacional)
             total = obj.salario_base * (1 + factor.factor_total)
-            
+
             # Sumar auxilio de transporte si aplica (<= 2 SMLV)
             if obj.escenario:
                 try:
@@ -279,8 +283,12 @@ class PersonalLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
         ('Información Básica', {
             'fields': ('marca', 'escenario', 'nombre', 'tipo', 'cantidad', 'salario_base', 'perfil_prestacional')
         }),
-        ('Asignación', {
+        ('Asignación por Marca', {
             'fields': ('asignacion', 'porcentaje_dedicacion', 'criterio_prorrateo')
+        }),
+        ('Asignación Geográfica (P&G por Zona)', {
+            'fields': ('tipo_asignacion_geo', 'zona'),
+            'description': 'Cómo se distribuye este costo entre las zonas comerciales'
         }),
         ('Metadata', {
             'fields': ('fecha_creacion', 'fecha_modificacion'),
@@ -294,7 +302,7 @@ class PersonalLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
         try:
             factor = FactorPrestacional.objects.get(perfil=obj.perfil_prestacional)
             total = obj.salario_base * (1 + factor.factor_total)
-            
+
             # Sumar auxilio de transporte si aplica (<= 2 SMLV)
             if obj.escenario:
                 try:
@@ -602,6 +610,10 @@ class PersonalAdministrativoAdmin(DuplicarMixin, admin.ModelAdmin):
             'fields': ('criterio_prorrateo',),
             'description': 'Solo aplica si no tiene marca asignada'
         }),
+        ('Asignación Geográfica (P&G por Zona)', {
+            'fields': ('tipo_asignacion_geo',),
+            'description': 'Cómo se distribuye este costo entre las zonas (típicamente compartido/equitativo)'
+        }),
         ('Metadata', {
             'fields': ('fecha_creacion', 'fecha_modificacion'),
             'classes': ('collapse',)
@@ -619,10 +631,10 @@ class PersonalAdministrativoAdmin(DuplicarMixin, admin.ModelAdmin):
     def costo_total_estimado(self, obj):
         if obj.tipo_contrato == 'honorarios':
             return f"${obj.honorarios_mensuales:,.0f}" if obj.honorarios_mensuales else "-"
-        
+
         if not obj.salario_base:
             return "-"
-            
+
         try:
             factor = FactorPrestacional.objects.get(perfil=obj.perfil_prestacional)
             total = obj.salario_base * (1 + factor.factor_total)
@@ -678,6 +690,10 @@ class GastoAdministrativoAdmin(DuplicarMixin, admin.ModelAdmin):
             'fields': ('criterio_prorrateo',),
             'description': 'Solo aplica si no tiene marca asignada'
         }),
+        ('Asignación Geográfica (P&G por Zona)', {
+            'fields': ('tipo_asignacion_geo',),
+            'description': 'Cómo se distribuye este gasto entre las zonas (típicamente compartido/equitativo)'
+        }),
         ('Notas', {
             'fields': ('notas',),
             'classes': ('collapse',)
@@ -690,7 +706,6 @@ class GastoAdministrativoAdmin(DuplicarMixin, admin.ModelAdmin):
 
     def valor_mensual_formateado(self, obj):
         return f"${obj.valor_mensual:,.0f}"
-    valor_mensual_formateado.short_description = 'Valor Mensual'
     valor_mensual_formateado.short_description = 'Valor Mensual'
     valor_mensual_formateado.admin_order_field = 'valor_mensual'
 
@@ -723,6 +738,10 @@ class GastoComercialAdmin(DuplicarMixin, admin.ModelAdmin):
         ('Información Básica', {
             'fields': ('marca', 'escenario', 'nombre', 'tipo', 'valor_mensual')
         }),
+        ('Asignación Geográfica (P&G por Zona)', {
+            'fields': ('tipo_asignacion_geo', 'zona'),
+            'description': 'Cómo se distribuye este gasto entre las zonas comerciales'
+        }),
         ('Notas', {
             'fields': ('notas',),
             'classes': ('collapse',)
@@ -735,7 +754,6 @@ class GastoComercialAdmin(DuplicarMixin, admin.ModelAdmin):
 
     def valor_mensual_formateado(self, obj):
         return f"${obj.valor_mensual:,.0f}"
-    valor_mensual_formateado.short_description = 'Valor Mensual'
     valor_mensual_formateado.short_description = 'Valor Mensual'
     valor_mensual_formateado.admin_order_field = 'valor_mensual'
 
@@ -769,6 +787,10 @@ class GastoLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
             'fields': ('marca', 'escenario', 'nombre', 'tipo', 'valor_mensual'),
             'description': '⚠️ IMPORTANTE: Para fletes de terceros (transportadoras externas), usar la tabla VEHÍCULOS con esquema="Tercero" en lugar de gastos logísticos. La opción "flete_tercero" ha sido deprecada.'
         }),
+        ('Asignación Geográfica (P&G por Zona)', {
+            'fields': ('tipo_asignacion_geo', 'zona'),
+            'description': 'Cómo se distribuye este gasto entre las zonas comerciales'
+        }),
         ('Notas', {
             'fields': ('notas',),
             'classes': ('collapse',)
@@ -781,7 +803,6 @@ class GastoLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
 
     def valor_mensual_formateado(self, obj):
         return f"${obj.valor_mensual:,.0f}"
-    valor_mensual_formateado.short_description = 'Valor Mensual'
     valor_mensual_formateado.short_description = 'Valor Mensual'
     valor_mensual_formateado.admin_order_field = 'valor_mensual'
 
@@ -1157,6 +1178,10 @@ class ZonaAdmin(DuplicarMixin, admin.ModelAdmin):
         ('Asignación', {
             'fields': ('marca', 'escenario', 'vendedor', 'municipio_base_vendedor')
         }),
+        ('Participación en Ventas', {
+            'fields': ('participacion_ventas',),
+            'description': 'Porcentaje de las ventas totales de la marca que hace esta zona'
+        }),
         ('Configuración Comercial', {
             'fields': ('tipo_vehiculo_comercial', 'frecuencia'),
             'description': 'Tipo de vehículo que usa el vendedor y frecuencia de visitas'
@@ -1191,6 +1216,10 @@ class ZonaMunicipioAdmin(admin.ModelAdmin):
         ('Visitas Comerciales', {
             'fields': ('visitas_por_periodo',),
             'description': 'Cantidad de visitas por periodo según la frecuencia de la zona'
+        }),
+        ('Participación en Ventas', {
+            'fields': ('participacion_ventas',),
+            'description': 'Porcentaje de las ventas de la zona que hace este municipio'
         }),
         ('Metadata', {
             'fields': ('fecha_creacion', 'fecha_modificacion'),
@@ -1241,6 +1270,10 @@ class RecorridoLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
         ('Frecuencia', {
             'fields': ('frecuencia', 'viajes_por_periodo'),
             'description': 'Cuántas veces por periodo (semana/quincena/mes) se hace este recorrido completo'
+        }),
+        ('Personal de Ruta', {
+            'fields': ('cantidad_auxiliares',),
+            'description': 'Cantidad de auxiliares de entrega que van en este recorrido (0, 1 o 2)'
         }),
         ('Pernocta', {
             'fields': ('requiere_pernocta', 'noches_pernocta'),
