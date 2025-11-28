@@ -3,6 +3,7 @@ Custom AdminSite para DxV con agrupaciones lógicas
 """
 from django.contrib import admin
 from django.contrib.admin.apps import AdminConfig
+from django.urls import path
 
 
 class DxVAdminSite(admin.AdminSite):
@@ -10,7 +11,33 @@ class DxVAdminSite(admin.AdminSite):
     site_title = "DxV Admin"
     index_title = "Gestión de Distribución y Ventas"
 
+    def get_urls(self):
+        """Agregar URLs personalizadas"""
+        from .views import distribucion_ventas, guardar_distribucion_ventas
+
+        urls = super().get_urls()
+        custom_urls = [
+            path('distribucion-ventas/',
+                 self.admin_view(distribucion_ventas),
+                 name='distribucion_ventas'),
+            path('distribucion-ventas/guardar/',
+                 self.admin_view(guardar_distribucion_ventas),
+                 name='guardar_distribucion_ventas'),
+        ]
+        return custom_urls + urls
+
     # Definir el orden de los grupos y modelos
+    # Links personalizados (vistas custom)
+    CUSTOM_LINKS = {
+        'Ventas y Proyecciones': [
+            {
+                'name': 'Distribución de Ventas',
+                'url_name': 'admin:distribucion_ventas',
+                'object_name': '_distribucion_ventas',
+            },
+        ],
+    }
+
     ADMIN_ORDERING = {
         'Configuración Base': [
             'Marca',
@@ -22,6 +49,7 @@ class DxVAdminSite(admin.AdminSite):
             'PoliticaRecursosHumanos',
         ],
         'Ventas y Proyecciones': [
+            '_distribucion_ventas',  # Link personalizado
             'ProyeccionVentasConfig',
             'PlantillaEstacional',
         ],
@@ -57,6 +85,8 @@ class DxVAdminSite(admin.AdminSite):
         """
         Reorganiza los modelos en grupos lógicos personalizados
         """
+        from django.urls import reverse
+
         # Obtener la lista original
         original_app_list = super().get_app_list(request, app_label)
 
@@ -72,6 +102,17 @@ class DxVAdminSite(admin.AdminSite):
                 models_dict[model_name] = model
                 # Quitar el link de "add" para que no aparezca el +
                 model['add_url'] = None
+
+        # Agregar links personalizados al diccionario
+        for group_name, links in self.CUSTOM_LINKS.items():
+            for link in links:
+                models_dict[link['object_name']] = {
+                    'name': link['name'],
+                    'object_name': link['object_name'],
+                    'admin_url': reverse(link['url_name']),
+                    'add_url': None,
+                    'view_only': True,
+                }
 
         # Construir nueva lista de apps con grupos personalizados
         new_app_list = []
