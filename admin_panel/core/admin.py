@@ -1,6 +1,7 @@
 """
 Configuración del Django Admin para los modelos DxV
 """
+from django import forms
 from django.contrib import admin
 from django.contrib import messages
 from django.db.models import Sum, Count
