@@ -103,9 +103,10 @@ class PersonalComercial(models.Model):
         ('auxiliar_informacion', 'Auxiliar de Información'),
     ]
 
+    # Perfiles disponibles para personal comercial
     PERFIL_CHOICES = [
-        ('comercial', 'Comercial'),
-        ('administrativo', 'Administrativo'),
+        ('comercial', 'Comercial (Riesgo II - Vendedores)'),
+        ('administrativo', 'Administrativo (Riesgo I - Coordinadores)'),
     ]
 
     ASIGNACION_CHOICES = [
@@ -214,11 +215,12 @@ class PersonalLogistico(models.Model):
         ('operario_bodega', 'Operario de Bodega'),
     ]
 
+    # Perfiles disponibles para personal logístico
+    # Usar logistico_bodega para operarios y logistico_calle para conductores/auxiliares
     PERFIL_CHOICES = [
-        ('logistico', 'Logístico'),
-        ('logistico_bodega', 'Logístico Bodega'),
-        ('logistico_calle', 'Logístico Calle'),
-        ('administrativo', 'Administrativo'),
+        ('logistico_bodega', 'Logístico Bodega (Riesgo III - Operarios)'),
+        ('logistico_calle', 'Logístico Calle (Riesgo IV - Conductores)'),
+        ('administrativo', 'Administrativo (Riesgo I - Coordinadores)'),
     ]
 
     ASIGNACION_CHOICES = [
@@ -240,7 +242,7 @@ class PersonalLogistico(models.Model):
     tipo = models.CharField(max_length=50, choices=TIPO_CHOICES, verbose_name="Tipo de Personal")
     cantidad = models.IntegerField(validators=[MinValueValidator(1)], verbose_name="Cantidad")
     salario_base = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Salario Base")
-    perfil_prestacional = models.CharField(max_length=20, choices=PERFIL_CHOICES, default='logistico')
+    perfil_prestacional = models.CharField(max_length=20, choices=PERFIL_CHOICES, default='logistico_calle')
     asignacion = models.CharField(max_length=20, choices=ASIGNACION_CHOICES, default='individual')
     
     # Índice de incremento para proyecciones
@@ -592,16 +594,72 @@ class FactorPrestacional(models.Model):
 
     Todos los porcentajes se almacenan en formato 0-100 (ej: 8.5 = 8.5%).
     El factor_total retorna el valor en decimal para usar en cálculos.
+
+    GUÍA DE SELECCIÓN DE NIVEL DE RIESGO ARL:
+    =========================================
+    Clase I (0.522%): Riesgo mínimo
+        - Trabajo de oficina, actividades administrativas
+        - Vendedores de mostrador, recepcionistas
+        - Contadores, secretarias, sistemas
+
+    Clase II (1.044%): Riesgo bajo
+        - Vendedores externos, preventa, TAT
+        - Mercaderistas, impulsadores
+        - Supervisores comerciales en campo
+
+    Clase III (2.436%): Riesgo medio
+        - Operarios de manufactura ligera
+        - Técnicos de mantenimiento
+        - Personal de empaque y embalaje
+
+    Clase IV (4.350%): Riesgo alto
+        - Conductores de vehículos de carga
+        - Operarios de montacargas
+        - Trabajo en bodega con carga pesada
+        - Auxiliares de entrega/reparto
+
+    Clase V (6.960%): Riesgo máximo
+        - Minería, construcción pesada
+        - Trabajo en alturas
+        - Manejo de explosivos
+        - Generalmente NO aplica para distribución
     """
 
+    # Perfiles predefinidos con nivel de riesgo incluido para claridad
     PERFIL_CHOICES = [
-        ('comercial', 'Comercial'),
-        ('administrativo', 'Administrativo'),
-        ('logistico_bodega', 'Logístico Bodega'),
-        ('logistico_calle', 'Logístico Calle'),
-        ('logistico', 'Logístico (General)'),  # Mantener por compatibilidad, usar bodega o calle preferiblemente
-        ('aprendiz_sena', 'Aprendiz SENA'),
+        # Riesgo I - Oficina
+        ('administrativo', 'Administrativo (Riesgo I - Oficina)'),
+
+        # Riesgo II - Vendedores externos
+        ('comercial', 'Comercial (Riesgo II - Vendedores)'),
+
+        # Riesgo III - Operaciones ligeras
+        ('logistico_bodega', 'Logístico Bodega (Riesgo III - Operaciones)'),
+
+        # Riesgo IV - Conductores y carga
+        ('logistico_calle', 'Logístico Calle (Riesgo IV - Conductores)'),
+
+        # Aprendices
+        ('aprendiz_sena', 'Aprendiz SENA (Etapa Productiva)'),
     ]
+
+    # Tabla de referencia: Valores ARL por clase de riesgo
+    ARL_POR_CLASE = {
+        'I': 0.522,    # Riesgo mínimo - oficina
+        'II': 1.044,   # Riesgo bajo - vendedores
+        'III': 2.436,  # Riesgo medio - operaciones
+        'IV': 4.350,   # Riesgo alto - conductores
+        'V': 6.960,    # Riesgo máximo - no común en distribución
+    }
+
+    # Mapeo de perfil a clase de riesgo recomendada
+    RIESGO_RECOMENDADO = {
+        'administrativo': 'I',
+        'comercial': 'II',
+        'logistico_bodega': 'III',
+        'logistico_calle': 'IV',
+        'aprendiz_sena': 'I',  # Aprendices: según actividad, típicamente I o II
+    }
 
     perfil = models.CharField(max_length=50, choices=PERFIL_CHOICES, unique=True, verbose_name="Perfil")
 
@@ -625,7 +683,7 @@ class FactorPrestacional(models.Model):
         max_digits=5, decimal_places=2,
         validators=[MinValueValidator(0), MaxValueValidator(100)],
         verbose_name="ARL (%)",
-        help_text="Base: salario. Según riesgo: I=0.52, II=1.04, III=2.44, IV=4.35, V=6.96"
+        help_text="Base: salario. Clases: I=0.522 (oficina), II=1.044 (vendedores), III=2.436 (bodega), IV=4.350 (conductores), V=6.960"
     )
 
     # ==========================================================================
@@ -764,9 +822,10 @@ class PersonalAdministrativo(models.Model):
     cantidad = models.IntegerField(validators=[MinValueValidator(1)], verbose_name="Cantidad")
     tipo_contrato = models.CharField(max_length=20, choices=TIPO_CONTRATO_CHOICES, default='nomina')
 
+    # Perfiles disponibles para personal administrativo
     PERFIL_CHOICES = [
-        ('administrativo', 'Administrativo'),
-        ('aprendiz_sena', 'Aprendiz SENA'),
+        ('administrativo', 'Administrativo (Riesgo I - Oficina)'),
+        ('aprendiz_sena', 'Aprendiz SENA (Etapa Productiva)'),
     ]
 
     # Para nómina

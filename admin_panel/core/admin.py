@@ -463,14 +463,26 @@ class ParametrosMacroAdmin(admin.ModelAdmin):
 
 @admin.register(FactorPrestacional, site=dxv_admin_site)
 class FactorPrestacionalAdmin(DuplicarMixin, admin.ModelAdmin):
-    list_display = ('perfil', 'factor_total_percent', 'pension_percent', 'salud_percent', 'fecha_modificacion')
+    list_display = ('perfil', 'arl_percent', 'factor_total_percent', 'salud_percent', 'pension_percent', 'fecha_modificacion')
     list_filter = ('perfil',)
-    readonly_fields = ('factor_total_display', 'fecha_creacion', 'fecha_modificacion')
+    readonly_fields = ('factor_total_display', 'guia_arl_display', 'fecha_creacion', 'fecha_modificacion')
     actions = ['duplicar_registros']
 
     fieldsets = (
         ('Perfil', {
-            'fields': ('perfil',)
+            'fields': ('perfil',),
+            'description': '''
+            <strong>Guía de Selección:</strong><br>
+            • <b>Administrativo (Riesgo I)</b>: Oficina, contabilidad, sistemas<br>
+            • <b>Comercial (Riesgo II)</b>: Vendedores externos, preventa, TAT, mercaderistas<br>
+            • <b>Logístico Bodega (Riesgo III)</b>: Operarios de bodega, empaque, picking<br>
+            • <b>Logístico Calle (Riesgo IV)</b>: Conductores, auxiliares de entrega<br>
+            • <b>Aprendiz SENA</b>: Etapa productiva (Ley 2466/2025: 100% SMLV)
+            '''
+        }),
+        ('Referencia ARL por Clase de Riesgo', {
+            'fields': ('guia_arl_display',),
+            'description': 'Use esta tabla como referencia para el campo ARL según el perfil seleccionado.'
         }),
         ('Seguridad Social (Base: solo salario)', {
             'fields': ('salud', 'pension', 'arl'),
@@ -494,6 +506,45 @@ class FactorPrestacionalAdmin(DuplicarMixin, admin.ModelAdmin):
         }),
     )
 
+    def guia_arl_display(self, obj):
+        """Muestra tabla de referencia ARL por clase de riesgo"""
+        from django.utils.html import format_html
+        return format_html('''
+            <table style="border-collapse: collapse; width: 100%; max-width: 600px;">
+                <tr style="background: #f0f0f0;">
+                    <th style="border: 1px solid #ccc; padding: 8px; text-align: left;">Clase</th>
+                    <th style="border: 1px solid #ccc; padding: 8px; text-align: left;">ARL %</th>
+                    <th style="border: 1px solid #ccc; padding: 8px; text-align: left;">Tipo de Actividad</th>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid #ccc; padding: 8px;"><b>I</b></td>
+                    <td style="border: 1px solid #ccc; padding: 8px;">0.522</td>
+                    <td style="border: 1px solid #ccc; padding: 8px;">Oficina, administrativo, sistemas</td>
+                </tr>
+                <tr style="background: #f9f9f9;">
+                    <td style="border: 1px solid #ccc; padding: 8px;"><b>II</b></td>
+                    <td style="border: 1px solid #ccc; padding: 8px;">1.044</td>
+                    <td style="border: 1px solid #ccc; padding: 8px;">Vendedores externos, TAT, preventa, mercaderistas</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid #ccc; padding: 8px;"><b>III</b></td>
+                    <td style="border: 1px solid #ccc; padding: 8px;">2.436</td>
+                    <td style="border: 1px solid #ccc; padding: 8px;">Bodega, empaque, picking, manufactura ligera</td>
+                </tr>
+                <tr style="background: #f9f9f9;">
+                    <td style="border: 1px solid #ccc; padding: 8px;"><b>IV</b></td>
+                    <td style="border: 1px solid #ccc; padding: 8px;">4.350</td>
+                    <td style="border: 1px solid #ccc; padding: 8px;">Conductores, auxiliares de entrega, montacargas</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid #ccc; padding: 8px;"><b>V</b></td>
+                    <td style="border: 1px solid #ccc; padding: 8px;">6.960</td>
+                    <td style="border: 1px solid #ccc; padding: 8px;">Minería, construcción (raro en distribución)</td>
+                </tr>
+            </table>
+        ''')
+    guia_arl_display.short_description = 'Tabla de Referencia ARL'
+
     def factor_total_display(self, obj):
         """Muestra el factor total calculado (solo para objetos guardados)"""
         if obj and obj.pk:
@@ -504,6 +555,11 @@ class FactorPrestacionalAdmin(DuplicarMixin, admin.ModelAdmin):
     def factor_total_percent(self, obj):
         return f"{obj.factor_total_porcentaje:.2f}%"
     factor_total_percent.short_description = 'Factor Total'
+
+    def arl_percent(self, obj):
+        return f"{obj.arl:.3f}%"
+    arl_percent.short_description = 'ARL'
+    arl_percent.admin_order_field = 'arl'
 
     def pension_percent(self, obj):
         return f"{obj.pension:.2f}%"
