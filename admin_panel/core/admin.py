@@ -446,7 +446,7 @@ class ParametrosMacroAdmin(admin.ModelAdmin):
     )
 
     def ipc_percent(self, obj):
-        return f"{obj.ipc * 100:.2f}%"
+        return f"{obj.ipc:.2f}%"
     ipc_percent.short_description = 'IPC'
     ipc_percent.admin_order_field = 'ipc'
 
