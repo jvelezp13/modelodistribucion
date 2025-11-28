@@ -751,14 +751,14 @@ class FactorPrestacional(models.Model):
     def factor_total(self):
         """
         Calcula el factor total sumando todos los componentes.
-        Retorna en formato decimal (0.52 para 52%) para usar en cálculos.
+        Retorna en formato Decimal (0.52 para 52%) para usar en cálculos.
         """
         suma_porcentajes = (
             self.salud + self.pension + self.arl + self.caja_compensacion +
             self.icbf + self.sena + self.cesantias + self.intereses_cesantias +
             self.prima + self.vacaciones
         )
-        return float(suma_porcentajes) / 100.0
+        return suma_porcentajes / Decimal('100')
 
     @property
     def factor_total_porcentaje(self):
