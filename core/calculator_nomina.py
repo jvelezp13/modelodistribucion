@@ -27,14 +27,21 @@ class CostoEmpleado:
     costo_mensual: float
     costo_anual: float
 
-    # Desglose de prestaciones
+    # Desglose seguridad social (base: solo salario)
     salud: float = 0.0
     pension: float = 0.0
     arl: float = 0.0
+
+    # Desglose parafiscales (base: solo salario)
+    caja_compensacion: float = 0.0
+    icbf: float = 0.0
+    sena: float = 0.0
+
+    # Desglose prestaciones sociales (base: salario + subsidio para cesantías, prima, int. cesantías)
     cesantias: float = 0.0
     intereses_cesantias: float = 0.0
     prima: float = 0.0
-    vacaciones: float = 0.0
+    vacaciones: float = 0.0  # Base: solo salario
 
     def to_dict(self) -> Dict[str, float]:
         """Convierte a diccionario."""
@@ -49,6 +56,9 @@ class CostoEmpleado:
                 'salud': self.salud,
                 'pension': self.pension,
                 'arl': self.arl,
+                'caja_compensacion': self.caja_compensacion,
+                'icbf': self.icbf,
+                'sena': self.sena,
                 'cesantias': self.cesantias,
                 'intereses_cesantias': self.intereses_cesantias,
                 'prima': self.prima,
@@ -137,34 +147,63 @@ class CalculadoraNomina:
 
         factores = self._factores_prestacionales[perfil]
 
+        # Determinar subsidio de transporte primero (se necesita para algunas prestaciones)
+        subsidio = 0.0
+        if incluir_subsidio_transporte and self.aplica_subsidio_transporte(salario_base):
+            subsidio = self.get_subsidio_transporte()
+
+        # Base para prestaciones según normativa colombiana:
+        # - Seguridad social (salud, pensión, ARL, parafiscales): solo salario
+        # - Cesantías, intereses cesantías, prima: salario + subsidio transporte
+        # - Vacaciones: solo salario
+        base_seguridad_social = salario_base
+        base_prestaciones_sociales = salario_base + subsidio  # Cesantías, prima, int. cesantías
+
         # Calcular prestaciones
         if calcular_desglose:
-            # Calcular cada concepto por separado
-            salud = salario_base * factores.get('salud', 0.0)
-            pension = salario_base * factores.get('pension', 0.0)
-            arl = salario_base * factores.get('arl', 0.0)
-            cesantias = salario_base * factores.get('cesantias', 0.0)
-            intereses_cesantias = salario_base * factores.get('intereses_cesantias', 0.0)
-            prima = salario_base * factores.get('prima', 0.0)
-            vacaciones = salario_base * factores.get('vacaciones', 0.0)
+            # Aportes patronales (sobre salario base únicamente)
+            salud = base_seguridad_social * factores.get('salud', 0.0)
+            pension = base_seguridad_social * factores.get('pension', 0.0)
+            arl = base_seguridad_social * factores.get('arl', 0.0)
+            caja_compensacion = base_seguridad_social * factores.get('caja_compensacion', 0.0)
+            icbf = base_seguridad_social * factores.get('icbf', 0.0)
+            sena = base_seguridad_social * factores.get('sena', 0.0)
+
+            # Prestaciones sociales (cesantías, prima e intereses incluyen subsidio)
+            cesantias = base_prestaciones_sociales * factores.get('cesantias', 0.0)
+            intereses_cesantias = base_prestaciones_sociales * factores.get('intereses_cesantias', 0.0)
+            prima = base_prestaciones_sociales * factores.get('prima', 0.0)
+
+            # Vacaciones (solo salario base, no incluye subsidio)
+            vacaciones = base_seguridad_social * factores.get('vacaciones', 0.0)
 
             prestaciones_total = (
-                salud + pension + arl + cesantias +
-                intereses_cesantias + prima + vacaciones
+                salud + pension + arl + caja_compensacion + icbf + sena +
+                cesantias + intereses_cesantias + prima + vacaciones
             )
         else:
-            # Usar factor total directamente (más eficiente)
+            # Cálculo simplificado usando factor_total
+            # Nota: factor_total asume cálculo sobre salario base, ajustamos por subsidio
             factor_total = factores.get('factor_total', 0.0)
-            prestaciones_total = salario_base * factor_total
+
+            # Factores que aplican sobre salario + subsidio
+            factor_con_subsidio = (
+                factores.get('cesantias', 0.0) +
+                factores.get('intereses_cesantias', 0.0) +
+                factores.get('prima', 0.0)
+            )
+            # Factores que aplican solo sobre salario
+            factor_sin_subsidio = factor_total - factor_con_subsidio
+
+            prestaciones_total = (
+                base_seguridad_social * factor_sin_subsidio +
+                base_prestaciones_sociales * factor_con_subsidio
+            )
 
             # Desglose vacío
             salud = pension = arl = cesantias = 0.0
             intereses_cesantias = prima = vacaciones = 0.0
-
-        # Subsidio de transporte
-        subsidio = 0.0
-        if incluir_subsidio_transporte and self.aplica_subsidio_transporte(salario_base):
-            subsidio = self.get_subsidio_transporte()
+            caja_compensacion = icbf = sena = 0.0
 
         # Costo mensual
         costo_mensual = salario_base + prestaciones_total + subsidio + otros_costos
@@ -182,6 +221,9 @@ class CalculadoraNomina:
             salud=salud,
             pension=pension,
             arl=arl,
+            caja_compensacion=caja_compensacion,
+            icbf=icbf,
+            sena=sena,
             cesantias=cesantias,
             intereses_cesantias=intereses_cesantias,
             prima=prima,

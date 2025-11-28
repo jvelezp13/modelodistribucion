@@ -471,11 +471,17 @@ class FactorPrestacionalAdmin(admin.ModelAdmin):
         ('Perfil', {
             'fields': ('perfil',)
         }),
-        ('Seguridad Social', {
-            'fields': ('salud', 'pension', 'arl', 'caja_compensacion', 'icbf', 'sena')
+        ('Seguridad Social (Base: solo salario)', {
+            'fields': ('salud', 'pension', 'arl'),
+            'description': 'Estos aportes se calculan únicamente sobre el salario base'
         }),
-        ('Prestaciones', {
-            'fields': ('cesantias', 'intereses_cesantias', 'prima', 'vacaciones')
+        ('Parafiscales (Base: solo salario)', {
+            'fields': ('caja_compensacion', 'icbf', 'sena'),
+            'description': 'ICBF y SENA pueden estar exonerados según Ley 1607/2012'
+        }),
+        ('Prestaciones Sociales (Base: salario + subsidio transporte)', {
+            'fields': ('cesantias', 'intereses_cesantias', 'prima', 'vacaciones'),
+            'description': 'Cesantías, intereses y prima incluyen subsidio de transporte. Vacaciones NO incluye subsidio.'
         }),
         ('Total Calculado', {
             'fields': ('factor_total_display',),

@@ -605,68 +605,77 @@ class FactorPrestacional(models.Model):
 
     perfil = models.CharField(max_length=50, choices=PERFIL_CHOICES, unique=True, verbose_name="Perfil")
 
-    # Aportes patronales (0-100, ej: 8.5 = 8.5%)
+    # ==========================================================================
+    # SEGURIDAD SOCIAL - Base de cálculo: SOLO SALARIO
+    # ==========================================================================
     salud = models.DecimalField(
         max_digits=5, decimal_places=2,
         validators=[MinValueValidator(0), MaxValueValidator(100)],
         verbose_name="Salud (%)",
-        help_text="Aporte patronal a salud (ej: 8.5 para 8.5%)"
+        help_text="Base: salario. Aporte patronal (ej: 8.5)"
     )
     pension = models.DecimalField(
         max_digits=5, decimal_places=2,
         validators=[MinValueValidator(0), MaxValueValidator(100)],
         verbose_name="Pensión (%)",
-        help_text="Aporte patronal a pensión (ej: 12.0 para 12%)"
+        help_text="Base: salario. Aporte patronal (ej: 12.0)"
     )
     arl = models.DecimalField(
         max_digits=5, decimal_places=2,
         validators=[MinValueValidator(0), MaxValueValidator(100)],
         verbose_name="ARL (%)",
-        help_text="Según nivel de riesgo (ej: 0.522 para riesgo I)"
+        help_text="Base: salario. Según riesgo: I=0.52, II=1.04, III=2.44, IV=4.35, V=6.96"
     )
+
+    # ==========================================================================
+    # PARAFISCALES - Base de cálculo: SOLO SALARIO
+    # ==========================================================================
     caja_compensacion = models.DecimalField(
         max_digits=5, decimal_places=2,
         validators=[MinValueValidator(0), MaxValueValidator(100)],
         verbose_name="Caja Compensación (%)",
-        help_text="Aporte a caja de compensación (ej: 4.0 para 4%)"
+        help_text="Base: salario. Generalmente 4.0%"
     )
     icbf = models.DecimalField(
         max_digits=5, decimal_places=2,
         validators=[MinValueValidator(0), MaxValueValidator(100)],
         verbose_name="ICBF (%)",
-        help_text="Aporte ICBF (ej: 3.0 para 3%)"
+        help_text="Base: salario. Generalmente 3.0% (exonerado si empresa < 10 SMLV en nómina)"
     )
     sena = models.DecimalField(
         max_digits=5, decimal_places=2,
         validators=[MinValueValidator(0), MaxValueValidator(100)],
         verbose_name="SENA (%)",
-        help_text="Aporte SENA (ej: 2.0 para 2%)"
+        help_text="Base: salario. Generalmente 2.0% (exonerado si empresa < 10 SMLV en nómina)"
     )
 
-    # Prestaciones sociales (0-100)
+    # ==========================================================================
+    # PRESTACIONES SOCIALES - Base de cálculo: SALARIO + SUBSIDIO TRANSPORTE
+    # (excepto vacaciones que es solo salario)
+    # ==========================================================================
     cesantias = models.DecimalField(
         max_digits=5, decimal_places=2,
         validators=[MinValueValidator(0), MaxValueValidator(100)],
         verbose_name="Cesantías (%)",
-        help_text="Provisión cesantías (ej: 8.33 para 8.33%)"
+        help_text="Base: salario + subsidio. Provisión mensual = 8.33% (1 mes/12)"
     )
     intereses_cesantias = models.DecimalField(
         max_digits=5, decimal_places=2,
         validators=[MinValueValidator(0), MaxValueValidator(100)],
         verbose_name="Int. Cesantías (%)",
-        help_text="Intereses sobre cesantías (ej: 1.0 para 1%)"
+        help_text="Base: salario + subsidio. Provisión mensual = 1.0% (12% anual sobre cesantías / 12)"
     )
     prima = models.DecimalField(
         max_digits=5, decimal_places=2,
         validators=[MinValueValidator(0), MaxValueValidator(100)],
         verbose_name="Prima (%)",
-        help_text="Provisión prima de servicios (ej: 8.33 para 8.33%)"
+        help_text="Base: salario + subsidio. Provisión mensual = 8.33% (1 mes/12)"
     )
     vacaciones = models.DecimalField(
         max_digits=5, decimal_places=2,
         validators=[MinValueValidator(0), MaxValueValidator(100)],
         verbose_name="Vacaciones (%)",
-        help_text="Provisión vacaciones (ej: 4.17 para 4.17%)"
+        help_text="Base: SOLO salario (no incluye subsidio). Provisión = 4.17% (15 días/360)"
     )
 
     fecha_creacion = models.DateTimeField(auto_now_add=True)
