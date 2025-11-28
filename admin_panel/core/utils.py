@@ -22,7 +22,7 @@ def copiar_instancia(
         excluir_campos: Campos adicionales a excluir (además de id, pk, fecha_*)
         campos_monetarios: Campos a los que aplicar factor_incremento
         factor_incremento: Factor de incremento para campos monetarios (0 = sin cambio)
-        sufijo_nombre: Sufijo a agregar al campo 'nombre' si existe
+        sufijo_nombre: Sufijo a agregar a campos únicos de texto (nombre, perfil, etc.)
 
     Returns:
         Nueva instancia creada (ya guardada en BD)
@@ -56,6 +56,12 @@ def copiar_instancia(
     }
     campos_excluir = campos_excluir_siempre | excluir_campos
 
+    # Identificar campos únicos de texto que necesitan sufijo
+    campos_unicos_texto = set()
+    for field in instancia._meta.fields:
+        if field.unique and isinstance(field, (models.CharField, models.TextField)):
+            campos_unicos_texto.add(field.name)
+
     # Construir diccionario con los valores de la instancia original
     data = {}
     for field in instancia._meta.fields:
@@ -77,8 +83,8 @@ def copiar_instancia(
         if nombre_campo in campos_monetarios and valor is not None and factor_incremento != 0:
             valor = float(valor) * (1 + factor_incremento)
 
-        # Agregar sufijo al nombre si aplica
-        if nombre_campo == 'nombre' and sufijo_nombre and nombre_campo not in override:
+        # Agregar sufijo a campos únicos de texto (nombre, perfil, marca_id, etc.)
+        if nombre_campo in campos_unicos_texto and sufijo_nombre and nombre_campo not in override:
             if valor:
                 valor = f"{valor}{sufijo_nombre}"
 
