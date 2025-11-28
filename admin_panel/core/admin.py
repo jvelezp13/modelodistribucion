@@ -1157,16 +1157,17 @@ class ZonaMunicipioInline(admin.TabularInline):
     model = ZonaMunicipio
     extra = 1
     autocomplete_fields = ['municipio']
-    fields = ('municipio', 'visitas_por_periodo')
+    fields = ('municipio', 'venta_proyectada', 'participacion_ventas', 'visitas_por_periodo')
+    readonly_fields = ('participacion_ventas',)
 
 
 @admin.register(Zona, site=dxv_admin_site)
 class ZonaAdmin(DuplicarMixin, admin.ModelAdmin):
     """Admin para Zonas Comerciales (vendedores)"""
-    list_display = ('nombre', 'marca', 'vendedor', 'tipo_vehiculo_comercial', 'frecuencia', 'requiere_pernocta', 'activo')
+    list_display = ('nombre', 'marca', 'vendedor', 'venta_proyectada_fmt', 'participacion_ventas_fmt', 'tipo_vehiculo_comercial', 'frecuencia', 'requiere_pernocta', 'activo')
     list_filter = ('marca', 'escenario', 'frecuencia', 'requiere_pernocta', 'tipo_vehiculo_comercial', 'activo')
     search_fields = ['nombre', 'vendedor__nombre', 'marca__nombre']
-    readonly_fields = ('fecha_creacion', 'fecha_modificacion')
+    readonly_fields = ('fecha_creacion', 'fecha_modificacion', 'participacion_ventas')
     autocomplete_fields = ['vendedor', 'municipio_base_vendedor']
     inlines = [ZonaMunicipioInline]
     actions = ['duplicar_registros']
@@ -1179,8 +1180,8 @@ class ZonaAdmin(DuplicarMixin, admin.ModelAdmin):
             'fields': ('marca', 'escenario', 'vendedor', 'municipio_base_vendedor')
         }),
         ('Participación en Ventas', {
-            'fields': ('participacion_ventas',),
-            'description': 'Porcentaje de las ventas totales de la marca que hace esta zona'
+            'fields': ('venta_proyectada', 'participacion_ventas'),
+            'description': 'Ingrese la venta proyectada (valor absoluto). El % de participación se calcula automáticamente.'
         }),
         ('Configuración Comercial', {
             'fields': ('tipo_vehiculo_comercial', 'frecuencia'),
@@ -1196,6 +1197,16 @@ class ZonaAdmin(DuplicarMixin, admin.ModelAdmin):
         }),
     )
 
+    def venta_proyectada_fmt(self, obj):
+        return f"${obj.venta_proyectada:,.0f}"
+    venta_proyectada_fmt.short_description = 'Venta Proyectada'
+    venta_proyectada_fmt.admin_order_field = 'venta_proyectada'
+
+    def participacion_ventas_fmt(self, obj):
+        return f"{obj.participacion_ventas:.2f}%"
+    participacion_ventas_fmt.short_description = 'Part. %'
+    participacion_ventas_fmt.admin_order_field = 'participacion_ventas'
+
     def get_queryset(self, request):
         return super().get_queryset(request).select_related('marca', 'vendedor', 'municipio_base_vendedor')
 
@@ -1203,10 +1214,10 @@ class ZonaAdmin(DuplicarMixin, admin.ModelAdmin):
 @admin.register(ZonaMunicipio, site=dxv_admin_site)
 class ZonaMunicipioAdmin(admin.ModelAdmin):
     """Admin para relación Zona-Municipio (comercial)"""
-    list_display = ('zona', 'municipio', 'visitas_por_periodo', 'visitas_mensuales_calc')
+    list_display = ('zona', 'municipio', 'venta_proyectada_fmt', 'participacion_ventas_fmt', 'visitas_por_periodo', 'visitas_mensuales_calc')
     list_filter = ('zona__marca', 'zona__frecuencia')
     search_fields = ('zona__nombre', 'municipio__nombre')
-    readonly_fields = ('fecha_creacion', 'fecha_modificacion')
+    readonly_fields = ('fecha_creacion', 'fecha_modificacion', 'participacion_ventas')
     autocomplete_fields = ['zona', 'municipio']
 
     fieldsets = (
@@ -1218,14 +1229,24 @@ class ZonaMunicipioAdmin(admin.ModelAdmin):
             'description': 'Cantidad de visitas por periodo según la frecuencia de la zona'
         }),
         ('Participación en Ventas', {
-            'fields': ('participacion_ventas',),
-            'description': 'Porcentaje de las ventas de la zona que hace este municipio'
+            'fields': ('venta_proyectada', 'participacion_ventas'),
+            'description': 'Ingrese la venta proyectada (valor absoluto). El % de participación se calcula automáticamente.'
         }),
         ('Metadata', {
             'fields': ('fecha_creacion', 'fecha_modificacion'),
             'classes': ('collapse',)
         }),
     )
+
+    def venta_proyectada_fmt(self, obj):
+        return f"${obj.venta_proyectada:,.0f}"
+    venta_proyectada_fmt.short_description = 'Venta Proyectada'
+    venta_proyectada_fmt.admin_order_field = 'venta_proyectada'
+
+    def participacion_ventas_fmt(self, obj):
+        return f"{obj.participacion_ventas:.2f}%"
+    participacion_ventas_fmt.short_description = 'Part. %'
+    participacion_ventas_fmt.admin_order_field = 'participacion_ventas'
 
     def visitas_mensuales_calc(self, obj):
         return obj.visitas_mensuales()

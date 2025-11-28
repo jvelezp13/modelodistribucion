@@ -1865,14 +1865,25 @@ class Zona(models.Model):
         help_text="Cantidad de noches por periodo"
     )
 
-    # Participación en ventas para P&G por zona
+    # Venta proyectada (valor absoluto editable)
+    venta_proyectada = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0)],
+        verbose_name="Venta Proyectada",
+        help_text="Valor de venta proyectada para esta zona (en pesos)"
+    )
+
+    # Participación calculada automáticamente (solo lectura)
     participacion_ventas = models.DecimalField(
         max_digits=5,
         decimal_places=2,
         default=0,
         validators=[MinValueValidator(0), MaxValueValidator(100)],
         verbose_name="Participación Ventas %",
-        help_text="% de las ventas totales de la marca que hace esta zona (debe sumar 100% entre todas las zonas)"
+        help_text="Calculado automáticamente: (venta_zona / venta_total_marca) × 100",
+        editable=False
     )
 
     activo = models.BooleanField(default=True, verbose_name="Activa")
@@ -1887,6 +1898,47 @@ class Zona(models.Model):
 
     def __str__(self):
         return f"{self.nombre} - {self.marca}"
+
+    def calcular_participacion(self):
+        """Calcula el % de participación basado en venta_proyectada vs total marca"""
+        if not self.marca or not self.escenario:
+            return Decimal('0')
+
+        total_marca = Zona.objects.filter(
+            marca=self.marca,
+            escenario=self.escenario,
+            activo=True
+        ).aggregate(total=models.Sum('venta_proyectada'))['total'] or Decimal('0')
+
+        if total_marca > 0:
+            return (self.venta_proyectada / total_marca) * 100
+        return Decimal('0')
+
+    def save(self, *args, **kwargs):
+        # Calcular participación antes de guardar
+        super().save(*args, **kwargs)
+        # Recalcular participación de todas las zonas de la marca después de guardar
+        self._recalcular_participaciones_marca()
+
+    def _recalcular_participaciones_marca(self):
+        """Recalcula participación de todas las zonas de la misma marca/escenario"""
+        if not self.marca or not self.escenario:
+            return
+
+        zonas = Zona.objects.filter(
+            marca=self.marca,
+            escenario=self.escenario,
+            activo=True
+        )
+        total = zonas.aggregate(total=models.Sum('venta_proyectada'))['total'] or Decimal('0')
+
+        for zona in zonas:
+            if total > 0:
+                nueva_part = (zona.venta_proyectada / total) * 100
+            else:
+                nueva_part = Decimal('0')
+            # Usar update para evitar recursión
+            Zona.objects.filter(pk=zona.pk).update(participacion_ventas=nueva_part)
 
     def periodos_por_mes(self):
         """
@@ -1926,14 +1978,25 @@ class ZonaMunicipio(models.Model):
         help_text="Ej: Si la zona es semanal, cuántas visitas por semana"
     )
 
-    # Participación de ventas dentro de la zona
+    # Venta proyectada del municipio (valor absoluto editable)
+    venta_proyectada = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0)],
+        verbose_name="Venta Proyectada",
+        help_text="Valor de venta proyectada para este municipio (en pesos)"
+    )
+
+    # Participación calculada automáticamente (solo lectura)
     participacion_ventas = models.DecimalField(
         max_digits=5,
         decimal_places=2,
         default=0,
         validators=[MinValueValidator(0), MaxValueValidator(100)],
         verbose_name="Participación Ventas %",
-        help_text="% de las ventas de la zona que hace este municipio (debe sumar 100% entre municipios de la zona)"
+        help_text="Calculado automáticamente: (venta_municipio / venta_zona) × 100",
+        editable=False
     )
 
     fecha_creacion = models.DateTimeField(auto_now_add=True)
@@ -1952,6 +2015,39 @@ class ZonaMunicipio(models.Model):
     def visitas_mensuales(self):
         """Calcula visitas comerciales mensuales"""
         return self.visitas_por_periodo * self.zona.periodos_por_mes()
+
+    def calcular_participacion(self):
+        """Calcula el % de participación basado en venta_proyectada vs total zona"""
+        if not self.zona:
+            return Decimal('0')
+
+        total_zona = ZonaMunicipio.objects.filter(
+            zona=self.zona
+        ).aggregate(total=models.Sum('venta_proyectada'))['total'] or Decimal('0')
+
+        if total_zona > 0:
+            return (self.venta_proyectada / total_zona) * 100
+        return Decimal('0')
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        # Recalcular participación de todos los municipios de la zona
+        self._recalcular_participaciones_zona()
+
+    def _recalcular_participaciones_zona(self):
+        """Recalcula participación de todos los municipios de la misma zona"""
+        if not self.zona:
+            return
+
+        municipios = ZonaMunicipio.objects.filter(zona=self.zona)
+        total = municipios.aggregate(total=models.Sum('venta_proyectada'))['total'] or Decimal('0')
+
+        for mun in municipios:
+            if total > 0:
+                nueva_part = (mun.venta_proyectada / total) * 100
+            else:
+                nueva_part = Decimal('0')
+            ZonaMunicipio.objects.filter(pk=mun.pk).update(participacion_ventas=nueva_part)
 
     def participacion_ventas_total(self):
         """Calcula la participación de ventas sobre el total de la marca"""
