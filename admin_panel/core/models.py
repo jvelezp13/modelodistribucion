@@ -2398,8 +2398,9 @@ class ProyeccionCrecimiento(models.Model):
         max_digits=6,
         decimal_places=2,
         default=0,
+        validators=[MinValueValidator(-100), MaxValueValidator(500)],
         verbose_name="Factor de Crecimiento %",
-        help_text="Porcentaje de crecimiento esperado (ej: 10 para 10%)"
+        help_text="Porcentaje de crecimiento esperado (ej: 10 para 10%, -5 para decrecimiento)"
     )
 
     fecha_creacion = models.DateTimeField(auto_now_add=True)
@@ -2620,14 +2621,16 @@ class ProyeccionPenetracion(models.Model):
     penetracion_inicial = models.DecimalField(
         max_digits=5,
         decimal_places=2,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
         verbose_name="Penetración Inicial %",
-        help_text="Porcentaje del mercado que se espera capturar al inicio del año"
+        help_text="Porcentaje del mercado que se espera capturar al inicio del año (0-100)"
     )
     penetracion_final = models.DecimalField(
         max_digits=5,
         decimal_places=2,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
         verbose_name="Penetración Final %",
-        help_text="Porcentaje del mercado que se espera capturar al final del año"
+        help_text="Porcentaje del mercado que se espera capturar al final del año (0-100)"
     )
 
     fecha_creacion = models.DateTimeField(auto_now_add=True)
