@@ -9,7 +9,7 @@ from .models import (
     PoliticaRecursosHumanos, ParametrosMacro,
     GastoComercial, GastoLogistico, GastoAdministrativo,
     Escenario, Marca, Vehiculo,
-    Zona, ZonaMunicipio, RutaLogistica, RutaLogisticaMunicipio,
+    Zona, ZonaMunicipio, RutaLogistica, RutaMunicipio,
     ConfiguracionLejania, MatrizDesplazamiento
 )
 
@@ -607,13 +607,13 @@ def update_lejanias_on_zona_change(sender, instance, **kwargs):
 
 
 @receiver([post_save, post_delete], sender=RutaLogistica)
-@receiver([post_save, post_delete], sender=RutaLogisticaMunicipio)
+@receiver([post_save, post_delete], sender=RutaMunicipio)
 def update_lejanias_on_ruta_change(sender, instance, **kwargs):
     """Recalcula lejanías logísticas cuando cambian rutas o municipios"""
     escenario = None
     if sender == RutaLogistica:
         escenario = instance.escenario
-    elif sender == RutaLogisticaMunicipio:
+    elif sender == RutaMunicipio:
         escenario = instance.ruta.escenario if instance.ruta else None
 
     if escenario:
