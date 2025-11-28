@@ -607,18 +607,19 @@ class FactorPrestacional(models.Model):
 
     # ==========================================================================
     # SEGURIDAD SOCIAL - Base de cálculo: SOLO SALARIO
+    # Exonerados por Ley 1607/2012 para empleados < 10 SMLV: Salud (0%)
     # ==========================================================================
     salud = models.DecimalField(
         max_digits=5, decimal_places=2,
         validators=[MinValueValidator(0), MaxValueValidator(100)],
         verbose_name="Salud (%)",
-        help_text="Base: salario. Aporte patronal (ej: 8.5)"
+        help_text="Base: salario. Normal: 8.5%. EXONERADO (0%) por Ley 1607 para empleados < 10 SMLV"
     )
     pension = models.DecimalField(
         max_digits=5, decimal_places=2,
         validators=[MinValueValidator(0), MaxValueValidator(100)],
         verbose_name="Pensión (%)",
-        help_text="Base: salario. Aporte patronal (ej: 12.0)"
+        help_text="Base: salario. Siempre 12% (NO está exonerado)"
     )
     arl = models.DecimalField(
         max_digits=5, decimal_places=2,
@@ -629,24 +630,25 @@ class FactorPrestacional(models.Model):
 
     # ==========================================================================
     # PARAFISCALES - Base de cálculo: SOLO SALARIO
+    # Exonerados por Ley 1607/2012 para empleados < 10 SMLV: ICBF y SENA (0%)
     # ==========================================================================
     caja_compensacion = models.DecimalField(
         max_digits=5, decimal_places=2,
         validators=[MinValueValidator(0), MaxValueValidator(100)],
         verbose_name="Caja Compensación (%)",
-        help_text="Base: salario. Generalmente 4.0%"
+        help_text="Base: salario. Siempre 4% (NO está exonerado)"
     )
     icbf = models.DecimalField(
         max_digits=5, decimal_places=2,
         validators=[MinValueValidator(0), MaxValueValidator(100)],
         verbose_name="ICBF (%)",
-        help_text="Base: salario. Generalmente 3.0% (exonerado si empresa < 10 SMLV en nómina)"
+        help_text="Base: salario. Normal: 3%. EXONERADO (0%) por Ley 1607 para empleados < 10 SMLV"
     )
     sena = models.DecimalField(
         max_digits=5, decimal_places=2,
         validators=[MinValueValidator(0), MaxValueValidator(100)],
         verbose_name="SENA (%)",
-        help_text="Base: salario. Generalmente 2.0% (exonerado si empresa < 10 SMLV en nómina)"
+        help_text="Base: salario. Normal: 2%. EXONERADO (0%) por Ley 1607 para empleados < 10 SMLV"
     )
 
     # ==========================================================================
@@ -657,25 +659,25 @@ class FactorPrestacional(models.Model):
         max_digits=5, decimal_places=2,
         validators=[MinValueValidator(0), MaxValueValidator(100)],
         verbose_name="Cesantías (%)",
-        help_text="Base: salario + subsidio. Provisión mensual = 8.33% (1 mes/12)"
+        help_text="Base: salario + subsidio. Provisión: 8.33% (equivale a 1 mes de salario al año)"
     )
     intereses_cesantias = models.DecimalField(
         max_digits=5, decimal_places=2,
         validators=[MinValueValidator(0), MaxValueValidator(100)],
         verbose_name="Int. Cesantías (%)",
-        help_text="Base: salario + subsidio. Provisión mensual = 1.0% (12% anual sobre cesantías / 12)"
+        help_text="Base: salario + subsidio. Provisión: 1.0% (es el 12% anual sobre cesantías, dividido 12)"
     )
     prima = models.DecimalField(
         max_digits=5, decimal_places=2,
         validators=[MinValueValidator(0), MaxValueValidator(100)],
         verbose_name="Prima (%)",
-        help_text="Base: salario + subsidio. Provisión mensual = 8.33% (1 mes/12)"
+        help_text="Base: salario + subsidio. Provisión: 8.33% (equivale a 1 mes de salario al año)"
     )
     vacaciones = models.DecimalField(
         max_digits=5, decimal_places=2,
         validators=[MinValueValidator(0), MaxValueValidator(100)],
         verbose_name="Vacaciones (%)",
-        help_text="Base: SOLO salario (no incluye subsidio). Provisión = 4.17% (15 días/360)"
+        help_text="Base: SOLO salario. Provisión: 4.17% (15 días/360). Si usa supernumerario, considere 8.34%"
     )
 
     fecha_creacion = models.DateTimeField(auto_now_add=True)

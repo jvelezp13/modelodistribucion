@@ -473,19 +473,19 @@ class FactorPrestacionalAdmin(admin.ModelAdmin):
         }),
         ('Seguridad Social (Base: solo salario)', {
             'fields': ('salud', 'pension', 'arl'),
-            'description': 'Estos aportes se calculan únicamente sobre el salario base'
+            'description': 'Salud EXONERADO (0%) por Ley 1607/2012 para empleados < 10 SMLV. Pensión y ARL siempre aplican.'
         }),
         ('Parafiscales (Base: solo salario)', {
             'fields': ('caja_compensacion', 'icbf', 'sena'),
-            'description': 'ICBF y SENA pueden estar exonerados según Ley 1607/2012'
+            'description': 'ICBF y SENA EXONERADOS (0%) por Ley 1607/2012 para empleados < 10 SMLV. Caja siempre aplica.'
         }),
-        ('Prestaciones Sociales (Base: salario + subsidio transporte)', {
+        ('Prestaciones Sociales', {
             'fields': ('cesantias', 'intereses_cesantias', 'prima', 'vacaciones'),
-            'description': 'Cesantías, intereses y prima incluyen subsidio de transporte. Vacaciones NO incluye subsidio.'
+            'description': 'Cesantías, Int. Cesantías y Prima: base = salario + subsidio. Vacaciones: base = solo salario.'
         }),
         ('Total Calculado', {
             'fields': ('factor_total_display',),
-            'description': 'El factor total se calcula automáticamente sumando todos los componentes'
+            'description': 'Suma de todos los componentes. Para empleados con exoneración Ley 1607: poner 0 en Salud, ICBF y SENA.'
         }),
         ('Metadata', {
             'fields': ('fecha_creacion', 'fecha_modificacion'),
