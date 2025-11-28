@@ -1360,8 +1360,27 @@ class ProductoAdmin(admin.ModelAdmin):
     precio_unitario_fmt.short_description = 'Precio Unitario'
 
 
+class PlantillaEstacionalForm(forms.ModelForm):
+    """Form que valida que los porcentajes sumen 100%"""
+    class Meta:
+        model = PlantillaEstacional
+        fields = '__all__'
+
+    def clean(self):
+        cleaned_data = super().clean()
+        meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+        total = sum(cleaned_data.get(mes, 0) or 0 for mes in meses)
+        if abs(float(total) - 100) > 0.5:
+            raise forms.ValidationError(
+                f"Los porcentajes deben sumar 100%. Suma actual: {total:.2f}%"
+            )
+        return cleaned_data
+
+
 @admin.register(PlantillaEstacional, site=dxv_admin_site)
 class PlantillaEstacionalAdmin(DuplicarMixin, admin.ModelAdmin):
+    form = PlantillaEstacionalForm
     list_display = ('nombre', 'marca', 'total_porcentaje_fmt')
     list_filter = ('marca',)
     search_fields = ('nombre', 'descripcion')
@@ -1389,7 +1408,6 @@ class PlantillaEstacionalAdmin(DuplicarMixin, admin.ModelAdmin):
 
     def total_porcentaje_fmt(self, obj):
         total = obj.total_porcentaje()
-        color = 'green' if abs(total - 100) < 0.1 else 'red'
         return f"{total:.2f}%"
     total_porcentaje_fmt.short_description = 'Total %'
 
