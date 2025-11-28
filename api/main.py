@@ -724,8 +724,14 @@ def obtener_tasa_renta() -> Dict[str, Any]:
         }
 
     except Exception as e:
-        logger.error(f"Error obteniendo tasa de renta: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        # Si hay error (ej: tabla no existe), retornar default en lugar de error
+        logger.warning(f"Error obteniendo tasa de renta, usando default: {e}")
+        return {
+            'configurado': False,
+            'tasa': 0.33,
+            'tasa_porcentaje': 33,
+            'mensaje': f'Error consultando impuestos, usando valor por defecto (33%)'
+        }
 
 
 if __name__ == "__main__":
