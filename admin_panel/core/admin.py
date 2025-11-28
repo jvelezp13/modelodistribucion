@@ -26,14 +26,14 @@ from .admin_site import dxv_admin_site
 
 @admin.register(Escenario, site=dxv_admin_site)
 class EscenarioAdmin(admin.ModelAdmin):
-    list_display = ('nombre', 'tipo', 'anio', 'periodo_display', 'activo', 'aprobado', 'fecha_modificacion')
-    list_filter = ('tipo', 'anio', 'activo', 'aprobado')
+    list_display = ('nombre', 'tipo', 'anio', 'periodo_display', 'activo', 'fecha_modificacion')
+    list_filter = ('tipo', 'anio', 'activo')
     search_fields = ('nombre', 'notas')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
-    
+
     fieldsets = (
         ('Información Básica', {
-            'fields': ('nombre', 'tipo', 'anio', 'activo', 'aprobado')
+            'fields': ('nombre', 'tipo', 'anio', 'activo')
         }),
         ('Periodo', {
             'fields': ('periodo_tipo', 'periodo_numero')
@@ -46,7 +46,7 @@ class EscenarioAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
-    
+
     def periodo_display(self, obj):
         if obj.periodo_tipo == 'anual':
             return "Anual"
@@ -59,12 +59,44 @@ class EscenarioAdmin(admin.ModelAdmin):
         return obj.periodo_tipo
     periodo_display.short_description = 'Periodo'
 
-    actions = ['proyectar_escenario']
+    actions = ['duplicar_escenario', 'proyectar_escenario']
 
-    def proyectar_escenario(self, request, queryset):
+    def duplicar_escenario(self, request, queryset):
+        """Crea una copia exacta del escenario seleccionado"""
         from .services import EscenarioService
         from django.contrib import messages
-        
+
+        if queryset.count() != 1:
+            self.message_user(
+                request,
+                "Por favor selecciona solo un escenario para duplicar.",
+                level=messages.WARNING
+            )
+            return
+
+        escenario_base = queryset.first()
+
+        try:
+            nuevo_escenario = EscenarioService.duplicar_escenario(escenario_base.pk)
+            self.message_user(
+                request,
+                f"Escenario duplicado exitosamente: {nuevo_escenario.nombre}",
+                level=messages.SUCCESS
+            )
+        except Exception as e:
+            self.message_user(
+                request,
+                f"Error al duplicar escenario: {str(e)}",
+                level=messages.ERROR
+            )
+
+    duplicar_escenario.short_description = "Duplicar Escenario (copia exacta)"
+
+    def proyectar_escenario(self, request, queryset):
+        """Crea un nuevo escenario proyectado al siguiente año"""
+        from .services import EscenarioService
+        from django.contrib import messages
+
         if queryset.count() != 1:
             self.message_user(
                 request,
@@ -72,10 +104,10 @@ class EscenarioAdmin(admin.ModelAdmin):
                 level=messages.WARNING
             )
             return
-            
+
         escenario_base = queryset.first()
         nuevo_anio = escenario_base.anio + 1
-        
+
         try:
             nuevo_escenario = EscenarioService.proyectar_escenario(escenario_base.pk, nuevo_anio)
             self.message_user(
@@ -89,7 +121,7 @@ class EscenarioAdmin(admin.ModelAdmin):
                 f"Error al proyectar escenario: {str(e)}",
                 level=messages.ERROR
             )
-            
+
     proyectar_escenario.short_description = "Proyectar al Siguiente Año"
 
 

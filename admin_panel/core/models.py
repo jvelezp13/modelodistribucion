@@ -68,8 +68,7 @@ class Escenario(models.Model):
     )
     
     activo = models.BooleanField(default=False, verbose_name="Activo", help_text="Escenario activo para simulación")
-    aprobado = models.BooleanField(default=False, verbose_name="Aprobado", help_text="Para workflow de aprobación")
-    
+
     notas = models.TextField(blank=True, verbose_name="Notas")
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_modificacion = models.DateTimeField(auto_now=True)
