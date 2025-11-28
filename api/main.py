@@ -740,6 +740,269 @@ def obtener_tasa_renta() -> Dict[str, Any]:
         }
 
 
+# =============================================================================
+# P&G POR ZONA Y MUNICIPIO - Endpoints para desglose geográfico
+# =============================================================================
+
+@app.get("/api/pyg/marca")
+def obtener_pyg_marca(
+    escenario_id: int,
+    marca_id: str
+) -> Dict[str, Any]:
+    """
+    Obtiene el P&G completo para una marca.
+
+    Args:
+        escenario_id: ID del escenario
+        marca_id: ID de la marca
+
+    Returns:
+        P&G con desglose por comercial, logístico y administrativo
+    """
+    try:
+        from core.models import Escenario, Marca
+        from admin_panel.core.services import PyGService
+
+        escenario = Escenario.objects.get(pk=escenario_id)
+        marca = Marca.objects.get(marca_id=marca_id)
+
+        service = PyGService(escenario)
+        resultado = service.get_pyg_marca(marca)
+
+        return {
+            'escenario_id': escenario_id,
+            'escenario_nombre': escenario.nombre,
+            'marca_id': marca_id,
+            'marca_nombre': marca.nombre,
+            'pyg': _serializar_pyg(resultado)
+        }
+
+    except Escenario.DoesNotExist:
+        raise HTTPException(status_code=404, detail=f"Escenario no encontrado: {escenario_id}")
+    except Marca.DoesNotExist:
+        raise HTTPException(status_code=404, detail=f"Marca no encontrada: {marca_id}")
+    except Exception as e:
+        logger.error(f"Error obteniendo P&G marca: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/pyg/zonas")
+def obtener_pyg_zonas(
+    escenario_id: int,
+    marca_id: str
+) -> Dict[str, Any]:
+    """
+    Obtiene el P&G desglosado por zona comercial para una marca.
+
+    Args:
+        escenario_id: ID del escenario
+        marca_id: ID de la marca
+
+    Returns:
+        Lista de P&G por zona con totales
+    """
+    try:
+        from core.models import Escenario, Marca
+        from admin_panel.core.services import PyGService
+
+        escenario = Escenario.objects.get(pk=escenario_id)
+        marca = Marca.objects.get(marca_id=marca_id)
+
+        service = PyGService(escenario)
+        zonas = service.get_pyg_todas_zonas(marca)
+
+        return {
+            'escenario_id': escenario_id,
+            'escenario_nombre': escenario.nombre,
+            'marca_id': marca_id,
+            'marca_nombre': marca.nombre,
+            'zonas': [_serializar_pyg_zona(z) for z in zonas],
+            'total_zonas': len(zonas)
+        }
+
+    except Escenario.DoesNotExist:
+        raise HTTPException(status_code=404, detail=f"Escenario no encontrado: {escenario_id}")
+    except Marca.DoesNotExist:
+        raise HTTPException(status_code=404, detail=f"Marca no encontrada: {marca_id}")
+    except Exception as e:
+        logger.error(f"Error obteniendo P&G zonas: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/pyg/zona/{zona_id}")
+def obtener_pyg_zona(
+    zona_id: int,
+    escenario_id: int
+) -> Dict[str, Any]:
+    """
+    Obtiene el P&G para una zona específica.
+
+    Args:
+        zona_id: ID de la zona
+        escenario_id: ID del escenario
+
+    Returns:
+        P&G de la zona con desglose
+    """
+    try:
+        from core.models import Escenario, Zona
+        from admin_panel.core.services import PyGService
+
+        escenario = Escenario.objects.get(pk=escenario_id)
+        zona = Zona.objects.get(pk=zona_id, escenario=escenario)
+
+        service = PyGService(escenario)
+        resultado = service.get_pyg_zona(zona)
+
+        return {
+            'escenario_id': escenario_id,
+            'escenario_nombre': escenario.nombre,
+            'pyg': _serializar_pyg_zona(resultado)
+        }
+
+    except Escenario.DoesNotExist:
+        raise HTTPException(status_code=404, detail=f"Escenario no encontrado: {escenario_id}")
+    except Zona.DoesNotExist:
+        raise HTTPException(status_code=404, detail=f"Zona no encontrada: {zona_id}")
+    except Exception as e:
+        logger.error(f"Error obteniendo P&G zona: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/pyg/municipios")
+def obtener_pyg_municipios(
+    zona_id: int,
+    escenario_id: int
+) -> Dict[str, Any]:
+    """
+    Obtiene el P&G desglosado por municipio para una zona.
+
+    Args:
+        zona_id: ID de la zona
+        escenario_id: ID del escenario
+
+    Returns:
+        Lista de P&G por municipio
+    """
+    try:
+        from core.models import Escenario, Zona
+        from admin_panel.core.services import PyGService
+
+        escenario = Escenario.objects.get(pk=escenario_id)
+        zona = Zona.objects.get(pk=zona_id, escenario=escenario)
+
+        service = PyGService(escenario)
+        municipios = service.get_pyg_todos_municipios(zona)
+
+        return {
+            'escenario_id': escenario_id,
+            'escenario_nombre': escenario.nombre,
+            'zona_id': zona_id,
+            'zona_nombre': zona.nombre,
+            'municipios': [_serializar_pyg_municipio(m) for m in municipios],
+            'total_municipios': len(municipios)
+        }
+
+    except Escenario.DoesNotExist:
+        raise HTTPException(status_code=404, detail=f"Escenario no encontrado: {escenario_id}")
+    except Zona.DoesNotExist:
+        raise HTTPException(status_code=404, detail=f"Zona no encontrada: {zona_id}")
+    except Exception as e:
+        logger.error(f"Error obteniendo P&G municipios: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/pyg/resumen")
+def obtener_pyg_resumen(
+    escenario_id: int,
+    marca_id: str
+) -> Dict[str, Any]:
+    """
+    Obtiene el resumen completo de P&G para una marca con desglose por zona.
+
+    Args:
+        escenario_id: ID del escenario
+        marca_id: ID de la marca
+
+    Returns:
+        Resumen completo con total de marca y desglose por zonas
+    """
+    try:
+        from core.models import Escenario, Marca
+        from admin_panel.core.services import PyGService
+
+        escenario = Escenario.objects.get(pk=escenario_id)
+        marca = Marca.objects.get(marca_id=marca_id)
+
+        service = PyGService(escenario)
+        resumen = service.get_resumen_marca(marca)
+
+        return {
+            'escenario_id': escenario_id,
+            'escenario_nombre': escenario.nombre,
+            'marca': {
+                'id': marca.marca_id,
+                'nombre': marca.nombre,
+            },
+            'total': _serializar_pyg(resumen['total']),
+            'zonas': [_serializar_pyg_zona(z) for z in resumen['zonas']]
+        }
+
+    except Escenario.DoesNotExist:
+        raise HTTPException(status_code=404, detail=f"Escenario no encontrado: {escenario_id}")
+    except Marca.DoesNotExist:
+        raise HTTPException(status_code=404, detail=f"Marca no encontrada: {marca_id}")
+    except Exception as e:
+        logger.error(f"Error obteniendo resumen P&G: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+def _serializar_pyg(pyg: Dict) -> Dict:
+    """Serializa un diccionario de P&G a formato JSON-compatible."""
+    def to_float(val):
+        if val is None:
+            return 0.0
+        try:
+            return float(val)
+        except (TypeError, ValueError):
+            return 0.0
+
+    return {
+        'comercial': {
+            'personal': to_float(pyg.get('comercial', {}).get('personal', 0)),
+            'gastos': to_float(pyg.get('comercial', {}).get('gastos', 0)),
+            'total': to_float(pyg.get('comercial', {}).get('total', 0)),
+        },
+        'logistico': {
+            'personal': to_float(pyg.get('logistico', {}).get('personal', 0)),
+            'gastos': to_float(pyg.get('logistico', {}).get('gastos', 0)),
+            'total': to_float(pyg.get('logistico', {}).get('total', 0)),
+        },
+        'administrativo': {
+            'personal': to_float(pyg.get('administrativo', {}).get('personal', 0)),
+            'gastos': to_float(pyg.get('administrativo', {}).get('gastos', 0)),
+            'total': to_float(pyg.get('administrativo', {}).get('total', 0)),
+        },
+        'total_mensual': to_float(pyg.get('total_mensual', 0)),
+        'total_anual': to_float(pyg.get('total_anual', 0)),
+    }
+
+
+def _serializar_pyg_zona(pyg_zona: Dict) -> Dict:
+    """Serializa un P&G de zona."""
+    resultado = _serializar_pyg(pyg_zona)
+    resultado['zona'] = pyg_zona.get('zona', {})
+    return resultado
+
+
+def _serializar_pyg_municipio(pyg_mun: Dict) -> Dict:
+    """Serializa un P&G de municipio."""
+    resultado = _serializar_pyg(pyg_mun)
+    resultado['municipio'] = pyg_mun.get('municipio', {})
+    resultado['zona'] = pyg_mun.get('zona', {})
+    return resultado
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

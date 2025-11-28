@@ -19,6 +19,13 @@ INDICE_INCREMENTO_CHOICES = [
     ('fijo', 'Sin Incremento (Valor Fijo)'),
 ]
 
+# Choices globales para asignación geográfica (P&G por zona/municipio)
+TIPO_ASIGNACION_GEO_CHOICES = [
+    ('directo', 'Directo a Zona'),
+    ('proporcional', 'Proporcional a Ventas'),
+    ('compartido', 'Compartido Equitativo'),
+]
+
 
 class Marca(models.Model):
     """Modelo para las marcas del sistema"""
@@ -141,7 +148,7 @@ class PersonalComercial(models.Model):
         help_text="Índice a usar para proyecciones de años futuros"
     )
 
-    # Campos para compartidos
+    # Campos para compartidos (entre marcas)
     porcentaje_dedicacion = models.DecimalField(
         max_digits=5,
         decimal_places=2,
@@ -160,6 +167,24 @@ class PersonalComercial(models.Model):
         ],
         null=True,
         blank=True
+    )
+
+    # Asignación geográfica (para P&G por zona)
+    tipo_asignacion_geo = models.CharField(
+        max_length=20,
+        choices=TIPO_ASIGNACION_GEO_CHOICES,
+        default='directo',
+        verbose_name="Asignación Geográfica",
+        help_text="Cómo se asigna este costo a las zonas"
+    )
+    zona = models.ForeignKey(
+        'Zona',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='personal_comercial',
+        verbose_name="Zona",
+        help_text="Zona asignada (solo si asignación es 'Directo a Zona')"
     )
 
     fecha_creacion = models.DateTimeField(auto_now_add=True)
@@ -272,6 +297,24 @@ class PersonalLogistico(models.Model):
         ],
         null=True,
         blank=True
+    )
+
+    # Asignación geográfica (para P&G por zona)
+    tipo_asignacion_geo = models.CharField(
+        max_length=20,
+        choices=TIPO_ASIGNACION_GEO_CHOICES,
+        default='proporcional',
+        verbose_name="Asignación Geográfica",
+        help_text="Cómo se asigna este costo a las zonas. Personal logístico típicamente se distribuye proporcional a ventas."
+    )
+    zona = models.ForeignKey(
+        'Zona',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='personal_logistico',
+        verbose_name="Zona",
+        help_text="Zona asignada (solo si asignación es 'Directo a Zona')"
     )
 
     fecha_creacion = models.DateTimeField(auto_now_add=True)
@@ -858,6 +901,16 @@ class PersonalAdministrativo(models.Model):
         help_text="Solo aplica para asignación compartida"
     )
 
+    # Asignación geográfica (para P&G por zona)
+    # Personal administrativo típicamente se distribuye equitativamente entre zonas
+    tipo_asignacion_geo = models.CharField(
+        max_length=20,
+        choices=TIPO_ASIGNACION_GEO_CHOICES,
+        default='compartido',
+        verbose_name="Asignación Geográfica",
+        help_text="Cómo se asigna este costo a las zonas. Personal admin se distribuye equitativamente."
+    )
+
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_modificacion = models.DateTimeField(auto_now=True)
 
@@ -981,6 +1034,16 @@ class GastoAdministrativo(models.Model):
         blank=True,
         help_text="Solo aplica para asignación compartida"
     )
+
+    # Asignación geográfica (para P&G por zona)
+    tipo_asignacion_geo = models.CharField(
+        max_length=20,
+        choices=TIPO_ASIGNACION_GEO_CHOICES,
+        default='compartido',
+        verbose_name="Asignación Geográfica",
+        help_text="Cómo se asigna este gasto a las zonas. Gastos admin se distribuyen equitativamente."
+    )
+
     notas = models.TextField(blank=True, verbose_name="Notas")
 
     fecha_creacion = models.DateTimeField(auto_now_add=True)
@@ -1054,7 +1117,25 @@ class GastoComercial(models.Model):
         verbose_name="Índice de Incremento",
         help_text="Índice a usar para proyecciones de años futuros"
     )
-    
+
+    # Asignación geográfica (para P&G por zona)
+    tipo_asignacion_geo = models.CharField(
+        max_length=20,
+        choices=TIPO_ASIGNACION_GEO_CHOICES,
+        default='directo',
+        verbose_name="Asignación Geográfica",
+        help_text="Cómo se asigna este gasto a las zonas"
+    )
+    zona = models.ForeignKey(
+        'Zona',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='gastos_comerciales',
+        verbose_name="Zona",
+        help_text="Zona asignada (solo si asignación es 'Directo a Zona')"
+    )
+
     notas = models.TextField(blank=True, verbose_name="Notas")
 
     fecha_creacion = models.DateTimeField(auto_now_add=True)
@@ -1136,7 +1217,25 @@ class GastoLogistico(models.Model):
         verbose_name="Índice de Incremento",
         help_text="Índice a usar para proyecciones de años futuros. Usar 'combustible' para gastos de vehículos"
     )
-    
+
+    # Asignación geográfica (para P&G por zona)
+    tipo_asignacion_geo = models.CharField(
+        max_length=20,
+        choices=TIPO_ASIGNACION_GEO_CHOICES,
+        default='proporcional',
+        verbose_name="Asignación Geográfica",
+        help_text="Cómo se asigna este gasto a las zonas. Gastos logísticos se distribuyen proporcional a ventas."
+    )
+    zona = models.ForeignKey(
+        'Zona',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='gastos_logisticos',
+        verbose_name="Zona",
+        help_text="Zona asignada (solo si asignación es 'Directo a Zona')"
+    )
+
     notas = models.TextField(blank=True, verbose_name="Notas")
 
     fecha_creacion = models.DateTimeField(auto_now_add=True)
@@ -1766,6 +1865,16 @@ class Zona(models.Model):
         help_text="Cantidad de noches por periodo"
     )
 
+    # Participación en ventas para P&G por zona
+    participacion_ventas = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        verbose_name="Participación Ventas %",
+        help_text="% de las ventas totales de la marca que hace esta zona (debe sumar 100% entre todas las zonas)"
+    )
+
     activo = models.BooleanField(default=True, verbose_name="Activa")
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_modificacion = models.DateTimeField(auto_now=True)
@@ -1817,6 +1926,16 @@ class ZonaMunicipio(models.Model):
         help_text="Ej: Si la zona es semanal, cuántas visitas por semana"
     )
 
+    # Participación de ventas dentro de la zona
+    participacion_ventas = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        verbose_name="Participación Ventas %",
+        help_text="% de las ventas de la zona que hace este municipio (debe sumar 100% entre municipios de la zona)"
+    )
+
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_modificacion = models.DateTimeField(auto_now=True)
 
@@ -1833,6 +1952,10 @@ class ZonaMunicipio(models.Model):
     def visitas_mensuales(self):
         """Calcula visitas comerciales mensuales"""
         return self.visitas_por_periodo * self.zona.periodos_por_mes()
+
+    def participacion_ventas_total(self):
+        """Calcula la participación de ventas sobre el total de la marca"""
+        return (self.zona.participacion_ventas / 100) * (self.participacion_ventas / 100) * 100
 
 
 # ============================================================================
@@ -1893,6 +2016,14 @@ class RutaLogistica(models.Model):
         default=0,
         verbose_name="Noches de Pernocta",
         help_text="Cantidad de noches por recorrido completo"
+    )
+
+    # Auxiliares de entrega
+    cantidad_auxiliares = models.IntegerField(
+        default=1,
+        validators=[MinValueValidator(0), MaxValueValidator(2)],
+        verbose_name="Cantidad de Auxiliares",
+        help_text="Auxiliares de entrega que van en este recorrido (0, 1 o 2)"
     )
 
     activo = models.BooleanField(default=True, verbose_name="Activo")
