@@ -777,45 +777,6 @@ class ConfiguracionDescuentosAdmin(admin.ModelAdmin):
                 )
 
 
-@admin.register(TramoDescuentoFactura, site=dxv_admin_site)
-class TramoDescuentoFacturaAdmin(admin.ModelAdmin):
-    list_display = (
-        'configuracion',
-        'orden',
-        'porcentaje_ventas_display',
-        'porcentaje_descuento_display',
-        'fecha_modificacion'
-    )
-    list_filter = ('configuracion__marca',)
-    search_fields = ('configuracion__marca__nombre',)
-    readonly_fields = ('fecha_creacion', 'fecha_modificacion')
-    ordering = ('configuracion', 'orden')
-
-    fieldsets = (
-        ('Configuración', {
-            'fields': ('configuracion', 'orden')
-        }),
-        ('Tramo', {
-            'fields': ('porcentaje_ventas', 'porcentaje_descuento'),
-            'description': 'Define qué porcentaje de las ventas totales se aplica este descuento'
-        }),
-        ('Metadata', {
-            'fields': ('fecha_creacion', 'fecha_modificacion'),
-            'classes': ('collapse',)
-        }),
-    )
-
-    def porcentaje_ventas_display(self, obj):
-        return f"{obj.porcentaje_ventas:.2f}%"
-    porcentaje_ventas_display.short_description = '% Ventas'
-    porcentaje_ventas_display.admin_order_field = 'porcentaje_ventas'
-
-    def porcentaje_descuento_display(self, obj):
-        return f"{obj.porcentaje_descuento:.2f}%"
-    porcentaje_descuento_display.short_description = '% Descuento'
-    porcentaje_descuento_display.admin_order_field = 'porcentaje_descuento'
-
-
 @admin.register(PoliticaRecursosHumanos, site=dxv_admin_site)
 class PoliticaRecursosHumanosAdmin(admin.ModelAdmin):
     list_display = (

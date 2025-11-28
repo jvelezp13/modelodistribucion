@@ -19,7 +19,6 @@ class DxVAdminSite(admin.AdminSite):
             'FactorPrestacional',
             'Impuesto',
             'ConfiguracionDescuentos',
-            'TramoDescuentoFactura',
             'PoliticaRecursosHumanos',
         ],
         'Ventas y Proyecciones': [
