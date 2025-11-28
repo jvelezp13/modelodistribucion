@@ -270,16 +270,24 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
     }).format(value);
   };
 
+  // Función para calcular porcentaje sobre ventas
+  const calcularPorcentajeSobreVentas = (valor: number): string => {
+    if (ingresosPorVentas === 0) return '0.0%';
+    return ((valor / ingresosPorVentas) * 100).toFixed(1) + '%';
+  };
+
   const SeccionHeader = ({
     titulo,
     seccion,
     valor,
-    bgColor = 'bg-gray-700'
+    bgColor = 'bg-gray-700',
+    mostrarPorcentaje = false
   }: {
     titulo: string;
     seccion: keyof SeccionState;
     valor?: number;
     bgColor?: string;
+    mostrarPorcentaje?: boolean;
   }) => {
     const isOpen = seccionesAbiertas[seccion];
 
@@ -293,7 +301,12 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
           <span className="text-xs font-semibold uppercase tracking-wide">{titulo}</span>
         </div>
         {valor !== undefined && (
-          <span className="text-sm font-bold">{formatCurrency(valor)}</span>
+          <div className="flex items-center gap-3">
+            {mostrarPorcentaje && (
+              <span className="text-xs opacity-75">{calcularPorcentajeSobreVentas(valor)}</span>
+            )}
+            <span className="text-sm font-bold">{formatCurrency(valor)}</span>
+          </div>
         )}
       </div>
     );
@@ -302,11 +315,13 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
   const SubSeccionHeader = ({
     titulo,
     subSeccion,
-    valor
+    valor,
+    mostrarPorcentaje = false
   }: {
     titulo: string;
     subSeccion: keyof SubSeccionState;
     valor: number;
+    mostrarPorcentaje?: boolean;
   }) => {
     const isOpen = subSeccionesAbiertas[subSeccion];
 
@@ -319,7 +334,12 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
           {isOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
           <span className="text-xs font-medium text-gray-700">{titulo}</span>
         </div>
-        <span className="text-xs font-semibold text-gray-900">{formatCurrency(valor)}</span>
+        <div className="flex items-center gap-2">
+          {mostrarPorcentaje && (
+            <span className="text-[10px] text-gray-500">{calcularPorcentajeSobreVentas(valor)}</span>
+          )}
+          <span className="text-xs font-semibold text-gray-900">{formatCurrency(valor)}</span>
+        </div>
       </div>
     );
   };
@@ -560,7 +580,7 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
       </div>
 
       {/* SECCIÓN: INGRESOS POR VENTAS */}
-      <SeccionHeader titulo="Ingresos por Ventas" seccion="ingresos" valor={ingresosPorVentas} bgColor="bg-blue-700" />
+      <SeccionHeader titulo="Ingresos por Ventas" seccion="ingresos" valor={ingresosPorVentas} bgColor="bg-slate-600" />
       {seccionesAbiertas.ingresos && (
         <div>
           <LineaItem titulo="Ventas del Período" valor={ingresosPorVentas} indent={1} />
@@ -568,7 +588,7 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
       )}
 
       {/* SECCIÓN: COSTO DE MERCANCÍA VENDIDA */}
-      <SeccionHeader titulo="Costo de Mercancía Vendida" seccion="cmv" valor={costoMercanciaVendida} bgColor="bg-red-700" />
+      <SeccionHeader titulo="Costo de Mercancía Vendida" seccion="cmv" valor={costoMercanciaVendida} bgColor="bg-stone-600" />
       {seccionesAbiertas.cmv && (
         <div>
           <LineaItem
@@ -606,7 +626,7 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
       </div>
 
       {/* SECCIÓN: COSTOS COMERCIALES */}
-      <SeccionHeader titulo="Costos Comerciales" seccion="comercial" valor={totalComercial} bgColor="bg-gray-700" />
+      <SeccionHeader titulo="Costos Comerciales" seccion="comercial" valor={totalComercial} bgColor="bg-gray-700" mostrarPorcentaje />
       {seccionesAbiertas.comercial && (
         <div>
           {/* Personal Comercial */}
@@ -616,6 +636,7 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
                 titulo="Personal Comercial"
                 subSeccion="comercialPersonal"
                 valor={subtotalComercialPersonal}
+                mostrarPorcentaje
               />
               {subSeccionesAbiertas.comercialPersonal && (
                 <>
@@ -634,6 +655,7 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
                 titulo="Gastos Comerciales"
                 subSeccion="comercialGastos"
                 valor={subtotalComercialGastos}
+                mostrarPorcentaje
               />
               {subSeccionesAbiertas.comercialGastos && (
                 <>
@@ -655,7 +677,7 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
       )}
 
       {/* SECCIÓN: COSTOS LOGÍSTICOS */}
-      <SeccionHeader titulo="Costos Logísticos" seccion="logistico" valor={totalLogistico} bgColor="bg-gray-700" />
+      <SeccionHeader titulo="Costos Logísticos" seccion="logistico" valor={totalLogistico} bgColor="bg-gray-700" mostrarPorcentaje />
       {seccionesAbiertas.logistico && (
         <div>
           {/* Flota de Vehículos (ahora incluye flete base) */}
@@ -665,6 +687,7 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
                 titulo="Flota de Vehículos"
                 subSeccion="logisticoVehiculos"
                 valor={subtotalLogisticoVehiculos}
+                mostrarPorcentaje
               />
               {subSeccionesAbiertas.logisticoVehiculos && (
                 <>
@@ -683,6 +706,7 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
                 titulo="Personal Logístico"
                 subSeccion="logisticoPersonal"
                 valor={subtotalLogisticoPersonal}
+                mostrarPorcentaje
               />
               {subSeccionesAbiertas.logisticoPersonal && (
                 <>
@@ -701,6 +725,7 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
                 titulo="Gastos Logísticos"
                 subSeccion="logisticoGastos"
                 valor={subtotalLogisticoGastos}
+                mostrarPorcentaje
               />
               {subSeccionesAbiertas.logisticoGastos && (
                 <>
@@ -719,6 +744,7 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
                 titulo="Lejanías Logísticas (Costos Variables)"
                 subSeccion="logisticoLejanias"
                 valor={subtotalLejanias}
+                mostrarPorcentaje
               />
               {subSeccionesAbiertas.logisticoLejanias && lejaniasLogistica && (
                 <div className="px-3 py-1.5 bg-gray-50 text-xs space-y-1">
@@ -777,7 +803,7 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
       )}
 
       {/* SECCIÓN: COSTOS ADMINISTRATIVOS */}
-      <SeccionHeader titulo="Costos Administrativos" seccion="administrativo" valor={totalAdministrativo} bgColor="bg-gray-700" />
+      <SeccionHeader titulo="Costos Administrativos" seccion="administrativo" valor={totalAdministrativo} bgColor="bg-gray-700" mostrarPorcentaje />
       {seccionesAbiertas.administrativo && (
         <div>
           {/* Personal Administrativo */}
@@ -787,6 +813,7 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
                 titulo="Personal Administrativo"
                 subSeccion="administrativoPersonal"
                 valor={subtotalAdministrativoPersonal}
+                mostrarPorcentaje
               />
               {subSeccionesAbiertas.administrativoPersonal && (
                 <>
@@ -805,6 +832,7 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
                 titulo="Gastos Administrativos"
                 subSeccion="administrativoGastos"
                 valor={subtotalAdministrativoGastos}
+                mostrarPorcentaje
               />
               {subSeccionesAbiertas.administrativoGastos && (
                 <>
@@ -819,6 +847,20 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
           <LineaItem titulo="Total Costos Administrativos" valor={totalAdministrativo} bold />
         </div>
       )}
+
+      {/* EBITDA - Antes de Utilidad Operacional */}
+      <div className="bg-amber-50 border-y border-amber-300">
+        <div className="flex justify-between items-center px-3 py-2">
+          <div>
+            <span className="text-xs font-bold text-amber-900 uppercase">EBITDA</span>
+            <span className="text-[10px] text-amber-700 ml-2">(Utilidad antes de Intereses, Impuestos, Depreciación y Amortización)</span>
+          </div>
+          <div className="text-right">
+            <div className="text-sm font-bold text-amber-900">{formatCurrency(utilidadOperacional)}</div>
+            <div className="text-xs text-amber-700">{calcularPorcentajeSobreVentas(utilidadOperacional)}</div>
+          </div>
+        </div>
+      </div>
 
       {/* UTILIDAD OPERACIONAL */}
       <div className="bg-blue-50 border-y-2 border-blue-500">
