@@ -59,16 +59,34 @@ export interface VentasMensualesDesglose {
   diciembre?: number;
 }
 
+export interface TramoDescuento {
+  orden: number;
+  porcentaje_ventas: number;
+  porcentaje_descuento: number;
+}
+
+export interface ConfiguracionDescuentos {
+  tiene_configuracion: boolean;
+  descuento_pie_factura_ponderado: number;  // Porcentaje ponderado de todos los tramos
+  tramos: TramoDescuento[];
+  porcentaje_rebate: number;
+  aplica_descuento_financiero: boolean;
+  porcentaje_descuento_financiero: number;
+}
+
 export interface Marca {
   marca_id: string;
   nombre: string;
   ventas_mensuales: number;
   ventas_netas_mensuales?: number;
   ventas_mensuales_desglose?: VentasMensualesDesglose;
+  configuracion_descuentos?: ConfiguracionDescuentos;
+  // Campos legacy (pueden eliminarse después)
   descuento_pie_factura?: number;
   rebate?: number;
   descuento_financiero?: number;
   porcentaje_descuento_total?: number;
+  // Costos
   costo_total: number;
   costo_comercial: number;
   costo_logistico: number;

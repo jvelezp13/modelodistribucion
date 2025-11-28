@@ -118,6 +118,22 @@ def ejecutar_simulacion(
                 else:
                     marca_data['ventas_mensuales_desglose'] = {}
 
+        # Agregar configuración de descuentos por marca
+        config_descuentos = obtener_configuracion_descuentos_por_marca(marcas_seleccionadas)
+        for marca_data in resultado_dict['marcas']:
+            marca_id = marca_data['marca_id']
+            if marca_id in config_descuentos:
+                marca_data['configuracion_descuentos'] = config_descuentos[marca_id]
+            else:
+                marca_data['configuracion_descuentos'] = {
+                    'tiene_configuracion': False,
+                    'descuento_pie_factura_ponderado': 0,
+                    'tramos': [],
+                    'porcentaje_rebate': 0,
+                    'aplica_descuento_financiero': False,
+                    'porcentaje_descuento_financiero': 0,
+                }
+
         logger.info(f"Simulación completada exitosamente")
         return resultado_dict
 
@@ -159,6 +175,69 @@ def obtener_ventas_mensuales_por_marca(
 
     except Exception as e:
         logger.warning(f"Error obteniendo ventas mensuales: {e}")
+        return {}
+
+
+def obtener_configuracion_descuentos_por_marca(
+    marcas_ids: List[str]
+) -> Dict[str, Dict[str, Any]]:
+    """
+    Obtiene la configuración de descuentos para cada marca desde ConfiguracionDescuentos.
+
+    Returns:
+        Dict con marca_id como key y configuración de descuentos como value
+    """
+    try:
+        from core.models import Marca, ConfiguracionDescuentos
+
+        resultado = {}
+
+        for marca_id in marcas_ids:
+            try:
+                marca = Marca.objects.get(marca_id=marca_id)
+                config = ConfiguracionDescuentos.objects.prefetch_related('tramos').get(
+                    marca=marca,
+                    activa=True
+                )
+
+                # Calcular descuento ponderado de los tramos
+                tramos_data = []
+                descuento_ponderado = 0.0
+
+                for tramo in config.tramos.all().order_by('orden'):
+                    peso = float(tramo.porcentaje_ventas) / 100
+                    descuento = float(tramo.porcentaje_descuento) / 100
+                    descuento_ponderado += peso * descuento
+
+                    tramos_data.append({
+                        'orden': tramo.orden,
+                        'porcentaje_ventas': float(tramo.porcentaje_ventas),
+                        'porcentaje_descuento': float(tramo.porcentaje_descuento),
+                    })
+
+                resultado[marca_id] = {
+                    'tiene_configuracion': True,
+                    'descuento_pie_factura_ponderado': descuento_ponderado * 100,  # En porcentaje
+                    'tramos': tramos_data,
+                    'porcentaje_rebate': float(config.porcentaje_rebate),
+                    'aplica_descuento_financiero': config.aplica_descuento_financiero,
+                    'porcentaje_descuento_financiero': float(config.porcentaje_descuento_financiero),
+                }
+
+            except (Marca.DoesNotExist, ConfiguracionDescuentos.DoesNotExist):
+                resultado[marca_id] = {
+                    'tiene_configuracion': False,
+                    'descuento_pie_factura_ponderado': 0,
+                    'tramos': [],
+                    'porcentaje_rebate': 0,
+                    'aplica_descuento_financiero': False,
+                    'porcentaje_descuento_financiero': 0,
+                }
+
+        return resultado
+
+    except Exception as e:
+        logger.warning(f"Error obteniendo configuración de descuentos: {e}")
         return {}
 
 

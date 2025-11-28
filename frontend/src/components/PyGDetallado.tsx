@@ -11,9 +11,11 @@ interface PyGDetalladoProps {
 
 interface SeccionState {
   ingresos: boolean;
+  cmv: boolean;
   comercial: boolean;
   logistico: boolean;
   administrativo: boolean;
+  otrosIngresos: boolean;
   impuestos: boolean;
 }
 
@@ -38,9 +40,11 @@ interface VehiculoConFlete {
 export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) {
   const [seccionesAbiertas, setSeccionesAbiertas] = useState<SeccionState>({
     ingresos: true,
+    cmv: false,
     comercial: false,
     logistico: false,
     administrativo: false,
+    otrosIngresos: false,
     impuestos: false,
   });
 
@@ -201,7 +205,11 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
   const subtotalAdministrativoGastos = grupos.administrativoGastos.reduce((sum, r) => sum + r.valor_total, 0);
   const totalAdministrativo = subtotalAdministrativoPersonal + subtotalAdministrativoGastos;
 
-  // Ventas y descuentos - usar mes seleccionado si hay desglose disponible
+  // ==========================================
+  // CÁLCULOS P&G MODELO DISTRIBUIDOR
+  // ==========================================
+
+  // 1. INGRESOS POR VENTAS - usar mes seleccionado si hay desglose disponible
   const obtenerVentasMes = (): number => {
     if (marca.ventas_mensuales_desglose) {
       const desglose = marca.ventas_mensuales_desglose as VentasMensualesDesglose;
@@ -210,26 +218,48 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
     return marca.ventas_mensuales || 0;
   };
 
-  const ventasBrutas = obtenerVentasMes();
-  const totalDescuentos = (marca.descuento_pie_factura || 0) +
-                          (marca.rebate || 0) +
-                          (marca.descuento_financiero || 0);
-  // Calcular ventas netas proporcionales al mes seleccionado
-  const porcentajeDescuento = marca.porcentaje_descuento_total || 0;
-  const ventasNetas = ventasBrutas * (1 - porcentajeDescuento / 100);
+  const ingresosPorVentas = obtenerVentasMes();
 
-  // Costos e impuestos
-  const totalCostos = totalComercial + totalLogistico + totalAdministrativo;
-  const utilidadAntesImpuestos = ventasNetas - totalCostos;
+  // 2. COSTO DE MERCANCÍA VENDIDA (CMV)
+  // CMV = Ventas × (1 - descuento_pie_factura_ponderado)
+  const config = marca.configuracion_descuentos;
+  const descuentoPieFacturaPonderado = config?.descuento_pie_factura_ponderado || 0;
+  const costoMercanciaVendida = ingresosPorVentas * (1 - descuentoPieFacturaPonderado / 100);
 
-  // Calcular impuesto de renta (33% en Colombia)
+  // 3. MARGEN BRUTO (Utilidad Bruta de Distribución)
+  const margenBruto = ingresosPorVentas - costoMercanciaVendida;
+
+  // 4. COSTOS OPERATIVOS
+  const totalCostosOperativos = totalComercial + totalLogistico + totalAdministrativo;
+
+  // 5. UTILIDAD OPERACIONAL
+  const utilidadOperacional = margenBruto - totalCostosOperativos;
+
+  // 6. OTROS INGRESOS (Rebate y Descuento Financiero)
+  const porcentajeRebate = config?.porcentaje_rebate || 0;
+  const ingresoRebate = ingresosPorVentas * (porcentajeRebate / 100);
+
+  const porcentajeDescFinanciero = config?.aplica_descuento_financiero
+    ? (config?.porcentaje_descuento_financiero || 0)
+    : 0;
+  const ingresoDescuentoFinanciero = ingresosPorVentas * (porcentajeDescFinanciero / 100);
+
+  const totalOtrosIngresos = ingresoRebate + ingresoDescuentoFinanciero;
+
+  // 7. UTILIDAD ANTES DE IMPUESTOS
+  const utilidadAntesImpuestos = utilidadOperacional + totalOtrosIngresos;
+
+  // 8. IMPUESTOS (33% en Colombia)
   const tasaImpuesto = 0.33;
   const impuestoRenta = utilidadAntesImpuestos > 0 ? utilidadAntesImpuestos * tasaImpuesto : 0;
+
+  // 9. UTILIDAD NETA
   const utilidadNeta = utilidadAntesImpuestos - impuestoRenta;
 
-  // Márgenes
-  const margenOperacional = ventasNetas > 0 ? (utilidadAntesImpuestos / ventasNetas) * 100 : 0;
-  const margenNeto = ventasNetas > 0 ? (utilidadNeta / ventasNetas) * 100 : 0;
+  // MÁRGENES
+  const margenBrutoPorcentaje = ingresosPorVentas > 0 ? (margenBruto / ingresosPorVentas) * 100 : 0;
+  const margenOperacional = ingresosPorVentas > 0 ? (utilidadOperacional / ingresosPorVentas) * 100 : 0;
+  const margenNeto = ingresosPorVentas > 0 ? (utilidadNeta / ingresosPorVentas) * 100 : 0;
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-CO', {
@@ -529,28 +559,51 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
         </div>
       </div>
 
-      {/* SECCIÓN: INGRESOS */}
-      <SeccionHeader titulo="Ingresos" seccion="ingresos" valor={ventasNetas} bgColor="bg-blue-700" />
+      {/* SECCIÓN: INGRESOS POR VENTAS */}
+      <SeccionHeader titulo="Ingresos por Ventas" seccion="ingresos" valor={ingresosPorVentas} bgColor="bg-blue-700" />
       {seccionesAbiertas.ingresos && (
         <div>
-          <LineaItem titulo="Ventas Brutas" valor={ventasBrutas} indent={1} />
-          {totalDescuentos > 0 && (
-            <>
-              <LineaItem titulo="Descuentos Totales" valor={totalDescuentos} indent={1} negativo />
-              {marca.descuento_pie_factura && marca.descuento_pie_factura > 0 && (
-                <LineaItem titulo="Descuento Pie de Factura" valor={marca.descuento_pie_factura} indent={2} negativo />
-              )}
-              {marca.rebate && marca.rebate > 0 && (
-                <LineaItem titulo="Rebate" valor={marca.rebate} indent={2} negativo />
-              )}
-              {marca.descuento_financiero && marca.descuento_financiero > 0 && (
-                <LineaItem titulo="Descuento Financiero" valor={marca.descuento_financiero} indent={2} negativo />
-              )}
-            </>
-          )}
-          <LineaItem titulo="Ventas Netas" valor={ventasNetas} bold />
+          <LineaItem titulo="Ventas del Período" valor={ingresosPorVentas} indent={1} />
         </div>
       )}
+
+      {/* SECCIÓN: COSTO DE MERCANCÍA VENDIDA */}
+      <SeccionHeader titulo="Costo de Mercancía Vendida" seccion="cmv" valor={costoMercanciaVendida} bgColor="bg-red-700" />
+      {seccionesAbiertas.cmv && (
+        <div>
+          <LineaItem
+            titulo={`CMV (${(100 - descuentoPieFacturaPonderado).toFixed(1)}% de las ventas)`}
+            valor={costoMercanciaVendida}
+            indent={1}
+          />
+          {config?.tramos && config.tramos.length > 0 && (
+            <div className="px-3 py-1.5 bg-gray-50 text-[10px] text-gray-600 border-b border-gray-100">
+              <div className="font-medium text-gray-700 mb-1">Descuento Pie de Factura por Tramos:</div>
+              {config.tramos.map((tramo, idx) => (
+                <div key={idx} className="flex justify-between pl-2">
+                  <span>Tramo {tramo.orden}: {tramo.porcentaje_ventas}% de ventas</span>
+                  <span>{tramo.porcentaje_descuento}% descuento</span>
+                </div>
+              ))}
+              <div className="flex justify-between pl-2 mt-1 pt-1 border-t border-gray-200 font-medium">
+                <span>Descuento Ponderado:</span>
+                <span>{descuentoPieFacturaPonderado.toFixed(2)}%</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* MARGEN BRUTO */}
+      <div className="bg-emerald-50 border-y border-emerald-300">
+        <div className="flex justify-between items-center px-3 py-2">
+          <span className="text-xs font-bold text-emerald-900 uppercase">Margen Bruto (Utilidad de Distribución)</span>
+          <div className="text-right">
+            <div className="text-sm font-bold text-emerald-900">{formatCurrency(margenBruto)}</div>
+            <div className="text-xs text-emerald-700">Margen: {margenBrutoPorcentaje.toFixed(2)}%</div>
+          </div>
+        </div>
+      </div>
 
       {/* SECCIÓN: COSTOS COMERCIALES */}
       <SeccionHeader titulo="Costos Comerciales" seccion="comercial" valor={totalComercial} bgColor="bg-gray-700" />
@@ -772,11 +825,47 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
         <div className="flex justify-between items-center px-3 py-2">
           <span className="text-xs font-bold text-blue-900 uppercase">Utilidad Operacional</span>
           <div className="text-right">
-            <div className="text-sm font-bold text-blue-900">{formatCurrency(utilidadAntesImpuestos)}</div>
+            <div className="text-sm font-bold text-blue-900">{formatCurrency(utilidadOperacional)}</div>
             <div className="text-xs text-blue-700">Margen: {margenOperacional.toFixed(2)}%</div>
           </div>
         </div>
       </div>
+
+      {/* SECCIÓN: OTROS INGRESOS (Rebate y Descuento Financiero) */}
+      {totalOtrosIngresos > 0 && (
+        <>
+          <SeccionHeader titulo="Otros Ingresos" seccion="otrosIngresos" valor={totalOtrosIngresos} bgColor="bg-teal-700" />
+          {seccionesAbiertas.otrosIngresos && (
+            <div>
+              {ingresoRebate > 0 && (
+                <LineaItem
+                  titulo={`Rebate / RxP (${porcentajeRebate.toFixed(2)}% s/ ventas)`}
+                  valor={ingresoRebate}
+                  indent={1}
+                />
+              )}
+              {ingresoDescuentoFinanciero > 0 && (
+                <LineaItem
+                  titulo={`Descuento Financiero (${porcentajeDescFinanciero.toFixed(2)}% s/ ventas)`}
+                  valor={ingresoDescuentoFinanciero}
+                  indent={1}
+                />
+              )}
+              <LineaItem titulo="Total Otros Ingresos" valor={totalOtrosIngresos} bold />
+            </div>
+          )}
+        </>
+      )}
+
+      {/* UTILIDAD ANTES DE IMPUESTOS */}
+      {totalOtrosIngresos > 0 && (
+        <div className="bg-indigo-50 border-y border-indigo-300">
+          <div className="flex justify-between items-center px-3 py-1.5">
+            <span className="text-xs font-semibold text-indigo-900">Utilidad Antes de Impuestos</span>
+            <div className="text-sm font-bold text-indigo-900">{formatCurrency(utilidadAntesImpuestos)}</div>
+          </div>
+        </div>
+      )}
 
       {/* SECCIÓN: IMPUESTOS */}
       <SeccionHeader titulo="Impuestos" seccion="impuestos" valor={impuestoRenta} bgColor="bg-gray-700" />
