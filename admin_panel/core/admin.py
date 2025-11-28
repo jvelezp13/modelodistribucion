@@ -921,11 +921,11 @@ class ConfiguracionDescuentosAdmin(admin.ModelAdmin):
 
 
 @admin.register(PoliticaRecursosHumanos, site=dxv_admin_site)
-class PoliticaRecursosHumanosAdmin(admin.ModelAdmin):
+class PoliticaRecursosHumanosAdmin(DuplicarMixin, admin.ModelAdmin):
     list_display = (
-        'anio', 
-        'valor_dotacion_formateado', 
-        'frecuencia_dotacion_anual', 
+        'anio',
+        'valor_dotacion_formateado',
+        'frecuencia_dotacion_anual',
         'costo_examen_ingreso_comercial_formateado',
         'costo_examen_ingreso_operativo_formateado',
         'tasa_rotacion_percent',
@@ -933,6 +933,7 @@ class PoliticaRecursosHumanosAdmin(admin.ModelAdmin):
     )
     list_filter = ('activo', 'anio')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
+    actions = ['duplicar_registros']
 
     fieldsets = (
         ('Año', {

@@ -46,12 +46,15 @@ def calculate_hr_expenses(escenario):
                 marca_obj = Marca.objects.get(pk=marca_id)
                 asignacion = 'individual'
             
-            count_total = personal_grupo.count()
+            # Sumar cantidad de empleados (no contar registros)
+            count_total = personal_grupo.aggregate(total=Sum('cantidad'))['total'] or 0
             if count_total == 0:
                 continue
 
             # --- 1. DOTACIÓN (Aplica a todos con salario <= tope) ---
-            count_dotacion = personal_grupo.filter(salario_base__lte=tope_dotacion).count()
+            count_dotacion = personal_grupo.filter(salario_base__lte=tope_dotacion).aggregate(
+                total=Sum('cantidad')
+            )['total'] or 0
             valor_dotacion = (count_dotacion * politica.valor_dotacion_completa * politica.frecuencia_dotacion_anual) / 12
             
             if valor_dotacion > 0:

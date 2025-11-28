@@ -1406,8 +1406,9 @@ class PoliticaRecursosHumanos(models.Model):
     tasa_rotacion_anual = models.DecimalField(
         max_digits=5,
         decimal_places=2,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
         verbose_name="Tasa de Rotación Anual (%)",
-        help_text="Porcentaje de rotación estimado (para calcular exámenes de ingreso)"
+        help_text="Porcentaje de rotación estimado 0-100 (ej: 25 para 25%)"
     )
 
     activo = models.BooleanField(default=True, verbose_name="Activo")
