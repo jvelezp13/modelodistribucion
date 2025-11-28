@@ -2083,18 +2083,18 @@ class PlantillaEstacional(models.Model):
     )
 
     # Porcentajes por mes (deben sumar 100%)
-    enero = models.DecimalField(max_digits=5, decimal_places=2, default=8.33, verbose_name="Enero %")
-    febrero = models.DecimalField(max_digits=5, decimal_places=2, default=8.33, verbose_name="Febrero %")
-    marzo = models.DecimalField(max_digits=5, decimal_places=2, default=8.33, verbose_name="Marzo %")
-    abril = models.DecimalField(max_digits=5, decimal_places=2, default=8.33, verbose_name="Abril %")
-    mayo = models.DecimalField(max_digits=5, decimal_places=2, default=8.33, verbose_name="Mayo %")
-    junio = models.DecimalField(max_digits=5, decimal_places=2, default=8.33, verbose_name="Junio %")
-    julio = models.DecimalField(max_digits=5, decimal_places=2, default=8.33, verbose_name="Julio %")
-    agosto = models.DecimalField(max_digits=5, decimal_places=2, default=8.33, verbose_name="Agosto %")
-    septiembre = models.DecimalField(max_digits=5, decimal_places=2, default=8.33, verbose_name="Septiembre %")
-    octubre = models.DecimalField(max_digits=5, decimal_places=2, default=8.33, verbose_name="Octubre %")
-    noviembre = models.DecimalField(max_digits=5, decimal_places=2, default=8.33, verbose_name="Noviembre %")
-    diciembre = models.DecimalField(max_digits=5, decimal_places=2, default=8.37, verbose_name="Diciembre %")
+    enero = models.DecimalField(max_digits=5, decimal_places=2, default=8.33, validators=[MinValueValidator(0), MaxValueValidator(100)], verbose_name="Enero %")
+    febrero = models.DecimalField(max_digits=5, decimal_places=2, default=8.33, validators=[MinValueValidator(0), MaxValueValidator(100)], verbose_name="Febrero %")
+    marzo = models.DecimalField(max_digits=5, decimal_places=2, default=8.33, validators=[MinValueValidator(0), MaxValueValidator(100)], verbose_name="Marzo %")
+    abril = models.DecimalField(max_digits=5, decimal_places=2, default=8.33, validators=[MinValueValidator(0), MaxValueValidator(100)], verbose_name="Abril %")
+    mayo = models.DecimalField(max_digits=5, decimal_places=2, default=8.33, validators=[MinValueValidator(0), MaxValueValidator(100)], verbose_name="Mayo %")
+    junio = models.DecimalField(max_digits=5, decimal_places=2, default=8.33, validators=[MinValueValidator(0), MaxValueValidator(100)], verbose_name="Junio %")
+    julio = models.DecimalField(max_digits=5, decimal_places=2, default=8.33, validators=[MinValueValidator(0), MaxValueValidator(100)], verbose_name="Julio %")
+    agosto = models.DecimalField(max_digits=5, decimal_places=2, default=8.33, validators=[MinValueValidator(0), MaxValueValidator(100)], verbose_name="Agosto %")
+    septiembre = models.DecimalField(max_digits=5, decimal_places=2, default=8.33, validators=[MinValueValidator(0), MaxValueValidator(100)], verbose_name="Septiembre %")
+    octubre = models.DecimalField(max_digits=5, decimal_places=2, default=8.33, validators=[MinValueValidator(0), MaxValueValidator(100)], verbose_name="Octubre %")
+    noviembre = models.DecimalField(max_digits=5, decimal_places=2, default=8.33, validators=[MinValueValidator(0), MaxValueValidator(100)], verbose_name="Noviembre %")
+    diciembre = models.DecimalField(max_digits=5, decimal_places=2, default=8.37, validators=[MinValueValidator(0), MaxValueValidator(100)], verbose_name="Diciembre %")
 
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_modificacion = models.DateTimeField(auto_now=True)
@@ -2109,6 +2109,15 @@ class PlantillaEstacional(models.Model):
         if self.marca:
             return f"{self.marca.nombre} - {self.nombre}"
         return f"{self.nombre} (Global)"
+
+    def clean(self):
+        """Valida que los porcentajes sumen 100%"""
+        from django.core.exceptions import ValidationError
+        total = self.total_porcentaje()
+        if abs(total - 100) > 0.5:  # Tolerancia de 0.5%
+            raise ValidationError(
+                f"Los porcentajes deben sumar 100%. Suma actual: {total:.2f}%"
+            )
 
     def total_porcentaje(self):
         """Retorna la suma de todos los porcentajes"""

@@ -1361,11 +1361,12 @@ class ProductoAdmin(admin.ModelAdmin):
 
 
 @admin.register(PlantillaEstacional, site=dxv_admin_site)
-class PlantillaEstacionalAdmin(admin.ModelAdmin):
+class PlantillaEstacionalAdmin(DuplicarMixin, admin.ModelAdmin):
     list_display = ('nombre', 'marca', 'total_porcentaje_fmt')
     list_filter = ('marca',)
     search_fields = ('nombre', 'descripcion')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
+    actions = ['duplicar_registros']
 
     fieldsets = (
         ('Información General', {
