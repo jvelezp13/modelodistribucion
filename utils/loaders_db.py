@@ -99,24 +99,30 @@ class DataLoaderDB:
             raise
 
     def cargar_factores_prestacionales(self) -> Dict[str, Any]:
-        """Carga los factores prestacionales"""
+        """
+        Carga los factores prestacionales.
+
+        Los valores en BD están en formato 0-100 (ej: 8.5 para 8.5%).
+        Se convierten a decimal (0.085) para usar en cálculos.
+        """
         try:
             factores = FactorPrestacional.objects.all()
             result = {}
 
             for factor in factores:
+                # Convertir de porcentaje (0-100) a decimal (0-1) para cálculos
                 result[factor.perfil] = {
-                    'salud': float(factor.salud),
-                    'pension': float(factor.pension),
-                    'arl': float(factor.arl),
-                    'caja_compensacion': float(factor.caja_compensacion),
-                    'icbf': float(factor.icbf),
-                    'sena': float(factor.sena),
-                    'cesantias': float(factor.cesantias),
-                    'intereses_cesantias': float(factor.intereses_cesantias),
-                    'prima': float(factor.prima),
-                    'vacaciones': float(factor.vacaciones),
-                    'factor_total': float(factor.factor_total),
+                    'salud': float(factor.salud) / 100,
+                    'pension': float(factor.pension) / 100,
+                    'arl': float(factor.arl) / 100,
+                    'caja_compensacion': float(factor.caja_compensacion) / 100,
+                    'icbf': float(factor.icbf) / 100,
+                    'sena': float(factor.sena) / 100,
+                    'cesantias': float(factor.cesantias) / 100,
+                    'intereses_cesantias': float(factor.intereses_cesantias) / 100,
+                    'prima': float(factor.prima) / 100,
+                    'vacaciones': float(factor.vacaciones) / 100,
+                    'factor_total': float(factor.factor_total),  # Ya viene en decimal del property
                 }
 
             return result
