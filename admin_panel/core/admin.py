@@ -2,7 +2,9 @@
 Configuración del Django Admin para los modelos DxV
 """
 from django.contrib import admin
+from django.contrib import messages
 from django.db.models import Sum, Count
+from .utils import copiar_instancia
 from .models import (
     Marca, PersonalComercial, PersonalLogistico,
     Vehiculo, ParametrosMacro, FactorPrestacional,
@@ -22,6 +24,45 @@ from .models import (
     ProyeccionPenetracion
 )
 from .admin_site import dxv_admin_site
+
+
+# =============================================================================
+# MIXIN PARA ACCIÓN DUPLICAR
+# =============================================================================
+
+class DuplicarMixin:
+    """
+    Mixin que agrega la acción 'Duplicar' a cualquier ModelAdmin.
+    Permite duplicar uno o varios registros seleccionados.
+    """
+
+    def duplicar_registros(self, request, queryset):
+        """Duplica los registros seleccionados"""
+        duplicados = 0
+        errores = []
+
+        for obj in queryset:
+            try:
+                copiar_instancia(obj)
+                duplicados += 1
+            except Exception as e:
+                errores.append(f"{obj}: {str(e)}")
+
+        if duplicados:
+            self.message_user(
+                request,
+                f"Se duplicaron {duplicados} registro(s) exitosamente.",
+                level=messages.SUCCESS
+            )
+
+        if errores:
+            self.message_user(
+                request,
+                f"Errores al duplicar: {'; '.join(errores)}",
+                level=messages.ERROR
+            )
+
+    duplicar_registros.short_description = "Duplicar registro(s) seleccionado(s)"
 
 
 @admin.register(Escenario, site=dxv_admin_site)
@@ -154,12 +195,13 @@ class MarcaAdmin(admin.ModelAdmin):
 
 
 @admin.register(PersonalComercial, site=dxv_admin_site)
-class PersonalComercialAdmin(admin.ModelAdmin):
+class PersonalComercialAdmin(DuplicarMixin, admin.ModelAdmin):
     change_list_template = 'admin/core/change_list_with_total.html'
     list_display = ('marca', 'nombre', 'escenario', 'tipo', 'cantidad', 'salario_base', 'costo_total_estimado', 'asignacion', 'perfil_prestacional')
     list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'perfil_prestacional')
     search_fields = ('marca__nombre', 'nombre')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
+    actions = ['duplicar_registros']
 
     fieldsets = (
         ('Información Básica', {
@@ -224,12 +266,13 @@ class PersonalComercialAdmin(admin.ModelAdmin):
 
 
 @admin.register(PersonalLogistico, site=dxv_admin_site)
-class PersonalLogisticoAdmin(admin.ModelAdmin):
+class PersonalLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
     change_list_template = 'admin/core/change_list_with_total.html'
     list_display = ('marca', 'nombre', 'escenario', 'tipo', 'cantidad', 'salario_base', 'costo_total_estimado', 'asignacion', 'perfil_prestacional')
     list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'perfil_prestacional')
     search_fields = ('marca__nombre', 'nombre')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
+    actions = ['duplicar_registros']
 
     fieldsets = (
         ('Información Básica', {
@@ -282,12 +325,13 @@ class PersonalLogisticoAdmin(admin.ModelAdmin):
 
 
 @admin.register(Vehiculo, site=dxv_admin_site)
-class VehiculoAdmin(admin.ModelAdmin):
+class VehiculoAdmin(DuplicarMixin, admin.ModelAdmin):
     change_list_template = 'admin/core/change_list_with_total.html'
     list_display = ('nombre_display', 'marca', 'escenario', 'tipo_vehiculo', 'esquema', 'cantidad', 'costo_mensual_estimado_formateado')
     list_filter = ('escenario', 'marca', 'tipo_vehiculo', 'esquema', 'asignacion')
     search_fields = ['nombre', 'marca__nombre', 'tipo_vehiculo', 'esquema']
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
+    actions = ['duplicar_registros']
 
     fieldsets = (
         ('Información Básica', {
@@ -466,12 +510,13 @@ class FactorPrestacionalAdmin(admin.ModelAdmin):
 
 
 @admin.register(PersonalAdministrativo, site=dxv_admin_site)
-class PersonalAdministrativoAdmin(admin.ModelAdmin):
+class PersonalAdministrativoAdmin(DuplicarMixin, admin.ModelAdmin):
     change_list_template = 'admin/core/change_list_with_total.html'
     list_display = ('nombre', 'marca', 'escenario', 'tipo', 'cantidad', 'asignacion', 'tipo_contrato', 'valor_mensual', 'costo_total_estimado')
     list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'tipo_contrato')
     search_fields = ('nombre',)
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
+    actions = ['duplicar_registros']
 
     fieldsets = (
         ('Asignación', {
@@ -549,12 +594,13 @@ class PersonalAdministrativoAdmin(admin.ModelAdmin):
 
 
 @admin.register(GastoAdministrativo, site=dxv_admin_site)
-class GastoAdministrativoAdmin(admin.ModelAdmin):
+class GastoAdministrativoAdmin(DuplicarMixin, admin.ModelAdmin):
     change_list_template = 'admin/core/change_list_with_total.html'
     list_display = ('nombre', 'marca', 'escenario', 'tipo', 'asignacion', 'valor_mensual_formateado', 'criterio_prorrateo')
     list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'criterio_prorrateo')
     search_fields = ('nombre', 'notas')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
+    actions = ['duplicar_registros']
 
     fieldsets = (
         ('Asignación', {
@@ -601,12 +647,13 @@ class GastoAdministrativoAdmin(admin.ModelAdmin):
 
 
 @admin.register(GastoComercial, site=dxv_admin_site)
-class GastoComercialAdmin(admin.ModelAdmin):
+class GastoComercialAdmin(DuplicarMixin, admin.ModelAdmin):
     change_list_template = 'admin/core/change_list_with_total.html'
     list_display = ('marca', 'escenario', 'nombre', 'tipo', 'valor_mensual_formateado', 'fecha_modificacion')
     list_filter = ('escenario', 'marca', 'tipo')
     search_fields = ('nombre', 'notas')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
+    actions = ['duplicar_registros']
 
     fieldsets = (
         ('Información Básica', {
@@ -645,12 +692,13 @@ class GastoComercialAdmin(admin.ModelAdmin):
 
 
 @admin.register(GastoLogistico, site=dxv_admin_site)
-class GastoLogisticoAdmin(admin.ModelAdmin):
+class GastoLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
     change_list_template = 'admin/core/change_list_with_total.html'
     list_display = ('marca', 'escenario', 'nombre', 'tipo', 'valor_mensual_formateado', 'fecha_modificacion')
     list_filter = ('escenario', 'marca', 'tipo')
     search_fields = ('nombre', 'notas')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
+    actions = ['duplicar_registros']
 
     fieldsets = (
         ('Información Básica', {
@@ -1008,7 +1056,7 @@ class ZonaMunicipioInline(admin.TabularInline):
 
 
 @admin.register(Zona, site=dxv_admin_site)
-class ZonaAdmin(admin.ModelAdmin):
+class ZonaAdmin(DuplicarMixin, admin.ModelAdmin):
     """Admin para Zonas Comerciales (vendedores)"""
     list_display = ('nombre', 'marca', 'vendedor', 'tipo_vehiculo_comercial', 'frecuencia', 'requiere_pernocta', 'activo')
     list_filter = ('marca', 'escenario', 'frecuencia', 'requiere_pernocta', 'tipo_vehiculo_comercial', 'activo')
@@ -1016,6 +1064,7 @@ class ZonaAdmin(admin.ModelAdmin):
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
     autocomplete_fields = ['vendedor', 'municipio_base_vendedor']
     inlines = [ZonaMunicipioInline]
+    actions = ['duplicar_registros']
 
     fieldsets = (
         ('Información Básica', {
@@ -1087,7 +1136,7 @@ class RecorridoMunicipioInline(admin.TabularInline):
 
 
 @admin.register(RutaLogistica, site=dxv_admin_site)
-class RecorridoLogisticoAdmin(admin.ModelAdmin):
+class RecorridoLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
     """Admin para Recorridos Logísticos (circuitos que hace un vehículo)"""
     list_display = ('nombre', 'marca', 'vehiculo', 'esquema_vehiculo', 'frecuencia', 'viajes_por_periodo', 'requiere_pernocta', 'activo')
     list_filter = ('marca', 'escenario', 'vehiculo__esquema', 'frecuencia', 'requiere_pernocta', 'activo')
@@ -1095,6 +1144,7 @@ class RecorridoLogisticoAdmin(admin.ModelAdmin):
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
     autocomplete_fields = ['vehiculo']
     inlines = [RecorridoMunicipioInline]
+    actions = ['duplicar_registros']
 
     fieldsets = (
         ('Información Básica', {
@@ -1347,11 +1397,12 @@ class ProyeccionPenetracionInline(admin.StackedInline):
 
 
 @admin.register(ProyeccionVentasConfig, site=dxv_admin_site)
-class ProyeccionVentasConfigAdmin(admin.ModelAdmin):
+class ProyeccionVentasConfigAdmin(DuplicarMixin, admin.ModelAdmin):
     list_display = ('marca', 'escenario', 'anio', 'metodo', 'venta_anual_fmt', 'fecha_modificacion')
     list_filter = ('marca', 'escenario', 'anio', 'metodo')
     search_fields = ('marca__nombre', 'escenario__nombre', 'notas')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion', 'venta_anual_calculada')
+    actions = ['duplicar_registros']
 
     fieldsets = (
         ('Configuración', {
