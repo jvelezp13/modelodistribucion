@@ -19,11 +19,52 @@ export interface Escenario {
   periodo: string;
 }
 
+// Meses en español para el selector
+export const MESES = [
+  { value: 'enero', label: 'Enero' },
+  { value: 'febrero', label: 'Febrero' },
+  { value: 'marzo', label: 'Marzo' },
+  { value: 'abril', label: 'Abril' },
+  { value: 'mayo', label: 'Mayo' },
+  { value: 'junio', label: 'Junio' },
+  { value: 'julio', label: 'Julio' },
+  { value: 'agosto', label: 'Agosto' },
+  { value: 'septiembre', label: 'Septiembre' },
+  { value: 'octubre', label: 'Octubre' },
+  { value: 'noviembre', label: 'Noviembre' },
+  { value: 'diciembre', label: 'Diciembre' },
+];
+
+// Función para obtener el mes actual en español
+export function getMesActual(): string {
+  const mesesMap = [
+    'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+  ];
+  return mesesMap[new Date().getMonth()];
+}
+
+export interface VentasMensualesDesglose {
+  enero?: number;
+  febrero?: number;
+  marzo?: number;
+  abril?: number;
+  mayo?: number;
+  junio?: number;
+  julio?: number;
+  agosto?: number;
+  septiembre?: number;
+  octubre?: number;
+  noviembre?: number;
+  diciembre?: number;
+}
+
 export interface Marca {
   marca_id: string;
   nombre: string;
   ventas_mensuales: number;
   ventas_netas_mensuales?: number;
+  ventas_mensuales_desglose?: VentasMensualesDesglose;
   descuento_pie_factura?: number;
   rebate?: number;
   descuento_financiero?: number;

@@ -85,9 +85,10 @@ def ejecutar_simulacion(
 
     Args:
         marcas_seleccionadas: Lista de IDs de marcas a simular
+        escenario_id: ID del escenario (opcional)
 
     Returns:
-        Resultado de la simulación serializado
+        Resultado de la simulación serializado con desglose mensual de ventas
     """
     try:
         if not marcas_seleccionadas:
@@ -104,12 +105,61 @@ def ejecutar_simulacion(
         # Serializar resultado a dict
         resultado_dict = serializar_resultado(resultado)
 
+        # Agregar desglose mensual de ventas desde ProyeccionVentasConfig
+        if escenario_id:
+            ventas_mensuales_por_marca = obtener_ventas_mensuales_por_marca(
+                escenario_id, marcas_seleccionadas
+            )
+            # Agregar a cada marca su desglose mensual
+            for marca_data in resultado_dict['marcas']:
+                marca_id = marca_data['marca_id']
+                if marca_id in ventas_mensuales_por_marca:
+                    marca_data['ventas_mensuales_desglose'] = ventas_mensuales_por_marca[marca_id]
+                else:
+                    marca_data['ventas_mensuales_desglose'] = {}
+
         logger.info(f"Simulación completada exitosamente")
         return resultado_dict
 
     except Exception as e:
         logger.error(f"Error ejecutando simulación: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+def obtener_ventas_mensuales_por_marca(
+    escenario_id: int,
+    marcas_ids: List[str]
+) -> Dict[str, Dict[str, float]]:
+    """
+    Obtiene el desglose mensual de ventas para cada marca desde ProyeccionVentasConfig.
+
+    Returns:
+        Dict con marca_id como key y dict de ventas mensuales como value
+    """
+    try:
+        from core.models import Escenario, Marca, ProyeccionVentasConfig
+
+        escenario = Escenario.objects.get(pk=escenario_id)
+        resultado = {}
+
+        for marca_id in marcas_ids:
+            try:
+                marca = Marca.objects.get(marca_id=marca_id)
+                config = ProyeccionVentasConfig.objects.get(
+                    marca=marca,
+                    escenario=escenario,
+                    anio=escenario.anio
+                )
+                ventas = config.calcular_ventas_mensuales()
+                resultado[marca_id] = {k: float(v) for k, v in ventas.items()}
+            except (Marca.DoesNotExist, ProyeccionVentasConfig.DoesNotExist):
+                resultado[marca_id] = {}
+
+        return resultado
+
+    except Exception as e:
+        logger.warning(f"Error obteniendo ventas mensuales: {e}")
+        return {}
 
 
 @app.get("/api/lejanias/comercial")
@@ -320,24 +370,100 @@ def obtener_datos_comerciales(marca_id: str) -> Dict[str, Any]:
 
 
 @app.get("/api/marcas/{marca_id}/ventas")
-def obtener_datos_ventas(marca_id: str) -> Dict[str, Any]:
+def obtener_datos_ventas(
+    marca_id: str,
+    escenario_id: Optional[int] = None
+) -> Dict[str, Any]:
     """
     Obtiene las proyecciones de ventas de una marca.
 
     Args:
         marca_id: ID de la marca
+        escenario_id: ID del escenario (opcional)
 
     Returns:
         Datos de ventas mensuales y resumen anual
     """
     try:
-        loader = get_loader()
+        loader = get_loader(escenario_id=escenario_id)
         datos = loader.cargar_marca_ventas(marca_id)
         return datos
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"Marca no encontrada: {marca_id}")
     except Exception as e:
         logger.error(f"Error obteniendo datos de ventas: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/ventas/proyectadas")
+def obtener_ventas_proyectadas(
+    escenario_id: int,
+    marca_id: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Obtiene las ventas proyectadas por mes desde ProyeccionVentasConfig.
+
+    Args:
+        escenario_id: ID del escenario
+        marca_id: ID de la marca (opcional, si no se especifica retorna todas)
+
+    Returns:
+        Ventas proyectadas mensuales por marca
+    """
+    try:
+        from core.models import Escenario, Marca, ProyeccionVentasConfig
+
+        escenario = Escenario.objects.get(pk=escenario_id)
+
+        # Filtrar por marca si se especifica
+        if marca_id:
+            marcas = Marca.objects.filter(marca_id=marca_id, activo=True)
+        else:
+            marcas = Marca.objects.filter(activo=True)
+
+        resultado = {
+            'escenario_id': escenario_id,
+            'escenario_nombre': escenario.nombre,
+            'anio': escenario.anio,
+            'marcas': []
+        }
+
+        for marca in marcas:
+            try:
+                config = ProyeccionVentasConfig.objects.get(
+                    marca=marca,
+                    escenario=escenario,
+                    anio=escenario.anio
+                )
+                ventas_mensuales = config.calcular_ventas_mensuales()
+                total_anual = sum(ventas_mensuales.values())
+
+                resultado['marcas'].append({
+                    'marca_id': marca.marca_id,
+                    'marca_nombre': marca.nombre,
+                    'metodo': config.metodo,
+                    'metodo_display': config.get_metodo_display(),
+                    'ventas_mensuales': {k: float(v) for k, v in ventas_mensuales.items()},
+                    'total_anual': float(total_anual),
+                    'promedio_mensual': float(total_anual / 12) if total_anual > 0 else 0
+                })
+            except ProyeccionVentasConfig.DoesNotExist:
+                resultado['marcas'].append({
+                    'marca_id': marca.marca_id,
+                    'marca_nombre': marca.nombre,
+                    'metodo': None,
+                    'metodo_display': 'Sin configurar',
+                    'ventas_mensuales': {},
+                    'total_anual': 0,
+                    'promedio_mensual': 0
+                })
+
+        return resultado
+
+    except Escenario.DoesNotExist:
+        raise HTTPException(status_code=404, detail=f"Escenario no encontrado: {escenario_id}")
+    except Exception as e:
+        logger.error(f"Error obteniendo ventas proyectadas: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

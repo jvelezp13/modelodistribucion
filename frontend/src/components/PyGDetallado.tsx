@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Marca, Rubro, DetalleLejaniasLogistica, apiClient } from '@/lib/api';
-import { ChevronDown, ChevronRight, Truck } from 'lucide-react';
+import { Marca, Rubro, DetalleLejaniasLogistica, apiClient, MESES, getMesActual, VentasMensualesDesglose } from '@/lib/api';
+import { ChevronDown, ChevronRight, Truck, Calendar } from 'lucide-react';
 
 interface PyGDetalladoProps {
   marca: Marca;
@@ -57,6 +57,7 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
 
   const [lejaniasLogistica, setLejaniasLogistica] = useState<DetalleLejaniasLogistica | null>(null);
   const [loadingLejanias, setLoadingLejanias] = useState(false);
+  const [mesSeleccionado, setMesSeleccionado] = useState<string>(getMesActual());
 
   // Cargar datos de lejanías logísticas
   useEffect(() => {
@@ -200,12 +201,22 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
   const subtotalAdministrativoGastos = grupos.administrativoGastos.reduce((sum, r) => sum + r.valor_total, 0);
   const totalAdministrativo = subtotalAdministrativoPersonal + subtotalAdministrativoGastos;
 
-  // Ventas y descuentos
-  const ventasBrutas = marca.ventas_mensuales || 0;
+  // Ventas y descuentos - usar mes seleccionado si hay desglose disponible
+  const obtenerVentasMes = (): number => {
+    if (marca.ventas_mensuales_desglose) {
+      const desglose = marca.ventas_mensuales_desglose as VentasMensualesDesglose;
+      return desglose[mesSeleccionado as keyof VentasMensualesDesglose] || marca.ventas_mensuales || 0;
+    }
+    return marca.ventas_mensuales || 0;
+  };
+
+  const ventasBrutas = obtenerVentasMes();
   const totalDescuentos = (marca.descuento_pie_factura || 0) +
                           (marca.rebate || 0) +
                           (marca.descuento_financiero || 0);
-  const ventasNetas = marca.ventas_netas_mensuales || ventasBrutas;
+  // Calcular ventas netas proporcionales al mes seleccionado
+  const porcentajeDescuento = marca.porcentaje_descuento_total || 0;
+  const ventasNetas = ventasBrutas * (1 - porcentajeDescuento / 100);
 
   // Costos e impuestos
   const totalCostos = totalComercial + totalLogistico + totalAdministrativo;
@@ -497,11 +508,25 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
 
   return (
     <div className="bg-white border border-gray-200 rounded">
-      {/* Header */}
-      <div className="px-3 py-2 border-b border-gray-200 bg-gray-50">
+      {/* Header con selector de mes */}
+      <div className="px-3 py-2 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
         <h3 className="text-sm font-semibold text-gray-800">
           Estado de Resultados - {marca.nombre}
         </h3>
+        <div className="flex items-center gap-2">
+          <Calendar size={14} className="text-gray-500" />
+          <select
+            value={mesSeleccionado}
+            onChange={(e) => setMesSeleccionado(e.target.value)}
+            className="text-xs border border-gray-300 rounded px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          >
+            {MESES.map((mes) => (
+              <option key={mes.value} value={mes.value}>
+                {mes.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* SECCIÓN: INGRESOS */}
