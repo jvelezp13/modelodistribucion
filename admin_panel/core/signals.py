@@ -55,7 +55,9 @@ def calculate_hr_expenses(escenario):
             count_dotacion = personal_grupo.filter(salario_base__lte=tope_dotacion).aggregate(
                 total=Sum('cantidad')
             )['total'] or 0
-            valor_dotacion = (count_dotacion * politica.valor_dotacion_completa * politica.frecuencia_dotacion_anual) / 12
+            # Fórmula: (cantidad * valor_dotacion) / frecuencia_meses
+            # Ej: 10 empleados * $200,000 / 4 meses = $500,000/mes
+            valor_dotacion = (count_dotacion * politica.valor_dotacion_completa) / politica.frecuencia_dotacion_meses
             
             if valor_dotacion > 0:
                 model_gasto.objects.update_or_create(
@@ -100,8 +102,10 @@ def calculate_hr_expenses(escenario):
 
             # --- 3. EPP (SOLO COMERCIAL) ---
             if tipo_personal == 'comercial':
-                # EPP aplica a TODOS los comerciales (o definir criterio, aquí asumimos todos)
-                valor_epp = (count_total * politica.valor_epp_anual_comercial * politica.frecuencia_epp_anual) / 12
+                # EPP aplica a TODOS los comerciales
+                # Fórmula: (cantidad * valor_epp) / frecuencia_meses
+                # Ej: 10 empleados * $100,000 / 24 meses = $41,667/mes (si es cada 2 años)
+                valor_epp = (count_total * politica.valor_epp_anual_comercial) / politica.frecuencia_epp_meses
                 
                 if valor_epp > 0:
                     model_gasto.objects.update_or_create(

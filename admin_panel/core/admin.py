@@ -925,27 +925,28 @@ class PoliticaRecursosHumanosAdmin(DuplicarMixin, admin.ModelAdmin):
     list_display = (
         'anio',
         'valor_dotacion_formateado',
-        'frecuencia_dotacion_anual',
-        'costo_examen_ingreso_comercial_formateado',
-        'costo_examen_ingreso_operativo_formateado',
+        'frecuencia_dotacion_display',
+        'frecuencia_epp_display',
         'tasa_rotacion_percent',
+        'indice_incremento',
         'activo'
     )
-    list_filter = ('activo', 'anio')
+    list_filter = ('activo', 'anio', 'indice_incremento')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
     actions = ['duplicar_registros']
 
     fieldsets = (
-        ('Año', {
-            'fields': ('anio', 'activo')
+        ('Año y Proyección', {
+            'fields': ('anio', 'indice_incremento', 'activo'),
+            'description': 'El índice de incremento se usa al proyectar valores monetarios al siguiente año'
         }),
         ('Dotación', {
-            'fields': ('valor_dotacion_completa', 'frecuencia_dotacion_anual', 'tope_smlv_dotacion'),
-            'description': 'Configuración para cálculo automático de dotación'
+            'fields': ('valor_dotacion_completa', 'frecuencia_dotacion_meses', 'tope_smlv_dotacion'),
+            'description': 'Frecuencia en meses: 4 = cada 4 meses (3 veces/año), 6 = cada 6 meses (2 veces/año)'
         }),
         ('EPP (Comercial)', {
-            'fields': ('valor_epp_anual_comercial', 'frecuencia_epp_anual'),
-            'description': 'Configuración para EPP específico de personal comercial'
+            'fields': ('valor_epp_anual_comercial', 'frecuencia_epp_meses'),
+            'description': 'Frecuencia en meses: 12 = cada año, 24 = cada 2 años'
         }),
         ('Exámenes Médicos', {
             'fields': (
@@ -976,6 +977,24 @@ class PoliticaRecursosHumanosAdmin(DuplicarMixin, admin.ModelAdmin):
     def tasa_rotacion_percent(self, obj):
         return f"{obj.tasa_rotacion_anual:.1f}%"
     tasa_rotacion_percent.short_description = 'Rotación'
+
+    def frecuencia_dotacion_display(self, obj):
+        meses = obj.frecuencia_dotacion_meses
+        veces_anio = 12 / meses
+        if veces_anio == int(veces_anio):
+            return f"c/{meses}m ({int(veces_anio)}x/año)"
+        return f"c/{meses}m ({veces_anio:.1f}x/año)"
+    frecuencia_dotacion_display.short_description = 'Frec. Dotación'
+
+    def frecuencia_epp_display(self, obj):
+        meses = obj.frecuencia_epp_meses
+        if meses >= 12:
+            anios = meses / 12
+            if anios == int(anios):
+                return f"c/{int(anios)} año(s)"
+            return f"c/{anios:.1f} años"
+        return f"c/{meses} meses"
+    frecuencia_epp_display.short_description = 'Frec. EPP'
 
 
 # ============================================================================

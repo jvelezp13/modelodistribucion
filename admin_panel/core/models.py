@@ -1350,18 +1350,28 @@ class PoliticaRecursosHumanos(models.Model):
     """Políticas de RRHH (Dotación, Exámenes, etc.)"""
 
     anio = models.IntegerField(unique=True, verbose_name="Año")
-    
+
+    # Índice de incremento para proyecciones
+    indice_incremento = models.CharField(
+        max_length=20,
+        choices=INDICE_INCREMENTO_CHOICES,
+        default='ipc',
+        verbose_name="Índice de Incremento",
+        help_text="Índice a usar para proyectar valores monetarios al siguiente año"
+    )
+
     # Dotación
     valor_dotacion_completa = models.DecimalField(
-        max_digits=12, 
-        decimal_places=2, 
+        max_digits=12,
+        decimal_places=2,
         verbose_name="Valor Dotación Completa",
         help_text="Costo unitario de una dotación completa"
     )
-    frecuencia_dotacion_anual = models.IntegerField(
-        default=3,
-        verbose_name="Frecuencia Anual",
-        help_text="Cuántas veces al año se entrega dotación"
+    frecuencia_dotacion_meses = models.IntegerField(
+        default=4,
+        validators=[MinValueValidator(1), MaxValueValidator(60)],
+        verbose_name="Frecuencia Dotación (meses)",
+        help_text="Cada cuántos meses se entrega dotación (ej: 4 = cada 4 meses = 3 veces al año)"
     )
     tope_smlv_dotacion = models.DecimalField(
         max_digits=4,
@@ -1373,7 +1383,12 @@ class PoliticaRecursosHumanos(models.Model):
 
     # EPP (Solo Comercial)
     valor_epp_anual_comercial = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Valor EPP Anual (Comercial)")
-    frecuencia_epp_anual = models.IntegerField(default=1, verbose_name="Frecuencia EPP Anual")
+    frecuencia_epp_meses = models.IntegerField(
+        default=12,
+        validators=[MinValueValidator(1), MaxValueValidator(60)],
+        verbose_name="Frecuencia EPP (meses)",
+        help_text="Cada cuántos meses se entrega EPP (ej: 24 = cada 2 años, 12 = cada año)"
+    )
 
     # Exámenes Médicos
     costo_examen_ingreso_comercial = models.DecimalField(
