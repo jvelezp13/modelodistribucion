@@ -462,10 +462,11 @@ class ParametrosMacroAdmin(admin.ModelAdmin):
 
 
 @admin.register(FactorPrestacional, site=dxv_admin_site)
-class FactorPrestacionalAdmin(admin.ModelAdmin):
+class FactorPrestacionalAdmin(DuplicarMixin, admin.ModelAdmin):
     list_display = ('perfil', 'factor_total_percent', 'pension_percent', 'salud_percent', 'fecha_modificacion')
     list_filter = ('perfil',)
     readonly_fields = ('factor_total_display', 'fecha_creacion', 'fecha_modificacion')
+    actions = ['duplicar_registros']
 
     fieldsets = (
         ('Perfil', {

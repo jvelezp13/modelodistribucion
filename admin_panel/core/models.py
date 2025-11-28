@@ -597,9 +597,9 @@ class FactorPrestacional(models.Model):
     PERFIL_CHOICES = [
         ('comercial', 'Comercial'),
         ('administrativo', 'Administrativo'),
-        ('logistico', 'Logístico'),
         ('logistico_bodega', 'Logístico Bodega'),
         ('logistico_calle', 'Logístico Calle'),
+        ('logistico', 'Logístico (General)'),  # Mantener por compatibilidad, usar bodega o calle preferiblemente
         ('aprendiz_sena', 'Aprendiz SENA'),
     ]
 
