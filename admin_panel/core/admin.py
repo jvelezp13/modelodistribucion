@@ -827,7 +827,7 @@ class ImpuestoAdmin(admin.ModelAdmin):
 
     def valor_display(self, obj):
         if obj.porcentaje:
-            return f"{obj.porcentaje * 100:.2f}%"
+            return f"{obj.porcentaje:.2f}%"
         elif obj.valor_fijo:
             return f"${obj.valor_fijo:,.0f}"
         return "-"

@@ -636,6 +636,98 @@ def serializar_rubro(rubro) -> Dict[str, Any]:
     return rubro_dict
 
 
+@app.get("/api/impuestos")
+def obtener_impuestos(
+    tipo: Optional[str] = None,
+    activo: bool = True
+) -> List[Dict[str, Any]]:
+    """
+    Obtiene los impuestos configurados.
+
+    Args:
+        tipo: Filtrar por tipo (renta, ica, iva, etc.)
+        activo: Solo impuestos activos (default True)
+
+    Returns:
+        Lista de impuestos con su configuración
+    """
+    try:
+        from core.models import Impuesto
+
+        queryset = Impuesto.objects.all()
+
+        if activo:
+            queryset = queryset.filter(activo=True)
+
+        if tipo:
+            queryset = queryset.filter(tipo=tipo)
+
+        impuestos = []
+        for imp in queryset:
+            impuestos.append({
+                'id': imp.id,
+                'nombre': imp.nombre,
+                'tipo': imp.tipo,
+                'tipo_display': imp.get_tipo_display(),
+                'aplicacion': imp.aplicacion,
+                'aplicacion_display': imp.get_aplicacion_display(),
+                # Porcentaje en formato decimal para cálculos (33% -> 0.33)
+                'porcentaje': float(imp.porcentaje) / 100 if imp.porcentaje else None,
+                # Porcentaje en formato display (33% -> 33)
+                'porcentaje_display': float(imp.porcentaje) if imp.porcentaje else None,
+                'valor_fijo': float(imp.valor_fijo) if imp.valor_fijo else None,
+                'periodicidad': imp.periodicidad,
+                'periodicidad_display': imp.get_periodicidad_display(),
+                'activo': imp.activo
+            })
+
+        return impuestos
+
+    except Exception as e:
+        logger.error(f"Error obteniendo impuestos: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/impuestos/renta")
+def obtener_tasa_renta() -> Dict[str, Any]:
+    """
+    Obtiene la tasa de impuesto de renta configurada.
+
+    Returns:
+        Tasa de renta en formato decimal (0.33 para 33%)
+    """
+    try:
+        from core.models import Impuesto
+
+        impuesto_renta = Impuesto.objects.filter(
+            tipo='renta',
+            aplicacion='sobre_utilidad',
+            activo=True
+        ).first()
+
+        if not impuesto_renta:
+            # Valor por defecto si no está configurado
+            return {
+                'configurado': False,
+                'tasa': 0.33,
+                'tasa_porcentaje': 33,
+                'mensaje': 'Impuesto de renta no configurado, usando valor por defecto (33%)'
+            }
+
+        return {
+            'configurado': True,
+            'id': impuesto_renta.id,
+            'nombre': impuesto_renta.nombre,
+            'tasa': float(impuesto_renta.porcentaje) / 100,  # Para cálculos (0.33)
+            'tasa_porcentaje': float(impuesto_renta.porcentaje),  # Para display (33)
+            'periodicidad': impuesto_renta.periodicidad
+        }
+
+    except Exception as e:
+        logger.error(f"Error obteniendo tasa de renta: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

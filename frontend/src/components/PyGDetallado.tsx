@@ -62,6 +62,22 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
   const [lejaniasLogistica, setLejaniasLogistica] = useState<DetalleLejaniasLogistica | null>(null);
   const [loadingLejanias, setLoadingLejanias] = useState(false);
   const [mesSeleccionado, setMesSeleccionado] = useState<string>(getMesActual());
+  const [tasaImpuestoRenta, setTasaImpuestoRenta] = useState<number>(0.33); // Default 33%
+
+  // Cargar tasa de impuesto de renta desde el backend
+  useEffect(() => {
+    const fetchTasaRenta = async () => {
+      try {
+        const response = await apiClient.obtenerTasaRenta();
+        setTasaImpuestoRenta(response.tasa);
+      } catch (error) {
+        console.error('Error cargando tasa de renta, usando default 33%:', error);
+        setTasaImpuestoRenta(0.33);
+      }
+    };
+
+    fetchTasaRenta();
+  }, []);
 
   // Cargar datos de lejanías logísticas
   useEffect(() => {
@@ -249,9 +265,8 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
   // 7. UTILIDAD ANTES DE IMPUESTOS
   const utilidadAntesImpuestos = utilidadOperacional + totalOtrosIngresos;
 
-  // 8. IMPUESTOS (33% en Colombia)
-  const tasaImpuesto = 0.33;
-  const impuestoRenta = utilidadAntesImpuestos > 0 ? utilidadAntesImpuestos * tasaImpuesto : 0;
+  // 8. IMPUESTOS (tasa desde backend, default 33%)
+  const impuestoRenta = utilidadAntesImpuestos > 0 ? utilidadAntesImpuestos * tasaImpuestoRenta : 0;
 
   // 9. UTILIDAD NETA
   const utilidadNeta = utilidadAntesImpuestos - impuestoRenta;
@@ -913,7 +928,7 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
       <SeccionHeader titulo="Impuestos" seccion="impuestos" valor={impuestoRenta} bgColor="bg-gray-700" />
       {seccionesAbiertas.impuestos && (
         <div>
-          <LineaItem titulo={`Impuesto de Renta (${(tasaImpuesto * 100).toFixed(0)}%)`} valor={impuestoRenta} indent={1} negativo />
+          <LineaItem titulo={`Impuesto de Renta (${(tasaImpuestoRenta * 100).toFixed(0)}%)`} valor={impuestoRenta} indent={1} negativo />
           <LineaItem titulo="Total Impuestos" valor={impuestoRenta} bold />
         </div>
       )}

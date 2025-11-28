@@ -337,6 +337,24 @@ class APIClient {
       `/api/lejanias/logistica?escenario_id=${escenarioId}&marca_id=${marcaId}`
     );
   }
+
+  /**
+   * Obtiene la tasa de impuesto de renta desde el backend
+   */
+  async obtenerTasaRenta(): Promise<TasaRentaResponse> {
+    return this.request<TasaRentaResponse>('/api/impuestos/renta');
+  }
+}
+
+// Interfaz para respuesta de tasa de renta
+export interface TasaRentaResponse {
+  configurado: boolean;
+  tasa: number;           // En decimal (0.33)
+  tasa_porcentaje: number; // En porcentaje (33)
+  id?: number;
+  nombre?: string;
+  periodicidad?: string;
+  mensaje?: string;
 }
 
 export const apiClient = new APIClient();
