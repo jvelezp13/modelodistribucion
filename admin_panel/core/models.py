@@ -1184,14 +1184,15 @@ class Impuesto(models.Model):
     tipo = models.CharField(max_length=50, choices=TIPO_CHOICES, verbose_name="Tipo")
     aplicacion = models.CharField(max_length=20, choices=APLICACION_CHOICES, verbose_name="Aplicación")
 
-    # Para impuestos porcentuales
+    # Para impuestos porcentuales (formato 0-100)
     porcentaje = models.DecimalField(
-        max_digits=6,
-        decimal_places=4,
+        max_digits=5,
+        decimal_places=2,
         null=True,
         blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
         verbose_name="Porcentaje (%)",
-        help_text="Para impuestos sobre ventas o utilidad"
+        help_text="Ingrese en formato 0-100 (ej: 33 para 33%, 0.41 para 0.41%)"
     )
 
     # Para impuestos fijos
@@ -1219,7 +1220,7 @@ class Impuesto(models.Model):
 
     def __str__(self):
         if self.porcentaje:
-            return f"{self.get_tipo_display()} - {self.porcentaje * 100:.2f}%"
+            return f"{self.get_tipo_display()} - {self.porcentaje:.2f}%"
         elif self.valor_fijo:
             return f"{self.get_tipo_display()} - ${self.valor_fijo:,.0f}"
         return self.get_tipo_display()
