@@ -913,6 +913,7 @@ class ConfiguracionDescuentosAdmin(admin.ModelAdmin):
     descuento_financiero_display.short_description = 'Desc. Financiero'
 
     def total_tramos_display(self, obj):
+        from django.utils.html import format_html
         total = obj.total_tramos_porcentaje()
         if abs(total - 100) < 0.01:
             color = "green"
@@ -923,9 +924,8 @@ class ConfiguracionDescuentosAdmin(admin.ModelAdmin):
         else:
             color = "red"
             status = "✗"
-        return f'<span style="color: {color}; font-weight: bold;">{status} {total:.2f}%</span>'
+        return format_html('<span style="color: {}; font-weight: bold;">{} {:.2f}%</span>', color, status, total)
     total_tramos_display.short_description = 'Total Tramos'
-    total_tramos_display.allow_tags = True
 
     def save_model(self, request, obj, form, change):
         """Valida antes de guardar"""
