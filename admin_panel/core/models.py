@@ -1804,6 +1804,7 @@ class ConfiguracionLejania(models.Model):
         max_length=20,
         choices=[
             ('SEMANAL', 'Semanal (4 veces/mes)'),
+            ('TRISEMANAL', '3 veces al mes'),
             ('QUINCENAL', 'Quincenal (2 veces/mes)'),
             ('MENSUAL', 'Mensual (1 vez/mes)'),
         ],
