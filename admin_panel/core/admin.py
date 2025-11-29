@@ -1284,7 +1284,7 @@ class RecorridoMunicipioInline(admin.TabularInline):
 @admin.register(RutaLogistica, site=dxv_admin_site)
 class RecorridoLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
     """Admin para Recorridos Logísticos (circuitos que hace un vehículo)"""
-    list_display = ('nombre', 'marca', 'vehiculo', 'esquema_vehiculo', 'frecuencia', 'viajes_por_periodo', 'requiere_pernocta', 'activo')
+    list_display = ('nombre', 'marca', 'vehiculo', 'esquema_vehiculo', 'total_flete_base', 'viajes_por_periodo', 'requiere_pernocta', 'activo')
     list_filter = ('marca', 'escenario', 'vehiculo__esquema', 'frecuencia', 'requiere_pernocta', 'activo')
     search_fields = ['nombre', 'vehiculo__tipo_vehiculo']
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
@@ -1318,8 +1318,13 @@ class RecorridoLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
         return obj.vehiculo.get_esquema_display() if obj.vehiculo else '-'
     esquema_vehiculo.short_description = 'Esquema'
 
+    def total_flete_base(self, obj):
+        total = obj.municipios.aggregate(total=Sum('flete_base'))['total'] or 0
+        return f"${total:,.0f}"
+    total_flete_base.short_description = 'Flete Base Total'
+
     def get_queryset(self, request):
-        return super().get_queryset(request).select_related('marca', 'vehiculo', 'escenario')
+        return super().get_queryset(request).select_related('marca', 'vehiculo', 'escenario').prefetch_related('municipios')
 
 
 @admin.register(RutaMunicipio, site=dxv_admin_site)
