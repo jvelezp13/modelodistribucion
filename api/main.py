@@ -249,6 +249,9 @@ def obtener_detalle_lejanias_comercial(
     """
     Obtiene el detalle de lejanías comerciales por zona.
 
+    Lee los totales desde GastoComercial (calculados por signals de Django)
+    y genera el detalle por zona para visualización en frontend.
+
     Args:
         escenario_id: ID del escenario
         marca_id: ID de la marca
@@ -257,18 +260,35 @@ def obtener_detalle_lejanias_comercial(
         Detalle de lejanías comerciales por zona
     """
     try:
-        from core.models import Escenario, Marca, Zona
-        from core.calculator_lejanias import CalculadoraLejanias
+        from core.models import (
+            Escenario, Marca, Zona, GastoComercial,
+            ConfiguracionLejania, MatrizDesplazamiento
+        )
+        from decimal import Decimal
 
         # Obtener escenario y marca
         escenario = Escenario.objects.get(pk=escenario_id)
         marca = Marca.objects.get(marca_id=marca_id)
 
-        # Inicializar calculadora
-        calc = CalculadoraLejanias(escenario)
+        # Obtener configuración de lejanías
+        try:
+            config = ConfiguracionLejania.objects.get(escenario=escenario)
+        except ConfiguracionLejania.DoesNotExist:
+            config = None
 
-        # Debug: verificar configuración
-        logger.info(f"Config lejanías: {calc.config}, Params macro: {calc.params_macro}")
+        # Leer totales desde GastoComercial (ya calculados por signals)
+        gastos_combustible = GastoComercial.objects.filter(
+            escenario=escenario,
+            marca=marca,
+            tipo='transporte_vendedores',
+            nombre__startswith='Combustible Lejanía'
+        )
+        gastos_pernocta = GastoComercial.objects.filter(
+            escenario=escenario,
+            marca=marca,
+            tipo='viaticos',
+            nombre__startswith='Viáticos Pernocta'
+        )
 
         # Obtener zonas de la marca
         zonas = Zona.objects.filter(
@@ -277,38 +297,77 @@ def obtener_detalle_lejanias_comercial(
             activo=True
         ).prefetch_related('municipios__municipio').select_related('vendedor', 'municipio_base_vendedor')
 
-        logger.info(f"Zonas encontradas: {zonas.count()}")
-
-        # Calcular para cada zona
+        # Construir detalle por zona
         detalle_zonas = []
         total_combustible = 0.0
         total_pernocta = 0.0
 
         for zona in zonas:
-            # Debug: verificar datos de la zona
-            municipios_count = zona.municipios.count()
-            logger.info(f"Zona: {zona.nombre}, Base vendedor: {zona.municipio_base_vendedor}, Municipios: {municipios_count}")
+            # Buscar gastos de esta zona específica
+            combustible_zona = gastos_combustible.filter(
+                nombre=f'Combustible Lejanía - {zona.nombre}'
+            ).first()
+            pernocta_zona = gastos_pernocta.filter(
+                nombre=f'Viáticos Pernocta - {zona.nombre}'
+            ).first()
 
-            resultado = calc.calcular_lejania_comercial_zona(zona)
-            logger.info(f"Resultado zona {zona.nombre}: {resultado}")
+            combustible_mensual = float(combustible_zona.valor_mensual) if combustible_zona else 0.0
+            pernocta_mensual = float(pernocta_zona.valor_mensual) if pernocta_zona else 0.0
+
+            # Generar detalle de municipios para visualización
+            detalle_municipios = []
+            base_vendedor = zona.municipio_base_vendedor or (config.municipio_bodega if config else None)
+
+            if base_vendedor and config:
+                consumo_km_galon = config.consumo_galon_km_moto if zona.tipo_vehiculo_comercial == 'MOTO' else config.consumo_galon_km_automovil
+                precio_galon = config.precio_galon_gasolina
+                umbral = config.umbral_lejania_comercial_km
+
+                for zona_mun in zona.municipios.all():
+                    municipio = zona_mun.municipio
+                    try:
+                        matriz = MatrizDesplazamiento.objects.get(
+                            origen_id=base_vendedor.id,
+                            destino_id=municipio.id
+                        )
+                        distancia_km = float(matriz.distancia_km)
+                        distancia_efectiva = max(0, distancia_km - umbral)
+                    except MatrizDesplazamiento.DoesNotExist:
+                        distancia_km = 0
+                        distancia_efectiva = 0
+
+                    visitas_mensuales = float(zona_mun.visitas_mensuales())
+
+                    detalle_municipios.append({
+                        'municipio': municipio.nombre,
+                        'municipio_id': municipio.id,
+                        'distancia_km': distancia_km,
+                        'distancia_efectiva_km': distancia_efectiva,
+                        'visitas_por_periodo': zona_mun.visitas_por_periodo,
+                        'visitas_mensuales': visitas_mensuales,
+                    })
 
             detalle_zonas.append({
                 'zona_id': zona.id,
                 'zona_nombre': zona.nombre,
                 'vendedor': zona.vendedor.nombre if zona.vendedor else 'Sin asignar',
-                'ciudad_base': zona.municipio_base_vendedor.nombre if zona.municipio_base_vendedor else 'Sin configurar',
+                'ciudad_base': base_vendedor.nombre if base_vendedor else 'Sin configurar',
                 'tipo_vehiculo': zona.tipo_vehiculo_comercial,
                 'frecuencia': zona.get_frecuencia_display(),
                 'requiere_pernocta': zona.requiere_pernocta,
                 'noches_pernocta': zona.noches_pernocta,
-                'combustible_mensual': float(resultado['combustible_mensual']),
-                'pernocta_mensual': float(resultado['pernocta_mensual']),
-                'total_mensual': float(resultado['total_mensual']),
-                'detalle': resultado['detalle']
+                'combustible_mensual': combustible_mensual,
+                'pernocta_mensual': pernocta_mensual,
+                'total_mensual': combustible_mensual + pernocta_mensual,
+                'detalle': {
+                    'base': base_vendedor.nombre if base_vendedor else None,
+                    'tipo_vehiculo': zona.tipo_vehiculo_comercial,
+                    'municipios': detalle_municipios,
+                }
             })
 
-            total_combustible += float(resultado['combustible_mensual'])
-            total_pernocta += float(resultado['pernocta_mensual'])
+            total_combustible += combustible_mensual
+            total_pernocta += pernocta_mensual
 
         return {
             'marca_id': marca_id,
@@ -322,6 +381,10 @@ def obtener_detalle_lejanias_comercial(
             'zonas': detalle_zonas
         }
 
+    except Escenario.DoesNotExist:
+        raise HTTPException(status_code=404, detail=f"Escenario no encontrado: {escenario_id}")
+    except Marca.DoesNotExist:
+        raise HTTPException(status_code=404, detail=f"Marca no encontrada: {marca_id}")
     except Exception as e:
         logger.error(f"Error obteniendo detalle de lejanías comerciales: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -335,6 +398,9 @@ def obtener_detalle_lejanias_logistica(
     """
     Obtiene el detalle de lejanías logísticas por ruta/vehículo.
 
+    Lee los totales desde GastoLogistico (calculados por signals de Django)
+    y genera el detalle por ruta para visualización en frontend.
+
     Args:
         escenario_id: ID del escenario
         marca_id: ID de la marca
@@ -343,15 +409,48 @@ def obtener_detalle_lejanias_logistica(
         Detalle de lejanías logísticas por ruta (vehículo/tercero)
     """
     try:
-        from core.models import Escenario, Marca, RutaLogistica
-        from core.calculator_lejanias import CalculadoraLejanias
+        from core.models import (
+            Escenario, Marca, RutaLogistica, GastoLogistico,
+            ConfiguracionLejania, MatrizDesplazamiento
+        )
+        from decimal import Decimal
+        from django.db.models import Sum
 
         # Obtener escenario y marca
         escenario = Escenario.objects.get(pk=escenario_id)
         marca = Marca.objects.get(marca_id=marca_id)
 
-        # Inicializar calculadora
-        calc = CalculadoraLejanias(escenario)
+        # Obtener configuración de lejanías
+        try:
+            config = ConfiguracionLejania.objects.get(escenario=escenario)
+        except ConfiguracionLejania.DoesNotExist:
+            config = None
+
+        # Leer gastos desde GastoLogistico (ya calculados por signals)
+        gastos_combustible = GastoLogistico.objects.filter(
+            escenario=escenario,
+            marca=marca,
+            tipo='combustible',
+            nombre__startswith='Combustible -'
+        )
+        gastos_peajes = GastoLogistico.objects.filter(
+            escenario=escenario,
+            marca=marca,
+            tipo='peajes',
+            nombre__startswith='Peajes -'
+        )
+        gastos_viaticos = GastoLogistico.objects.filter(
+            escenario=escenario,
+            marca=marca,
+            tipo='otros',
+            nombre__startswith='Viáticos Ruta -'
+        )
+        gastos_flete = GastoLogistico.objects.filter(
+            escenario=escenario,
+            marca=marca,
+            tipo='otros',
+            nombre__startswith='Flete Base Tercero -'
+        )
 
         # Obtener rutas logísticas de la marca
         rutas = RutaLogistica.objects.filter(
@@ -360,18 +459,74 @@ def obtener_detalle_lejanias_logistica(
             activo=True
         ).prefetch_related('municipios__municipio').select_related('vehiculo')
 
-        # Calcular para cada ruta
+        # Construir detalle por ruta
         detalle_rutas = []
         total_flete_base = 0.0
         total_combustible = 0.0
         total_peaje = 0.0
-        total_pernocta_conductor = 0.0
-        total_pernocta_auxiliar = 0.0
-        total_parqueadero = 0.0
         total_pernocta = 0.0
 
         for ruta in rutas:
-            resultado = calc.calcular_lejania_logistica_ruta(ruta)
+            # Buscar gastos de esta ruta específica
+            combustible_ruta = gastos_combustible.filter(
+                nombre=f'Combustible - {ruta.nombre}'
+            ).first()
+            peaje_ruta = gastos_peajes.filter(
+                nombre=f'Peajes - {ruta.nombre}'
+            ).first()
+            viaticos_ruta = gastos_viaticos.filter(
+                nombre=f'Viáticos Ruta - {ruta.nombre}'
+            ).first()
+            flete_ruta = gastos_flete.filter(
+                nombre=f'Flete Base Tercero - {ruta.nombre}'
+            ).first()
+
+            combustible_mensual = float(combustible_ruta.valor_mensual) if combustible_ruta else 0.0
+            peaje_mensual = float(peaje_ruta.valor_mensual) if peaje_ruta else 0.0
+            pernocta_mensual = float(viaticos_ruta.valor_mensual) if viaticos_ruta else 0.0
+            flete_base_mensual = float(flete_ruta.valor_mensual) if flete_ruta else 0.0
+
+            # Generar detalle de tramos para visualización
+            detalle_tramos = []
+            detalle_municipios = []
+            bodega = config.municipio_bodega if config else None
+
+            if bodega and ruta.vehiculo:
+                municipios_ordenados = list(ruta.municipios.all().order_by('orden_visita'))
+                puntos_circuito = [bodega] + [rm.municipio for rm in municipios_ordenados] + [bodega]
+
+                # Calcular tramos
+                for i in range(len(puntos_circuito) - 1):
+                    origen = puntos_circuito[i]
+                    destino = puntos_circuito[i + 1]
+                    try:
+                        matriz = MatrizDesplazamiento.objects.get(
+                            origen_id=origen.id,
+                            destino_id=destino.id
+                        )
+                        distancia_km = float(matriz.distancia_km)
+                        peaje = float(matriz.peaje_ida or 0)
+                    except MatrizDesplazamiento.DoesNotExist:
+                        distancia_km = 0
+                        peaje = 0
+
+                    detalle_tramos.append({
+                        'origen': origen.nombre,
+                        'destino': destino.nombre,
+                        'distancia_km': distancia_km,
+                        'peaje': peaje,
+                    })
+
+                # Detalle municipios
+                for ruta_mun in municipios_ordenados:
+                    detalle_municipios.append({
+                        'orden': ruta_mun.orden_visita,
+                        'municipio': ruta_mun.municipio.nombre,
+                        'municipio_id': ruta_mun.municipio.id,
+                        'flete_base': float(ruta_mun.flete_base or 0),
+                    })
+
+            ruta_total = flete_base_mensual + combustible_mensual + peaje_mensual + pernocta_mensual
 
             detalle_rutas.append({
                 'ruta_id': ruta.id,
@@ -383,24 +538,23 @@ def obtener_detalle_lejanias_logistica(
                 'frecuencia': ruta.get_frecuencia_display(),
                 'requiere_pernocta': ruta.requiere_pernocta,
                 'noches_pernocta': ruta.noches_pernocta,
-                'flete_base_mensual': float(resultado['flete_base_mensual']),
-                'combustible_mensual': float(resultado['combustible_mensual']),
-                'peaje_mensual': float(resultado['peaje_mensual']),
-                'pernocta_conductor_mensual': float(resultado['pernocta_conductor_mensual']),
-                'pernocta_auxiliar_mensual': float(resultado['pernocta_auxiliar_mensual']),
-                'parqueadero_mensual': float(resultado['parqueadero_mensual']),
-                'pernocta_mensual': float(resultado['pernocta_mensual']),
-                'total_mensual': float(resultado['total_mensual']),
-                'detalle': resultado['detalle']
+                'flete_base_mensual': flete_base_mensual,
+                'combustible_mensual': combustible_mensual,
+                'peaje_mensual': peaje_mensual,
+                'pernocta_mensual': pernocta_mensual,
+                'total_mensual': ruta_total,
+                'detalle': {
+                    'bodega': bodega.nombre if bodega else None,
+                    'vehiculo': str(ruta.vehiculo) if ruta.vehiculo else None,
+                    'municipios': detalle_municipios,
+                    'tramos': detalle_tramos,
+                }
             })
 
-            total_flete_base += float(resultado['flete_base_mensual'])
-            total_combustible += float(resultado['combustible_mensual'])
-            total_peaje += float(resultado['peaje_mensual'])
-            total_pernocta_conductor += float(resultado['pernocta_conductor_mensual'])
-            total_pernocta_auxiliar += float(resultado['pernocta_auxiliar_mensual'])
-            total_parqueadero += float(resultado['parqueadero_mensual'])
-            total_pernocta += float(resultado['pernocta_mensual'])
+            total_flete_base += flete_base_mensual
+            total_combustible += combustible_mensual
+            total_peaje += peaje_mensual
+            total_pernocta += pernocta_mensual
 
         total_mensual = total_flete_base + total_combustible + total_peaje + total_pernocta
 
@@ -412,15 +566,16 @@ def obtener_detalle_lejanias_logistica(
             'total_flete_base_mensual': total_flete_base,
             'total_combustible_mensual': total_combustible,
             'total_peaje_mensual': total_peaje,
-            'total_pernocta_conductor_mensual': total_pernocta_conductor,
-            'total_pernocta_auxiliar_mensual': total_pernocta_auxiliar,
-            'total_parqueadero_mensual': total_parqueadero,
             'total_pernocta_mensual': total_pernocta,
             'total_mensual': total_mensual,
             'total_anual': total_mensual * 12,
             'rutas': detalle_rutas
         }
 
+    except Escenario.DoesNotExist:
+        raise HTTPException(status_code=404, detail=f"Escenario no encontrado: {escenario_id}")
+    except Marca.DoesNotExist:
+        raise HTTPException(status_code=404, detail=f"Marca no encontrada: {marca_id}")
     except Exception as e:
         logger.error(f"Error obteniendo detalle de lejanías logísticas: {e}")
         raise HTTPException(status_code=500, detail=str(e))
