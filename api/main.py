@@ -327,26 +327,31 @@ def obtener_detalle_lejanias_comercial(
                 for zona_mun in zona.municipios.all():
                     municipio = zona_mun.municipio
 
-                    # Detectar si es visita local (mismo municipio que la base del vendedor)
-                    es_visita_local = (municipio.id == base_vendedor.id)
+                    # Si es visita local (mismo municipio que la base), no hay lejanía
+                    if municipio.id == base_vendedor.id:
+                        detalle_municipios.append({
+                            'municipio': municipio.nombre,
+                            'municipio_id': municipio.id,
+                            'distancia_km': 0,
+                            'distancia_efectiva_km': 0,
+                            'visitas_por_periodo': zona_mun.visitas_por_periodo,
+                            'visitas_mensuales': float(zona_mun.visitas_mensuales()),
+                            'combustible_mensual': 0,
+                            'es_visita_local': True,
+                        })
+                        continue
 
-                    if es_visita_local:
-                        # Visita local: usar km mínimo configurado, sin aplicar umbral
-                        distancia_km = km_minimo_local
-                        distancia_efectiva = km_minimo_local
-                    else:
-                        # Visita a otro municipio: buscar en matriz
-                        try:
-                            matriz = MatrizDesplazamiento.objects.get(
-                                origen_id=base_vendedor.id,
-                                destino_id=municipio.id
-                            )
-                            distancia_km = float(matriz.distancia_km)
-                        except MatrizDesplazamiento.DoesNotExist:
-                            distancia_km = 0
+                    # Visita a otro municipio: buscar en matriz
+                    try:
+                        matriz = MatrizDesplazamiento.objects.get(
+                            origen_id=base_vendedor.id,
+                            destino_id=municipio.id
+                        )
+                        distancia_km = float(matriz.distancia_km)
+                    except MatrizDesplazamiento.DoesNotExist:
+                        distancia_km = 0
 
-                        distancia_efectiva = max(0, distancia_km - umbral)
-
+                    distancia_efectiva = max(0, distancia_km - umbral)
                     visitas_mensuales = float(zona_mun.visitas_mensuales())
 
                     # Calcular combustible por municipio
@@ -365,7 +370,7 @@ def obtener_detalle_lejanias_comercial(
                         'visitas_por_periodo': zona_mun.visitas_por_periodo,
                         'visitas_mensuales': visitas_mensuales,
                         'combustible_mensual': combustible_municipio,
-                        'es_visita_local': es_visita_local,
+                        'es_visita_local': False,
                     })
 
             detalle_zonas.append({
