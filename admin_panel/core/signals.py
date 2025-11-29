@@ -555,8 +555,8 @@ def _calcular_lejania_logistica_ruta(ruta, config):
             config.alojamiento_conductor
         )
 
-        # Auxiliar(es) - usar cantidad_auxiliares del recorrido
-        cantidad_auxiliares = ruta.cantidad_auxiliares or 1
+        # Auxiliar(es) - usar cantidad_auxiliares del vehículo
+        cantidad_auxiliares = ruta.vehiculo.cantidad_auxiliares if ruta.vehiculo else 1
         gasto_auxiliar = (
             config.desayuno_auxiliar +
             config.almuerzo_auxiliar +
