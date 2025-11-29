@@ -1662,11 +1662,6 @@ class ConfiguracionLejania(models.Model):
         verbose_name="Umbral Comercial (km)",
         help_text="Aplicar lejania comercial desde X km"
     )
-    km_minimo_visita_local = models.IntegerField(
-        default=10,
-        verbose_name="Km mínimo visita local",
-        help_text="Km a sumar cuando el vendedor visita su propio municipio (desplazamientos internos)"
-    )
 
     # === COMBUSTIBLE COMERCIAL ===
     consumo_galon_km_moto = models.DecimalField(

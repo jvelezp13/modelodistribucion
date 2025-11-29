@@ -322,7 +322,6 @@ def obtener_detalle_lejanias_comercial(
                 consumo_km_galon = float(config.consumo_galon_km_moto if zona.tipo_vehiculo_comercial == 'MOTO' else config.consumo_galon_km_automovil)
                 precio_galon = float(config.precio_galon_gasolina)
                 umbral = float(config.umbral_lejania_comercial_km)
-                km_minimo_local = float(getattr(config, 'km_minimo_visita_local', 10))
 
                 for zona_mun in zona.municipios.all():
                     municipio = zona_mun.municipio

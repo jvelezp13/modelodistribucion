@@ -361,7 +361,6 @@ def _calcular_lejania_comercial_zona(zona, config):
 
     precio_galon = config.precio_galon_gasolina
     umbral = config.umbral_lejania_comercial_km
-    km_minimo_local = getattr(config, 'km_minimo_visita_local', 10)
 
     # Calcular combustible por cada municipio de la zona
     for zona_mun in zona.municipios.all():

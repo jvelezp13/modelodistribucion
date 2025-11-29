@@ -1113,7 +1113,7 @@ class ConfiguracionLejaniaAdmin(admin.ModelAdmin):
             'fields': ('escenario', 'municipio_bodega')
         }),
         ('Umbrales de Lejanía', {
-            'fields': ('umbral_lejania_logistica_km', 'umbral_lejania_comercial_km', 'km_minimo_visita_local'),
+            'fields': ('umbral_lejania_logistica_km', 'umbral_lejania_comercial_km'),
             'description': 'Distancia mínima en km para aplicar cálculo de lejanía'
         }),
         ('Precios de Combustible', {
