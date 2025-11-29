@@ -56,11 +56,13 @@ def copiar_instancia(
     }
     campos_excluir = campos_excluir_siempre | excluir_campos
 
-    # Identificar campos únicos de texto que necesitan sufijo
-    campos_unicos_texto = set()
+    # Identificar campos de texto que necesitan sufijo
+    # Incluye campos únicos Y el campo 'nombre' (común en modelos)
+    campos_con_sufijo = set()
     for field in instancia._meta.fields:
-        if field.unique and isinstance(field, (models.CharField, models.TextField)):
-            campos_unicos_texto.add(field.name)
+        if isinstance(field, (models.CharField, models.TextField)):
+            if field.unique or field.name == 'nombre':
+                campos_con_sufijo.add(field.name)
 
     # Construir diccionario con los valores de la instancia original
     data = {}
@@ -83,8 +85,8 @@ def copiar_instancia(
         if nombre_campo in campos_monetarios and valor is not None and factor_incremento != 0:
             valor = float(valor) * (1 + factor_incremento)
 
-        # Agregar sufijo a campos únicos de texto (nombre, perfil, marca_id, etc.)
-        if nombre_campo in campos_unicos_texto and sufijo_nombre and nombre_campo not in override:
+        # Agregar sufijo a campos de texto (nombre, perfil, etc.)
+        if nombre_campo in campos_con_sufijo and sufijo_nombre and nombre_campo not in override:
             if valor:
                 valor = f"{valor}{sufijo_nombre}"
 

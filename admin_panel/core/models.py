@@ -1895,6 +1895,7 @@ class Zona(models.Model):
         verbose_name = "Zona Comercial"
         verbose_name_plural = "Zonas Comerciales"
         ordering = ['marca', 'nombre']
+        unique_together = [['marca', 'escenario', 'nombre']]
 
     def __str__(self):
         return f"{self.nombre} - {self.marca}"
