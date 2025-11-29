@@ -1876,7 +1876,7 @@ class Zona(models.Model):
             ('QUINCENAL', 'Quincenal (2 periodos/mes)'),
             ('MENSUAL', 'Mensual (1 periodo/mes)'),
         ],
-        default='MENSUAL',
+        default='SEMANAL',
         verbose_name="Frecuencia de Visitas"
     )
 
