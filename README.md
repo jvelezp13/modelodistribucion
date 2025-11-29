@@ -121,9 +121,22 @@ Accede al Frontend (`/`) para:
 
 ## 📂 Estructura del Proyecto
 
-- `admin_panel/`: Backend Django (Modelos, Admin, Migraciones).
-- `api/`: API FastAPI (Endpoints de simulación).
-- `core/`: Lógica de negocio y calculadoras.
-- `frontend/`: Interfaz de usuario Next.js.
-- `models/`: Definiciones de clases base.
-- `utils/`: Cargadores de datos y utilidades.
+| Carpeta | Descripción |
+|---------|-------------|
+| `admin_panel/` | Panel Django - Gestión de datos, modelos, migraciones |
+| `api/` | API FastAPI - Endpoints para frontend |
+| `frontend/` | Dashboard Next.js - Visualización |
+| `core/` | Motor de cálculo Python |
+
+---
+
+## 🚀 Despliegue (Easypanel)
+
+Después de hacer cambios y push, desplegar según lo modificado:
+
+| Cambié... | Desplegar |
+|-----------|-----------|
+| Modelos, Admin, Services | **Panel** |
+| Endpoints en `api/main.py` | **API** |
+| Componentes React | **Frontend** |
+| Modelos + Endpoints | **Panel + API** |
