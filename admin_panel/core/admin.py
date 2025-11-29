@@ -924,7 +924,7 @@ class ConfiguracionDescuentosAdmin(admin.ModelAdmin):
         else:
             color = "red"
             status = "✗"
-        return format_html('<span style="color: {}; font-weight: bold;">{} {:.2f}%</span>', color, status, total)
+        return format_html('<span style="color: {}; font-weight: bold;">{} {}%</span>', color, status, f'{total:.2f}')
     total_tramos_display.short_description = 'Total Tramos'
 
     def save_model(self, request, obj, form, change):
