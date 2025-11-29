@@ -209,14 +209,15 @@ class PersonalComercialAdmin(DuplicarMixin, admin.ModelAdmin):
             'fields': ('marca', 'escenario', 'nombre', 'tipo', 'cantidad', 'salario_base', 'perfil_prestacional')
         }),
         ('Asignación por Marca', {
-            'fields': ('asignacion', 'porcentaje_dedicacion', 'criterio_prorrateo')
+            'fields': ('asignacion', 'porcentaje_dedicacion', 'criterio_prorrateo'),
+            'description': 'Individual = 100% a esta marca. Compartido = se distribuye entre marcas según criterio.'
         }),
-        ('Asignación Geográfica (P&G por Zona)', {
+        ('Asignación Geográfica', {
             'fields': ('tipo_asignacion_geo', 'zona'),
-            'description': 'Cómo se distribuye este costo entre las zonas comerciales'
+            'description': 'Directo = 100% a una zona. Proporcional = se distribuye entre zonas según venta.'
         }),
         ('Adicionales', {
-            'fields': ('auxilio_adicional',),
+            'fields': ('auxilio_adicional', 'indice_incremento'),
             'classes': ('collapse',)
         }),
         ('Metadata', {
@@ -284,11 +285,16 @@ class PersonalLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
             'fields': ('marca', 'escenario', 'nombre', 'tipo', 'cantidad', 'salario_base', 'perfil_prestacional')
         }),
         ('Asignación por Marca', {
-            'fields': ('asignacion', 'porcentaje_dedicacion', 'criterio_prorrateo')
+            'fields': ('asignacion', 'porcentaje_dedicacion', 'criterio_prorrateo'),
+            'description': 'Individual = 100% a esta marca. Compartido = se distribuye entre marcas según criterio.'
         }),
-        ('Asignación Geográfica (P&G por Zona)', {
+        ('Asignación Geográfica', {
             'fields': ('tipo_asignacion_geo', 'zona'),
-            'description': 'Cómo se distribuye este costo entre las zonas comerciales'
+            'description': 'Directo = 100% a una zona. Proporcional = se distribuye entre zonas según venta.'
+        }),
+        ('Adicionales', {
+            'fields': ('indice_incremento',),
+            'classes': ('collapse',)
         }),
         ('Metadata', {
             'fields': ('fecha_creacion', 'fecha_modificacion'),
@@ -595,28 +601,28 @@ class PersonalAdministrativoAdmin(DuplicarMixin, admin.ModelAdmin):
     actions = ['duplicar_registros']
 
     fieldsets = (
-        ('Asignación', {
-            'fields': ('marca', 'escenario', 'asignacion'),
-            'description': 'Si asignas a una marca específica, será individual. Si dejas marca vacía, será compartido.'
-        }),
         ('Información Básica', {
-            'fields': ('nombre', 'tipo', 'cantidad', 'tipo_contrato')
+            'fields': ('marca', 'escenario', 'nombre', 'tipo', 'cantidad', 'tipo_contrato')
         }),
         ('Nómina', {
             'fields': ('salario_base', 'perfil_prestacional'),
-            'classes': ('collapse',)
+            'description': 'Diligenciar solo si tipo de contrato es Nómina'
         }),
         ('Honorarios', {
             'fields': ('honorarios_mensuales',),
-            'classes': ('collapse',)
+            'description': 'Diligenciar solo si tipo de contrato es Honorarios'
         }),
-        ('Prorrateo (Solo Compartidos)', {
-            'fields': ('criterio_prorrateo',),
-            'description': 'Solo aplica si no tiene marca asignada'
+        ('Asignación por Marca', {
+            'fields': ('asignacion', 'criterio_prorrateo'),
+            'description': 'Individual = 100% a esta marca. Compartido = se distribuye entre marcas según criterio.'
         }),
-        ('Asignación Geográfica (P&G por Zona)', {
+        ('Asignación Geográfica', {
             'fields': ('tipo_asignacion_geo',),
-            'description': 'Cómo se distribuye este costo entre las zonas (típicamente compartido/equitativo)'
+            'description': 'Típicamente Proporcional (se distribuye entre zonas según venta)'
+        }),
+        ('Adicionales', {
+            'fields': ('indice_incremento',),
+            'classes': ('collapse',)
         }),
         ('Metadata', {
             'fields': ('fecha_creacion', 'fecha_modificacion'),
@@ -683,23 +689,19 @@ class GastoAdministrativoAdmin(DuplicarMixin, admin.ModelAdmin):
     actions = ['duplicar_registros']
 
     fieldsets = (
-        ('Asignación', {
-            'fields': ('marca', 'escenario', 'asignacion'),
-            'description': 'Si asignas a una marca específica, será individual. Si dejas marca vacía, será compartido.'
-        }),
         ('Información Básica', {
-            'fields': ('nombre', 'tipo', 'valor_mensual')
+            'fields': ('marca', 'escenario', 'nombre', 'tipo', 'valor_mensual')
         }),
-        ('Prorrateo (Solo Compartidos)', {
-            'fields': ('criterio_prorrateo',),
-            'description': 'Solo aplica si no tiene marca asignada'
+        ('Asignación por Marca', {
+            'fields': ('asignacion', 'criterio_prorrateo'),
+            'description': 'Individual = 100% a esta marca. Compartido = se distribuye entre marcas según criterio.'
         }),
-        ('Asignación Geográfica (P&G por Zona)', {
+        ('Asignación Geográfica', {
             'fields': ('tipo_asignacion_geo',),
-            'description': 'Cómo se distribuye este gasto entre las zonas (típicamente compartido/equitativo)'
+            'description': 'Típicamente Proporcional (se distribuye entre zonas según venta)'
         }),
-        ('Notas', {
-            'fields': ('notas',),
+        ('Adicionales', {
+            'fields': ('indice_incremento', 'notas'),
             'classes': ('collapse',)
         }),
         ('Metadata', {
@@ -742,12 +744,16 @@ class GastoComercialAdmin(DuplicarMixin, admin.ModelAdmin):
         ('Información Básica', {
             'fields': ('marca', 'escenario', 'nombre', 'tipo', 'valor_mensual')
         }),
-        ('Asignación Geográfica (P&G por Zona)', {
-            'fields': ('tipo_asignacion_geo', 'zona'),
-            'description': 'Cómo se distribuye este gasto entre las zonas comerciales'
+        ('Asignación por Marca', {
+            'fields': ('asignacion',),
+            'description': 'Individual = 100% a esta marca. Compartido = se distribuye entre marcas.'
         }),
-        ('Notas', {
-            'fields': ('notas',),
+        ('Asignación Geográfica', {
+            'fields': ('tipo_asignacion_geo', 'zona'),
+            'description': 'Directo = 100% a una zona. Proporcional = se distribuye entre zonas según venta.'
+        }),
+        ('Adicionales', {
+            'fields': ('indice_incremento', 'notas'),
             'classes': ('collapse',)
         }),
         ('Metadata', {
@@ -789,14 +795,18 @@ class GastoLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
     fieldsets = (
         ('Información Básica', {
             'fields': ('marca', 'escenario', 'nombre', 'tipo', 'valor_mensual'),
-            'description': '⚠️ IMPORTANTE: Para fletes de terceros (transportadoras externas), usar la tabla VEHÍCULOS con esquema="Tercero" en lugar de gastos logísticos. La opción "flete_tercero" ha sido deprecada.'
+            'description': '⚠️ Para fletes de terceros, usar VEHÍCULOS con esquema="Tercero".'
         }),
-        ('Asignación Geográfica (P&G por Zona)', {
+        ('Asignación por Marca', {
+            'fields': ('asignacion',),
+            'description': 'Individual = 100% a esta marca. Compartido = se distribuye entre marcas.'
+        }),
+        ('Asignación Geográfica', {
             'fields': ('tipo_asignacion_geo', 'zona'),
-            'description': 'Cómo se distribuye este gasto entre las zonas comerciales'
+            'description': 'Directo = 100% a una zona. Proporcional = se distribuye entre zonas según venta.'
         }),
-        ('Notas', {
-            'fields': ('notas',),
+        ('Adicionales', {
+            'fields': ('indice_incremento', 'notas'),
             'classes': ('collapse',)
         }),
         ('Metadata', {
