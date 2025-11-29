@@ -367,29 +367,27 @@ def _calcular_lejania_comercial_zona(zona, config):
     for zona_mun in zona.municipios.all():
         municipio = zona_mun.municipio
 
-        try:
-            matriz = MatrizDesplazamiento.objects.get(
-                origen_id=base_vendedor.id,
-                destino_id=municipio.id
-            )
-            distancia_km = matriz.distancia_km
-        except MatrizDesplazamiento.DoesNotExist:
-            # Si no hay matriz, usar km mínimo local si es el mismo municipio
-            if municipio.id == base_vendedor.id:
-                distancia_km = Decimal(km_minimo_local)
-            else:
-                continue
+        # Detectar si es visita local (mismo municipio que la base del vendedor)
+        es_visita_local = (municipio.id == base_vendedor.id)
 
-        visitas_mensuales = zona_mun.visitas_mensuales()
-        es_visita_local = (distancia_km == 0)
-
-        # Si la distancia es 0 (mismo municipio), usar km mínimo local POR VISITA
         if es_visita_local:
+            # Visita local: usar km mínimo configurado, sin aplicar umbral
             distancia_km = Decimal(km_minimo_local)
-            # Para visitas locales, no aplicar umbral - es un gasto fijo por visita
             distancia_efectiva = Decimal(km_minimo_local)
         else:
+            # Visita a otro municipio: buscar en matriz
+            try:
+                matriz = MatrizDesplazamiento.objects.get(
+                    origen_id=base_vendedor.id,
+                    destino_id=municipio.id
+                )
+                distancia_km = matriz.distancia_km
+            except MatrizDesplazamiento.DoesNotExist:
+                continue
+
             distancia_efectiva = max(Decimal('0'), distancia_km - umbral)
+
+        visitas_mensuales = zona_mun.visitas_mensuales()
 
         if distancia_efectiva > 0 and consumo_km_galon > 0:
             distancia_ida_vuelta = distancia_efectiva * 2

@@ -326,29 +326,28 @@ def obtener_detalle_lejanias_comercial(
 
                 for zona_mun in zona.municipios.all():
                     municipio = zona_mun.municipio
-                    try:
-                        matriz = MatrizDesplazamiento.objects.get(
-                            origen_id=base_vendedor.id,
-                            destino_id=municipio.id
-                        )
-                        distancia_km = float(matriz.distancia_km)
-                    except MatrizDesplazamiento.DoesNotExist:
-                        # Si no hay matriz, usar km mínimo local si es el mismo municipio
-                        if municipio.id == base_vendedor.id:
-                            distancia_km = km_minimo_local
-                        else:
-                            distancia_km = 0
 
-                    visitas_mensuales = float(zona_mun.visitas_mensuales())
-                    es_visita_local = (distancia_km == 0)
+                    # Detectar si es visita local (mismo municipio que la base del vendedor)
+                    es_visita_local = (municipio.id == base_vendedor.id)
 
-                    # Si la distancia es 0 (mismo municipio), usar km mínimo local POR VISITA
                     if es_visita_local:
+                        # Visita local: usar km mínimo configurado, sin aplicar umbral
                         distancia_km = km_minimo_local
-                        # Para visitas locales, no aplicar umbral - es un gasto fijo por visita
                         distancia_efectiva = km_minimo_local
                     else:
+                        # Visita a otro municipio: buscar en matriz
+                        try:
+                            matriz = MatrizDesplazamiento.objects.get(
+                                origen_id=base_vendedor.id,
+                                destino_id=municipio.id
+                            )
+                            distancia_km = float(matriz.distancia_km)
+                        except MatrizDesplazamiento.DoesNotExist:
+                            distancia_km = 0
+
                         distancia_efectiva = max(0, distancia_km - umbral)
+
+                    visitas_mensuales = float(zona_mun.visitas_mensuales())
 
                     # Calcular combustible por municipio
                     combustible_municipio = 0.0
