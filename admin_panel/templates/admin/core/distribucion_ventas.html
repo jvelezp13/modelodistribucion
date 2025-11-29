@@ -377,10 +377,10 @@
 </div>
 {% endblock %}
 
-{% block extrascript %}
+{% block footer %}
 {{ block.super }}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+(function() {
     // Manejo de tabs
     document.querySelectorAll('.tab').forEach(function(tab) {
         tab.addEventListener('click', function() {
@@ -538,6 +538,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Calcular participaciones iniciales
     recalcularParticipaciones('zonas');
     recalcularParticipaciones('municipios');
-});
+})();
 </script>
 {% endblock %}
