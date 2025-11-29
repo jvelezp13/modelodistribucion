@@ -433,6 +433,14 @@ class Vehiculo(models.Model):
     # Otros costos (Todos los esquemas)
     costo_seguro_mercancia_mensual = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Seguro de Mercancía", help_text="Seguro de carga transportada")
 
+    # Personal asociado al vehículo
+    cantidad_auxiliares = models.IntegerField(
+        default=1,
+        validators=[MinValueValidator(0)],
+        verbose_name="Auxiliares por Vehículo",
+        help_text="Cantidad de auxiliares de entrega fijos asignados a este vehículo"
+    )
+
     # Índice de incremento para proyecciones
     indice_incremento = models.CharField(
         max_length=20,
@@ -2220,14 +2228,6 @@ class RutaLogistica(models.Model):
         default=0,
         verbose_name="Noches de Pernocta",
         help_text="Cantidad de noches por recorrido completo"
-    )
-
-    # Auxiliares de entrega
-    cantidad_auxiliares = models.IntegerField(
-        default=1,
-        validators=[MinValueValidator(0), MaxValueValidator(2)],
-        verbose_name="Cantidad de Auxiliares",
-        help_text="Auxiliares de entrega que van en este recorrido (0, 1 o 2)"
     )
 
     activo = models.BooleanField(default=True, verbose_name="Activo")
