@@ -339,12 +339,16 @@ def obtener_detalle_lejanias_comercial(
                         else:
                             distancia_km = 0
 
-                    # Si la distancia es 0 (mismo municipio), usar km mínimo local
-                    if distancia_km == 0:
-                        distancia_km = km_minimo_local
-
-                    distancia_efectiva = max(0, distancia_km - umbral)
                     visitas_mensuales = float(zona_mun.visitas_mensuales())
+                    es_visita_local = (distancia_km == 0)
+
+                    # Si la distancia es 0 (mismo municipio), usar km mínimo local POR VISITA
+                    if es_visita_local:
+                        distancia_km = km_minimo_local
+                        # Para visitas locales, no aplicar umbral - es un gasto fijo por visita
+                        distancia_efectiva = km_minimo_local
+                    else:
+                        distancia_efectiva = max(0, distancia_km - umbral)
 
                     # Calcular combustible por municipio
                     combustible_municipio = 0.0
@@ -357,8 +361,8 @@ def obtener_detalle_lejanias_comercial(
                     detalle_municipios.append({
                         'municipio': municipio.nombre,
                         'municipio_id': municipio.id,
-                        'distancia_km': distancia_km,
-                        'distancia_efectiva_km': distancia_efectiva,
+                        'distancia_km': distancia_km * visitas_mensuales if es_visita_local else distancia_km,
+                        'distancia_efectiva_km': distancia_efectiva * visitas_mensuales if es_visita_local else distancia_efectiva,
                         'visitas_por_periodo': zona_mun.visitas_por_periodo,
                         'visitas_mensuales': visitas_mensuales,
                         'combustible_mensual': combustible_municipio,

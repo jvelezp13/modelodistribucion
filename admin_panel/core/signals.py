@@ -380,12 +380,16 @@ def _calcular_lejania_comercial_zona(zona, config):
             else:
                 continue
 
-        # Si la distancia es 0 (mismo municipio), usar km mínimo local
-        if distancia_km == 0:
-            distancia_km = Decimal(km_minimo_local)
-
         visitas_mensuales = zona_mun.visitas_mensuales()
-        distancia_efectiva = max(Decimal('0'), distancia_km - umbral)
+        es_visita_local = (distancia_km == 0)
+
+        # Si la distancia es 0 (mismo municipio), usar km mínimo local POR VISITA
+        if es_visita_local:
+            distancia_km = Decimal(km_minimo_local)
+            # Para visitas locales, no aplicar umbral - es un gasto fijo por visita
+            distancia_efectiva = Decimal(km_minimo_local)
+        else:
+            distancia_efectiva = max(Decimal('0'), distancia_km - umbral)
 
         if distancia_efectiva > 0 and consumo_km_galon > 0:
             distancia_ida_vuelta = distancia_efectiva * 2
