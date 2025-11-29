@@ -371,6 +371,10 @@ class VehiculoAdmin(DuplicarMixin, admin.ModelAdmin):
             'description': 'Monitoreo Satelital (GPS) y Seguro de Mercancía',
             'classes': ('collapse',)
         }),
+        ('Personal del Vehículo', {
+            'fields': ('cantidad_auxiliares',),
+            'description': 'Auxiliares de entrega fijos asignados a este vehículo (normalmente 1)'
+        }),
         ('Asignación y Proyecciones', {
             'fields': ('asignacion', 'porcentaje_uso', 'criterio_prorrateo', 'indice_incremento'),
             'classes': ('collapse',)
