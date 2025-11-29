@@ -13,7 +13,7 @@ class DxVAdminSite(admin.AdminSite):
 
     def get_urls(self):
         """Agregar URLs personalizadas"""
-        from .views import distribucion_ventas, guardar_distribucion_ventas
+        from .views import distribucion_ventas, guardar_distribucion_ventas, agregar_municipios_venta
 
         urls = super().get_urls()
         custom_urls = [
@@ -23,6 +23,9 @@ class DxVAdminSite(admin.AdminSite):
             path('distribucion-ventas/guardar/',
                  self.admin_view(guardar_distribucion_ventas),
                  name='guardar_distribucion_ventas'),
+            path('distribucion-ventas/agregar-municipios/',
+                 self.admin_view(agregar_municipios_venta),
+                 name='agregar_municipios_venta'),
         ]
         return custom_urls + urls
 

@@ -203,6 +203,131 @@
         color: #417690;
         padding-top: 15px;
     }
+
+    .btn-agregar {
+        padding: 10px 20px;
+        background: #417690;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        margin-bottom: 15px;
+    }
+    .btn-agregar:hover {
+        background: #205067;
+    }
+
+    /* Modal */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+    }
+    .modal-overlay.active {
+        display: flex;
+    }
+    .modal {
+        background: white;
+        border-radius: 8px;
+        width: 600px;
+        max-height: 80vh;
+        display: flex;
+        flex-direction: column;
+    }
+    .modal-header {
+        padding: 15px 20px;
+        border-bottom: 1px solid #ddd;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .modal-header h3 {
+        margin: 0;
+    }
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+        color: #666;
+    }
+    .modal-body {
+        padding: 20px;
+        overflow-y: auto;
+        flex: 1;
+    }
+    .modal-footer {
+        padding: 15px 20px;
+        border-top: 1px solid #ddd;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+    }
+    .modal-footer button {
+        padding: 10px 20px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+    }
+    .modal-footer .btn-cancelar {
+        background: #f0f0f0;
+        border: 1px solid #ccc;
+        color: #333;
+    }
+    .modal-footer .btn-confirmar {
+        background: #28a745;
+        border: none;
+        color: white;
+    }
+
+    .municipios-lista {
+        max-height: 400px;
+        overflow-y: auto;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+    .municipio-item {
+        padding: 10px 15px;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .municipio-item:last-child {
+        border-bottom: none;
+    }
+    .municipio-item:hover {
+        background: #f9f9f9;
+    }
+    .municipio-item input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+    }
+    .municipio-depto {
+        color: #666;
+        font-size: 12px;
+    }
+    .buscar-municipio {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        margin-bottom: 10px;
+        font-size: 14px;
+    }
+    .seleccionar-todos {
+        padding: 10px 15px;
+        background: #f5f5f5;
+        border-bottom: 1px solid #ddd;
+    }
 </style>
 {% endblock %}
 
@@ -307,6 +432,12 @@
 
     <!-- Tab Municipios -->
     <div id="tab-municipios" class="tab-content">
+        {% if municipios_disponibles %}
+        <button type="button" class="btn-agregar" id="btn-agregar-municipios">
+            + Agregar Municipios
+        </button>
+        {% endif %}
+
         {% if municipios %}
         <table class="tabla-distribucion" id="tabla-municipios">
             <thead>
@@ -357,10 +488,51 @@
         {% else %}
         <div class="empty-state">
             <h3>No hay municipios configurados</h3>
-            <p>Debes agregar municipios desde el listado de "Ventas por Municipio" para esta marca y escenario.</p>
+            <p>Agrega municipios para distribuir las ventas geográficamente.</p>
+            {% if municipios_disponibles %}
+            <button type="button" class="btn-agregar" id="btn-agregar-municipios-empty" style="margin-top: 15px;">
+                + Agregar Municipios
+            </button>
+            {% endif %}
         </div>
         {% endif %}
     </div>
+
+    <!-- Modal Agregar Municipios -->
+    {% if municipios_disponibles %}
+    <div class="modal-overlay" id="modal-municipios">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Agregar Municipios</h3>
+                <button type="button" class="modal-close" id="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="text" class="buscar-municipio" id="buscar-municipio" placeholder="Buscar municipio...">
+                <div class="seleccionar-todos">
+                    <label>
+                        <input type="checkbox" id="seleccionar-todos"> Seleccionar todos
+                    </label>
+                </div>
+                <div class="municipios-lista" id="municipios-lista">
+                    {% regroup municipios_disponibles by departamento as municipios_por_depto %}
+                    {% for depto in municipios_por_depto %}
+                    {% for mun in depto.list %}
+                    <div class="municipio-item" data-nombre="{{ mun.nombre|lower }}" data-depto="{{ mun.departamento|lower }}">
+                        <input type="checkbox" name="municipio" value="{{ mun.id }}">
+                        <span>{{ mun.nombre }}</span>
+                        <span class="municipio-depto">{{ mun.departamento }}</span>
+                    </div>
+                    {% endfor %}
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancelar" id="modal-cancelar">Cancelar</button>
+                <button type="button" class="btn-confirmar" id="modal-confirmar">Agregar Seleccionados</button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     {% else %}
     <div class="empty-state">
@@ -532,6 +704,128 @@
     // Calcular participaciones iniciales
     recalcularParticipaciones('zonas');
     recalcularParticipaciones('municipios');
+
+    // ========== MODAL AGREGAR MUNICIPIOS ==========
+    const modal = document.getElementById('modal-municipios');
+    const btnAgregar = document.getElementById('btn-agregar-municipios');
+    const btnAgregarEmpty = document.getElementById('btn-agregar-municipios-empty');
+    const btnClose = document.getElementById('modal-close');
+    const btnCancelar = document.getElementById('modal-cancelar');
+    const btnConfirmar = document.getElementById('modal-confirmar');
+    const buscarInput = document.getElementById('buscar-municipio');
+    const selectTodos = document.getElementById('seleccionar-todos');
+
+    function abrirModal() {
+        if (modal) modal.classList.add('active');
+    }
+
+    function cerrarModal() {
+        if (modal) {
+            modal.classList.remove('active');
+            // Limpiar selección
+            document.querySelectorAll('#municipios-lista input[type="checkbox"]').forEach(function(cb) {
+                cb.checked = false;
+            });
+            if (buscarInput) buscarInput.value = '';
+            if (selectTodos) selectTodos.checked = false;
+            filtrarMunicipios('');
+        }
+    }
+
+    if (btnAgregar) btnAgregar.addEventListener('click', abrirModal);
+    if (btnAgregarEmpty) btnAgregarEmpty.addEventListener('click', abrirModal);
+    if (btnClose) btnClose.addEventListener('click', cerrarModal);
+    if (btnCancelar) btnCancelar.addEventListener('click', cerrarModal);
+
+    // Cerrar al hacer clic fuera del modal
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) cerrarModal();
+        });
+    }
+
+    // Filtrar municipios
+    function filtrarMunicipios(texto) {
+        const items = document.querySelectorAll('.municipio-item');
+        texto = texto.toLowerCase();
+        items.forEach(function(item) {
+            const nombre = item.dataset.nombre || '';
+            const depto = item.dataset.depto || '';
+            if (nombre.includes(texto) || depto.includes(texto)) {
+                item.style.display = 'flex';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+
+    if (buscarInput) {
+        buscarInput.addEventListener('input', function() {
+            filtrarMunicipios(this.value);
+        });
+    }
+
+    // Seleccionar todos
+    if (selectTodos) {
+        selectTodos.addEventListener('change', function() {
+            const checked = this.checked;
+            document.querySelectorAll('.municipio-item').forEach(function(item) {
+                if (item.style.display !== 'none') {
+                    item.querySelector('input[type="checkbox"]').checked = checked;
+                }
+            });
+        });
+    }
+
+    // Confirmar agregar municipios
+    if (btnConfirmar) {
+        btnConfirmar.addEventListener('click', function() {
+            const seleccionados = [];
+            document.querySelectorAll('#municipios-lista input[type="checkbox"]:checked').forEach(function(cb) {
+                seleccionados.push(parseInt(cb.value));
+            });
+
+            if (seleccionados.length === 0) {
+                alert('Selecciona al menos un municipio');
+                return;
+            }
+
+            this.disabled = true;
+            this.textContent = 'Agregando...';
+
+            fetch('{% url "admin:agregar_municipios_venta" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    marca_id: {{ marca_seleccionada.id|default:"null" }},
+                    escenario_id: {{ escenario_seleccionado.id|default:"null" }},
+                    municipio_ids: seleccionados
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    mostrarMensaje('Se agregaron ' + data.creados + ' municipio(s).', 'success');
+                    // Recargar la página para ver los nuevos municipios
+                    setTimeout(function() {
+                        window.location.reload();
+                    }, 1000);
+                } else {
+                    mostrarMensaje('Error: ' + data.error, 'error');
+                    this.disabled = false;
+                    this.textContent = 'Agregar Seleccionados';
+                }
+            })
+            .catch(error => {
+                mostrarMensaje('Error al agregar: ' + error, 'error');
+                this.disabled = false;
+                this.textContent = 'Agregar Seleccionados';
+            });
+        });
+    }
 })();
 </script>
 {% endblock %}

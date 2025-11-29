@@ -9,7 +9,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 import json
 
-from .models import Marca, Escenario, Zona, VentaMunicipio
+from .models import Marca, Escenario, Zona, VentaMunicipio, Municipio
 
 
 @staff_member_required
@@ -58,6 +58,20 @@ def distribucion_ventas(request):
         except (Marca.DoesNotExist, Escenario.DoesNotExist):
             pass
 
+    # Obtener municipios disponibles para agregar (que no estén ya en VentaMunicipio)
+    municipios_disponibles = []
+    if marca_seleccionada and escenario_seleccionado:
+        municipios_ya_agregados = VentaMunicipio.objects.filter(
+            marca=marca_seleccionada,
+            escenario=escenario_seleccionado
+        ).values_list('municipio_id', flat=True)
+
+        municipios_disponibles = Municipio.objects.filter(
+            activo=True
+        ).exclude(
+            id__in=municipios_ya_agregados
+        ).order_by('departamento', 'nombre')
+
     # Obtener contexto base del admin (incluye app_list para sidebar)
     context = dxv_admin_site.each_context(request)
     context.update({
@@ -68,6 +82,7 @@ def distribucion_ventas(request):
         'escenario_seleccionado': escenario_seleccionado,
         'zonas': zonas,
         'municipios': municipios,
+        'municipios_disponibles': municipios_disponibles,
         'total_venta_zonas': total_venta_zonas,
         'total_venta_municipios': total_venta_municipios,
     })
@@ -109,6 +124,39 @@ def guardar_distribucion_ventas(request):
                 primer_vm._recalcular_participaciones()
 
         return JsonResponse({'success': True})
+
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+
+@staff_member_required
+@require_POST
+def agregar_municipios_venta(request):
+    """
+    API para agregar municipios a VentaMunicipio
+    """
+    try:
+        data = json.loads(request.body)
+        marca_id = data.get('marca_id')
+        escenario_id = data.get('escenario_id')
+        municipio_ids = data.get('municipio_ids', [])
+
+        marca = Marca.objects.get(pk=marca_id)
+        escenario = Escenario.objects.get(pk=escenario_id)
+
+        creados = 0
+        for mun_id in municipio_ids:
+            municipio = Municipio.objects.get(pk=mun_id)
+            _, created = VentaMunicipio.objects.get_or_create(
+                marca=marca,
+                escenario=escenario,
+                municipio=municipio,
+                defaults={'venta_proyectada': 0}
+            )
+            if created:
+                creados += 1
+
+        return JsonResponse({'success': True, 'creados': creados})
 
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
