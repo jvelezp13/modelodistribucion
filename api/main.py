@@ -360,11 +360,12 @@ def obtener_detalle_lejanias_comercial(
                     detalle_municipios.append({
                         'municipio': municipio.nombre,
                         'municipio_id': municipio.id,
-                        'distancia_km': distancia_km * visitas_mensuales if es_visita_local else distancia_km,
-                        'distancia_efectiva_km': distancia_efectiva * visitas_mensuales if es_visita_local else distancia_efectiva,
+                        'distancia_km': distancia_km,
+                        'distancia_efectiva_km': distancia_efectiva,
                         'visitas_por_periodo': zona_mun.visitas_por_periodo,
                         'visitas_mensuales': visitas_mensuales,
                         'combustible_mensual': combustible_municipio,
+                        'es_visita_local': es_visita_local,
                     })
 
             detalle_zonas.append({
