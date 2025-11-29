@@ -1785,6 +1785,32 @@ class ConfiguracionLejania(models.Model):
         help_text="Precio promedio galón de ACPM/Diesel (para vehículos logísticos)"
     )
 
+    # === COMITÉ COMERCIAL ===
+    tiene_comite_comercial = models.BooleanField(
+        default=False,
+        verbose_name="¿Tiene Comité Comercial?",
+        help_text="Si hay reunión periódica de vendedores en un municipio fijo"
+    )
+    municipio_comite = models.ForeignKey(
+        'Municipio',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='comites_comerciales',
+        verbose_name="Municipio del Comité",
+        help_text="Dónde se realiza el comité comercial"
+    )
+    frecuencia_comite = models.CharField(
+        max_length=20,
+        choices=[
+            ('SEMANAL', 'Semanal (4 veces/mes)'),
+            ('QUINCENAL', 'Quincenal (2 veces/mes)'),
+            ('MENSUAL', 'Mensual (1 vez/mes)'),
+        ],
+        default='SEMANAL',
+        verbose_name="Frecuencia del Comité"
+    )
+
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_modificacion = models.DateTimeField(auto_now=True)
 

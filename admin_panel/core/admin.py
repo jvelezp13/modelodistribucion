@@ -1092,7 +1092,7 @@ class ConfiguracionLejaniaAdmin(admin.ModelAdmin):
     list_filter = ('escenario__anio',)
     search_fields = ('escenario__nombre',)
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
-    autocomplete_fields = ['municipio_bodega']
+    autocomplete_fields = ['municipio_bodega', 'municipio_comite']
 
     fieldsets = (
         ('Escenario y Bodega', {
@@ -1136,6 +1136,13 @@ class ConfiguracionLejaniaAdmin(admin.ModelAdmin):
                 'alojamiento_comercial',
                 'es_constitutiva_salario_comercial'
             )
+        }),
+        ('Comité Comercial', {
+            'fields': (
+                'tiene_comite_comercial',
+                ('municipio_comite', 'frecuencia_comite'),
+            ),
+            'description': 'Reunión periódica de vendedores. El costo de lejanía se suma a todos los vendedores de este escenario.'
         }),
         ('Metadata', {
             'fields': ('fecha_creacion', 'fecha_modificacion'),
