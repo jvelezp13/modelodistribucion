@@ -9,7 +9,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 import json
 
-from .models import Marca, Escenario, Zona, ZonaMunicipio
+from .models import Marca, Escenario, Zona, VentaMunicipio
 
 
 @staff_member_required
@@ -47,12 +47,11 @@ def distribucion_ventas(request):
 
             total_venta_zonas = sum(z.venta_proyectada for z in zonas)
 
-            # Obtener todos los municipios de las zonas
-            municipios = ZonaMunicipio.objects.filter(
-                zona__marca=marca_seleccionada,
-                zona__escenario=escenario_seleccionado,
-                zona__activo=True
-            ).select_related('zona', 'municipio').order_by('zona__nombre', 'municipio__nombre')
+            # Obtener ventas por municipio (listado plano, independiente de zonas)
+            municipios = VentaMunicipio.objects.filter(
+                marca=marca_seleccionada,
+                escenario=escenario_seleccionado
+            ).select_related('municipio').order_by('municipio__departamento', 'municipio__nombre')
 
             total_venta_municipios = sum(m.venta_proyectada for m in municipios)
 
@@ -99,19 +98,15 @@ def guardar_distribucion_ventas(request):
                 primera_zona._recalcular_participaciones_marca()
 
         elif tipo == 'municipios':
-            zonas_afectadas = set()
             for item in items:
-                mun_id = item.get('id')
+                vm_id = item.get('id')
                 venta = Decimal(str(item.get('venta', 0)))
-                zm = ZonaMunicipio.objects.select_related('zona').get(pk=mun_id)
-                zm.venta_proyectada = venta
-                zm.save(update_fields=['venta_proyectada'])
-                zonas_afectadas.add(zm.zona_id)
+                VentaMunicipio.objects.filter(pk=vm_id).update(venta_proyectada=venta)
 
-            # Recalcular participaciones por zona
-            for zona_id in zonas_afectadas:
-                zona = Zona.objects.get(pk=zona_id)
-                ZonaMunicipio._recalcular_participaciones_zona(zona)
+            # Recalcular participaciones
+            if items:
+                primer_vm = VentaMunicipio.objects.get(pk=items[0]['id'])
+                primer_vm._recalcular_participaciones()
 
         return JsonResponse({'success': True})
 

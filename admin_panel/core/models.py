@@ -2082,6 +2082,86 @@ class ZonaMunicipio(models.Model):
         return (self.zona.participacion_ventas / 100) * (self.participacion_ventas / 100) * 100
 
 
+class VentaMunicipio(models.Model):
+    """
+    Venta proyectada por municipio (independiente de zonas comerciales).
+    Usado para análisis geográfico de distribución de ventas.
+    """
+    marca = models.ForeignKey(
+        'Marca',
+        on_delete=models.CASCADE,
+        related_name='ventas_municipio',
+        verbose_name="Marca"
+    )
+    escenario = models.ForeignKey(
+        'Escenario',
+        on_delete=models.CASCADE,
+        related_name='ventas_municipio',
+        verbose_name="Escenario"
+    )
+    municipio = models.ForeignKey(
+        'Municipio',
+        on_delete=models.CASCADE,
+        related_name='ventas',
+        verbose_name="Municipio"
+    )
+
+    venta_proyectada = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0)],
+        verbose_name="Venta Proyectada",
+        help_text="Valor de venta proyectada para este municipio (en pesos)"
+    )
+
+    # Participación calculada automáticamente
+    participacion_ventas = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        verbose_name="Participación %",
+        help_text="Calculado automáticamente",
+        editable=False
+    )
+
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_modificacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'dxv_venta_municipio'
+        verbose_name = "Venta por Municipio"
+        verbose_name_plural = "Ventas por Municipio"
+        unique_together = [['marca', 'escenario', 'municipio']]
+        ordering = ['municipio__departamento', 'municipio__nombre']
+
+    def __str__(self):
+        return f"{self.municipio} - {self.marca} ({self.escenario.anio})"
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        self._recalcular_participaciones()
+
+    def _recalcular_participaciones(self):
+        """Recalcula participación de todos los municipios de la misma marca/escenario"""
+        if not self.marca or not self.escenario:
+            return
+
+        ventas = VentaMunicipio.objects.filter(
+            marca=self.marca,
+            escenario=self.escenario
+        )
+        total = ventas.aggregate(total=models.Sum('venta_proyectada'))['total'] or Decimal('0')
+
+        for vm in ventas:
+            if total > 0:
+                nueva_part = (vm.venta_proyectada / total) * 100
+            else:
+                nueva_part = Decimal('0')
+            VentaMunicipio.objects.filter(pk=vm.pk).update(participacion_ventas=nueva_part)
+
+
 # ============================================================================
 # MÓDULO DE RUTAS LOGÍSTICAS - Independiente de Zonas Comerciales
 # ============================================================================

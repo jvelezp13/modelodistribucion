@@ -311,36 +311,30 @@
         <table class="tabla-distribucion" id="tabla-municipios">
             <thead>
                 <tr>
-                    <th style="width: 25%">Zona</th>
-                    <th style="width: 25%">Municipio</th>
+                    <th style="width: 20%">Departamento</th>
+                    <th style="width: 30%">Municipio</th>
                     <th style="width: 25%">Venta Proyectada</th>
                     <th style="width: 25%">Participación %</th>
                 </tr>
             </thead>
             <tbody>
-                {% regroup municipios by zona as municipios_por_zona %}
-                {% for grupo in municipios_por_zona %}
-                <tr class="zona-header">
-                    <td colspan="4">{{ grupo.grouper.nombre }}</td>
-                </tr>
-                {% for mun in grupo.list %}
-                <tr data-id="{{ mun.id }}">
-                    <td></td>
-                    <td>{{ mun.municipio.nombre }}</td>
+                {% for vm in municipios %}
+                <tr data-id="{{ vm.id }}">
+                    <td>{{ vm.municipio.departamento }}</td>
+                    <td>{{ vm.municipio.nombre }}</td>
                     <td>
                         <input type="number"
                                class="venta-input"
                                data-tipo="municipio"
-                               data-id="{{ mun.id }}"
-                               value="{{ mun.venta_proyectada|floatformat:0 }}"
+                               data-id="{{ vm.id }}"
+                               value="{{ vm.venta_proyectada|floatformat:0 }}"
                                min="0"
                                step="1000">
                     </td>
                     <td class="participacion">
-                        <span class="participacion-valor">{{ mun.participacion_ventas|floatformat:2 }}</span>%
+                        <span class="participacion-valor">{{ vm.participacion_ventas|floatformat:2 }}</span>%
                     </td>
                 </tr>
-                {% endfor %}
                 {% endfor %}
             </tbody>
             <tfoot>
@@ -362,8 +356,8 @@
         </button>
         {% else %}
         <div class="empty-state">
-            <h3>No hay municipios asignados</h3>
-            <p>Primero debes asignar municipios a las zonas comerciales.</p>
+            <h3>No hay municipios configurados</h3>
+            <p>Debes agregar municipios desde el listado de "Ventas por Municipio" para esta marca y escenario.</p>
         </div>
         {% endif %}
     </div>
