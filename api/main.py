@@ -322,6 +322,7 @@ def obtener_detalle_lejanias_comercial(
                 consumo_km_galon = float(config.consumo_galon_km_moto if zona.tipo_vehiculo_comercial == 'MOTO' else config.consumo_galon_km_automovil)
                 precio_galon = float(config.precio_galon_gasolina)
                 umbral = float(config.umbral_lejania_comercial_km)
+                km_minimo_local = float(getattr(config, 'km_minimo_visita_local', 10))
 
                 for zona_mun in zona.municipios.all():
                     municipio = zona_mun.municipio
@@ -331,11 +332,18 @@ def obtener_detalle_lejanias_comercial(
                             destino_id=municipio.id
                         )
                         distancia_km = float(matriz.distancia_km)
-                        distancia_efectiva = max(0, distancia_km - umbral)
                     except MatrizDesplazamiento.DoesNotExist:
-                        distancia_km = 0
-                        distancia_efectiva = 0
+                        # Si no hay matriz, usar km mínimo local si es el mismo municipio
+                        if municipio.id == base_vendedor.id:
+                            distancia_km = km_minimo_local
+                        else:
+                            distancia_km = 0
 
+                    # Si la distancia es 0 (mismo municipio), usar km mínimo local
+                    if distancia_km == 0:
+                        distancia_km = km_minimo_local
+
+                    distancia_efectiva = max(0, distancia_km - umbral)
                     visitas_mensuales = float(zona_mun.visitas_mensuales())
 
                     # Calcular combustible por municipio
@@ -377,6 +385,9 @@ def obtener_detalle_lejanias_comercial(
 
             total_combustible += combustible_mensual
             total_pernocta += pernocta_mensual
+
+        # Ordenar zonas de mayor a menor por total_mensual
+        detalle_zonas.sort(key=lambda x: x['total_mensual'], reverse=True)
 
         return {
             'marca_id': marca_id,
@@ -566,6 +577,9 @@ def obtener_detalle_lejanias_logistica(
             total_pernocta += pernocta_mensual
 
         total_mensual = total_flete_base + total_combustible + total_peaje + total_pernocta
+
+        # Ordenar rutas de mayor a menor por total_mensual
+        detalle_rutas.sort(key=lambda x: x['total_mensual'], reverse=True)
 
         return {
             'marca_id': marca_id,
