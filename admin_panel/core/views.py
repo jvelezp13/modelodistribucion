@@ -17,6 +17,8 @@ def distribucion_ventas(request):
     """
     Vista para distribuir ventas proyectadas entre zonas y municipios
     """
+    from .admin_site import dxv_admin_site
+
     marcas = Marca.objects.filter(activa=True).order_by('nombre')
     escenarios = Escenario.objects.filter(activo=True).order_by('-anio', 'nombre')
 
@@ -57,7 +59,9 @@ def distribucion_ventas(request):
         except (Marca.DoesNotExist, Escenario.DoesNotExist):
             pass
 
-    context = {
+    # Obtener contexto base del admin (incluye app_list para sidebar)
+    context = dxv_admin_site.each_context(request)
+    context.update({
         'title': 'Distribución de Ventas',
         'marcas': marcas,
         'escenarios': escenarios,
@@ -67,10 +71,7 @@ def distribucion_ventas(request):
         'municipios': municipios,
         'total_venta_zonas': total_venta_zonas,
         'total_venta_municipios': total_venta_municipios,
-        # Para el admin template
-        'site_header': 'Sistema DxV - Panel de Administración',
-        'has_permission': True,
-    }
+    })
 
     return render(request, 'admin/core/distribucion_ventas.html', context)
 
