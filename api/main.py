@@ -319,9 +319,9 @@ def obtener_detalle_lejanias_comercial(
             base_vendedor = zona.municipio_base_vendedor or (config.municipio_bodega if config else None)
 
             if base_vendedor and config:
-                consumo_km_galon = config.consumo_galon_km_moto if zona.tipo_vehiculo_comercial == 'MOTO' else config.consumo_galon_km_automovil
-                precio_galon = config.precio_galon_gasolina
-                umbral = config.umbral_lejania_comercial_km
+                consumo_km_galon = float(config.consumo_galon_km_moto if zona.tipo_vehiculo_comercial == 'MOTO' else config.consumo_galon_km_automovil)
+                precio_galon = float(config.precio_galon_gasolina)
+                umbral = float(config.umbral_lejania_comercial_km)
 
                 for zona_mun in zona.municipios.all():
                     municipio = zona_mun.municipio
@@ -338,6 +338,14 @@ def obtener_detalle_lejanias_comercial(
 
                     visitas_mensuales = float(zona_mun.visitas_mensuales())
 
+                    # Calcular combustible por municipio
+                    combustible_municipio = 0.0
+                    if distancia_efectiva > 0 and consumo_km_galon > 0:
+                        distancia_ida_vuelta = distancia_efectiva * 2
+                        galones_por_visita = distancia_ida_vuelta / consumo_km_galon
+                        costo_combustible_visita = galones_por_visita * precio_galon
+                        combustible_municipio = costo_combustible_visita * visitas_mensuales
+
                     detalle_municipios.append({
                         'municipio': municipio.nombre,
                         'municipio_id': municipio.id,
@@ -345,6 +353,7 @@ def obtener_detalle_lejanias_comercial(
                         'distancia_efectiva_km': distancia_efectiva,
                         'visitas_por_periodo': zona_mun.visitas_por_periodo,
                         'visitas_mensuales': visitas_mensuales,
+                        'combustible_mensual': combustible_municipio,
                     })
 
             detalle_zonas.append({
