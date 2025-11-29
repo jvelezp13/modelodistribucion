@@ -1298,15 +1298,11 @@ class RecorridoLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
         }),
         ('Asignación', {
             'fields': ('marca', 'escenario', 'vehiculo'),
-            'description': 'El vehículo puede ser propio, renting o tercero'
+            'description': 'El vehículo puede ser propio, renting o tercero. Los auxiliares se configuran en el vehículo.'
         }),
         ('Frecuencia', {
             'fields': ('frecuencia', 'viajes_por_periodo'),
             'description': 'Cuántas veces por periodo (semana/quincena/mes) se hace este recorrido completo'
-        }),
-        ('Personal de Ruta', {
-            'fields': ('cantidad_auxiliares',),
-            'description': 'Cantidad de auxiliares de entrega que van en este recorrido (0, 1 o 2)'
         }),
         ('Pernocta', {
             'fields': ('requiere_pernocta', 'noches_pernocta'),
