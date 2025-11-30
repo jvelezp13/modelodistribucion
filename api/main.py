@@ -335,6 +335,7 @@ def obtener_detalle_lejanias_comercial(
                             'distancia_efectiva_km': 0,
                             'visitas_por_periodo': zona_mun.visitas_por_periodo,
                             'visitas_mensuales': float(zona_mun.visitas_mensuales()),
+                            'combustible_por_visita': 0,
                             'combustible_mensual': 0,
                             'es_visita_local': True,
                         })
@@ -354,12 +355,13 @@ def obtener_detalle_lejanias_comercial(
                     visitas_mensuales = float(zona_mun.visitas_mensuales())
 
                     # Calcular combustible por municipio
+                    combustible_por_visita = 0.0
                     combustible_municipio = 0.0
                     if distancia_efectiva > 0 and consumo_km_galon > 0:
                         distancia_ida_vuelta = distancia_efectiva * 2
                         galones_por_visita = distancia_ida_vuelta / consumo_km_galon
-                        costo_combustible_visita = galones_por_visita * precio_galon
-                        combustible_municipio = costo_combustible_visita * visitas_mensuales
+                        combustible_por_visita = galones_por_visita * precio_galon
+                        combustible_municipio = combustible_por_visita * visitas_mensuales
 
                     detalle_municipios.append({
                         'municipio': municipio.nombre,
@@ -368,6 +370,7 @@ def obtener_detalle_lejanias_comercial(
                         'distancia_efectiva_km': distancia_efectiva,
                         'visitas_por_periodo': zona_mun.visitas_por_periodo,
                         'visitas_mensuales': visitas_mensuales,
+                        'combustible_por_visita': combustible_por_visita,
                         'combustible_mensual': combustible_municipio,
                         'es_visita_local': False,
                     })
