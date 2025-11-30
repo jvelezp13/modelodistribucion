@@ -6,6 +6,8 @@ from decimal import Decimal
 from typing import Dict, List
 import logging
 
+from core.calculator_lejanias import CalculadoraLejanias
+
 logger = logging.getLogger(__name__)
 
 
@@ -17,6 +19,10 @@ def calcular_pyg_zona(escenario, zona) -> Dict:
     - directo: 100% si zona coincide
     - proporcional: según participacion_ventas
     - compartido: equitativo entre zonas
+
+    Las lejanías se calculan:
+    - Comerciales: directamente para esta zona específica
+    - Logísticas: proporcionalmente según participación en ventas de la marca
     """
     from core.models import (
         Zona, PersonalComercial, GastoComercial,
@@ -35,13 +41,13 @@ def calcular_pyg_zona(escenario, zona) -> Dict:
     )
     zonas_count = zonas_marca.count() or 1
 
-    # Calcular costos comerciales
+    # Calcular costos comerciales (personal + gastos fijos)
     comercial = _distribuir_costos_a_zona(
         escenario, zona, participacion, zonas_count,
         PersonalComercial, GastoComercial
     )
 
-    # Calcular costos logísticos
+    # Calcular costos logísticos (personal + gastos fijos)
     logistico = _distribuir_costos_a_zona(
         escenario, zona, participacion, zonas_count,
         PersonalLogistico, GastoLogistico
@@ -51,6 +57,16 @@ def calcular_pyg_zona(escenario, zona) -> Dict:
     administrativo = _distribuir_admin_a_zona(
         escenario, zona, zonas_count
     )
+
+    # Calcular lejanías dinámicas usando CalculadoraLejanias
+    lejanias = _calcular_lejanias_zona(escenario, zona, participacion)
+
+    # Agregar lejanías a los totales de comercial y logístico
+    comercial['lejanias'] = lejanias['comercial']
+    comercial['total'] += lejanias['comercial']
+
+    logistico['lejanias'] = lejanias['logistica']
+    logistico['total'] += lejanias['logistica']
 
     total_mensual = comercial['total'] + logistico['total'] + administrativo['total']
 
@@ -96,6 +112,39 @@ def _es_gasto_lejania_comercial(gasto) -> bool:
         nombre.startswith('Combustible Lejanía') or
         nombre.startswith('Viáticos Pernocta')
     )
+
+
+def _calcular_lejanias_zona(escenario, zona, participacion: Decimal) -> Dict:
+    """
+    Calcula las lejanías para una zona específica usando CalculadoraLejanias.
+
+    - Lejanías comerciales: se calculan directamente para la zona
+    - Lejanías logísticas: se prorratean según participación de la zona en ventas de marca
+    """
+    try:
+        calc = CalculadoraLejanias(escenario)
+
+        # Lejanía comercial: directa para esta zona
+        lejania_comercial_zona = calc.calcular_lejania_comercial_zona(zona)
+        comercial_total = lejania_comercial_zona['total_mensual']
+
+        # Lejanía logística: calcular para toda la marca y prorratear
+        # Las rutas logísticas no están asociadas a zonas, sino a la marca completa
+        logistica_marca = calc.calcular_lejanias_logisticas_marca(zona.marca)
+        logistica_total = logistica_marca['total_mensual'] * participacion
+
+        return {
+            'comercial': comercial_total,
+            'logistica': logistica_total,
+            'total': comercial_total + logistica_total
+        }
+    except Exception as e:
+        logger.warning(f"Error calculando lejanías para zona {zona.nombre}: {e}")
+        return {
+            'comercial': Decimal('0'),
+            'logistica': Decimal('0'),
+            'total': Decimal('0')
+        }
 
 
 def _distribuir_costos_a_zona(
