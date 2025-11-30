@@ -68,11 +68,43 @@ def calcular_pyg_zona(escenario, zona) -> Dict:
     }
 
 
+def _es_gasto_lejania_logistica(gasto) -> bool:
+    """
+    Identifica gastos que son parte de lejanías logísticas y NO deben sumarse
+    porque ya están calculados en el simulador como parte de RutaLogistica.
+
+    Estos gastos son creados por signals cuando se configura una ruta,
+    pero su valor ya está incluido en el cálculo de lejanías del simulador.
+    """
+    nombre = gasto.nombre or ''
+    return (
+        nombre.startswith('Combustible - ') or
+        nombre.startswith('Peajes - ') or
+        nombre.startswith('Viáticos Ruta - ') or
+        nombre.startswith('Flete Base Tercero - ') or
+        nombre == 'Flete Transporte (Tercero)'  # Legacy, debería estar eliminado
+    )
+
+
+def _es_gasto_lejania_comercial(gasto) -> bool:
+    """
+    Identifica gastos que son parte de lejanías comerciales y NO deben sumarse
+    porque ya están calculados en el simulador como parte de Zona comercial.
+    """
+    nombre = gasto.nombre or ''
+    return (
+        nombre.startswith('Combustible Lejanía') or
+        nombre.startswith('Viáticos Pernocta')
+    )
+
+
 def _distribuir_costos_a_zona(
     escenario, zona, participacion: Decimal, zonas_count: int,
     modelo_personal, modelo_gasto
 ) -> Dict:
     """Distribuye costos de personal y gastos a una zona según tipo_asignacion_geo."""
+    from core.models import GastoLogistico, GastoComercial
+
     marca = zona.marca
     personal_total = Decimal('0')
     gastos_total = Decimal('0')
@@ -95,12 +127,18 @@ def _distribuir_costos_a_zona(
         elif asignacion_geo == 'compartido':
             personal_total += costo / zonas_count
 
-    # Gastos
+    # Gastos - filtrar lejanías que ya están calculadas en el simulador
     gastos_qs = modelo_gasto.objects.filter(
         escenario=escenario,
         marca=marca
     )
     for g in gastos_qs:
+        # Excluir gastos de lejanías que ya están en el cálculo del simulador
+        if modelo_gasto == GastoLogistico and _es_gasto_lejania_logistica(g):
+            continue
+        if modelo_gasto == GastoComercial and _es_gasto_lejania_comercial(g):
+            continue
+
         asignacion_geo = getattr(g, 'tipo_asignacion_geo', 'proporcional')
         zona_asignada = getattr(g, 'zona', None)
 
