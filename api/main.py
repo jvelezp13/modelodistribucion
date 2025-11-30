@@ -581,14 +581,25 @@ def obtener_detalle_lejanias_logistica(
 
             ruta_total = flete_base_mensual + combustible_mensual + peaje_mensual + pernocta_mensual
 
+            # Calcular distancia total del circuito
+            distancia_circuito = sum(t['distancia_km'] for t in detalle_tramos) if detalle_tramos else 0
+
+            # Datos del vehículo
+            vehiculo = ruta.vehiculo
+            tipo_combustible = vehiculo.tipo_combustible if vehiculo else None
+            consumo_galon_km = float(vehiculo.consumo_galon_km) if vehiculo and vehiculo.consumo_galon_km else 0
+
             detalle_rutas.append({
                 'ruta_id': ruta.id,
                 'ruta_nombre': ruta.nombre,
-                'vehiculo': str(ruta.vehiculo) if ruta.vehiculo else None,
-                'vehiculo_id': ruta.vehiculo.id if ruta.vehiculo else None,
-                'esquema': ruta.vehiculo.esquema if ruta.vehiculo else None,
-                'tipo_vehiculo': ruta.vehiculo.tipo_vehiculo if ruta.vehiculo else None,
+                'vehiculo': str(vehiculo) if vehiculo else None,
+                'vehiculo_id': vehiculo.id if vehiculo else None,
+                'esquema': vehiculo.esquema if vehiculo else None,
+                'tipo_vehiculo': vehiculo.tipo_vehiculo if vehiculo else None,
+                'tipo_combustible': tipo_combustible,
+                'consumo_galon_km': consumo_galon_km,
                 'frecuencia': ruta.get_frecuencia_display(),
+                'viajes_por_periodo': ruta.viajes_por_periodo,
                 'requiere_pernocta': ruta.requiere_pernocta,
                 'noches_pernocta': ruta.noches_pernocta,
                 'flete_base_mensual': flete_base_mensual,
@@ -596,9 +607,16 @@ def obtener_detalle_lejanias_logistica(
                 'peaje_mensual': peaje_mensual,
                 'pernocta_mensual': pernocta_mensual,
                 'total_mensual': ruta_total,
+                'distancia_circuito_km': distancia_circuito,
                 'detalle': {
                     'bodega': bodega.nombre if bodega else None,
-                    'vehiculo': str(ruta.vehiculo) if ruta.vehiculo else None,
+                    'vehiculo': str(vehiculo) if vehiculo else None,
+                    'tipo_combustible': tipo_combustible,
+                    'consumo_km_galon': consumo_galon_km,
+                    'recorridos_por_periodo': ruta.viajes_por_periodo,
+                    'recorridos_mensuales': float(ruta.viajes_por_periodo) * 4.33 if ruta.viajes_por_periodo else 0,
+                    'distancia_circuito_km': distancia_circuito,
+                    'distancia_efectiva_km': max(0, distancia_circuito - (float(config.umbral_lejania_logistica_km) if config else 60)) if distancia_circuito else 0,
                     'municipios': detalle_municipios,
                     'tramos': detalle_tramos,
                 }
