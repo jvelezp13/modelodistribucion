@@ -1112,13 +1112,12 @@ def obtener_pyg_zonas(
     """
     try:
         from core.models import Escenario, Marca
-        from admin_panel.core.services import PyGService
+        from api.pyg_service import calcular_pyg_todas_zonas
 
         escenario = Escenario.objects.get(pk=escenario_id)
         marca = Marca.objects.get(marca_id=marca_id)
 
-        service = PyGService(escenario)
-        zonas = service.get_pyg_todas_zonas(marca)
+        zonas = calcular_pyg_todas_zonas(escenario, marca)
 
         return {
             'escenario_id': escenario_id,
@@ -1155,13 +1154,12 @@ def obtener_pyg_zona(
     """
     try:
         from core.models import Escenario, Zona
-        from admin_panel.core.services import PyGService
+        from api.pyg_service import calcular_pyg_zona
 
         escenario = Escenario.objects.get(pk=escenario_id)
         zona = Zona.objects.get(pk=zona_id, escenario=escenario)
 
-        service = PyGService(escenario)
-        resultado = service.get_pyg_zona(zona)
+        resultado = calcular_pyg_zona(escenario, zona)
 
         return {
             'escenario_id': escenario_id,
@@ -1195,13 +1193,12 @@ def obtener_pyg_municipios(
     """
     try:
         from core.models import Escenario, Zona
-        from admin_panel.core.services import PyGService
+        from api.pyg_service import calcular_pyg_todos_municipios
 
         escenario = Escenario.objects.get(pk=escenario_id)
         zona = Zona.objects.get(pk=zona_id, escenario=escenario)
 
-        service = PyGService(escenario)
-        municipios = service.get_pyg_todos_municipios(zona)
+        municipios = calcular_pyg_todos_municipios(escenario, zona)
 
         return {
             'escenario_id': escenario_id,
@@ -1238,13 +1235,38 @@ def obtener_pyg_resumen(
     """
     try:
         from core.models import Escenario, Marca
-        from admin_panel.core.services import PyGService
+        from api.pyg_service import calcular_pyg_todas_zonas
 
         escenario = Escenario.objects.get(pk=escenario_id)
         marca = Marca.objects.get(marca_id=marca_id)
 
-        service = PyGService(escenario)
-        resumen = service.get_resumen_marca(marca)
+        zonas = calcular_pyg_todas_zonas(escenario, marca)
+
+        # Calcular totales sumando todas las zonas
+        total_comercial = sum(z['comercial']['total'] for z in zonas)
+        total_logistico = sum(z['logistico']['total'] for z in zonas)
+        total_administrativo = sum(z['administrativo']['total'] for z in zonas)
+        total_mensual = total_comercial + total_logistico + total_administrativo
+
+        resumen_total = {
+            'comercial': {
+                'personal': sum(z['comercial']['personal'] for z in zonas),
+                'gastos': sum(z['comercial']['gastos'] for z in zonas),
+                'total': total_comercial
+            },
+            'logistico': {
+                'personal': sum(z['logistico']['personal'] for z in zonas),
+                'gastos': sum(z['logistico']['gastos'] for z in zonas),
+                'total': total_logistico
+            },
+            'administrativo': {
+                'personal': sum(z['administrativo']['personal'] for z in zonas),
+                'gastos': sum(z['administrativo']['gastos'] for z in zonas),
+                'total': total_administrativo
+            },
+            'total_mensual': total_mensual,
+            'total_anual': total_mensual * 12
+        }
 
         return {
             'escenario_id': escenario_id,
@@ -1253,8 +1275,8 @@ def obtener_pyg_resumen(
                 'id': marca.marca_id,
                 'nombre': marca.nombre,
             },
-            'total': _serializar_pyg(resumen['total']),
-            'zonas': [_serializar_pyg_zona(z) for z in resumen['zonas']]
+            'total': _serializar_pyg(resumen_total),
+            'zonas': [_serializar_pyg_zona(z) for z in zonas]
         }
 
     except Escenario.DoesNotExist:
