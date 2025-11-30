@@ -212,13 +212,16 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
   // Excluir lejanías y flete base de gastos logísticos (se muestran aparte)
   // - Combustible, Peajes, Viáticos -> en Lejanías Logísticas
   // - Flete Base Tercero -> ya incluido en Flota de Vehículos
+  // - Flete Transporte (Tercero) -> dato legacy, ya incluido en Flota de Vehículos
+  const filtroGastosLogisticos = (r: Rubro) =>
+    !r.nombre.startsWith('Combustible - ') &&
+    !r.nombre.startsWith('Peajes - ') &&
+    !r.nombre.startsWith('Viáticos Ruta - ') &&
+    !r.nombre.startsWith('Flete Base Tercero - ') &&
+    r.nombre !== 'Flete Transporte (Tercero)';
+
   const subtotalLogisticoGastos = grupos.logisticoGastos
-    .filter(r =>
-      !r.nombre.startsWith('Combustible - ') &&
-      !r.nombre.startsWith('Peajes - ') &&
-      !r.nombre.startsWith('Viáticos Ruta - ') &&
-      !r.nombre.startsWith('Flete Base Tercero - ')
-    )
+    .filter(filtroGastosLogisticos)
     .reduce((sum, r) => sum + r.valor_total, 0);
 
   // Lejanías logísticas ahora solo incluye combustible + peajes + pernocta (sin flete base)
@@ -754,12 +757,7 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
           )}
 
           {/* Gastos Logísticos (excluyendo lejanías y flete base que se muestran aparte) */}
-          {grupos.logisticoGastos.filter(r =>
-            !r.nombre.startsWith('Combustible - ') &&
-            !r.nombre.startsWith('Peajes - ') &&
-            !r.nombre.startsWith('Viáticos Ruta - ') &&
-            !r.nombre.startsWith('Flete Base Tercero - ')
-          ).length > 0 && (
+          {grupos.logisticoGastos.filter(filtroGastosLogisticos).length > 0 && (
             <>
               <SubSeccionHeader
                 titulo="Gastos Logísticos"
@@ -770,12 +768,7 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
               {subSeccionesAbiertas.logisticoGastos && (
                 <>
                   {grupos.logisticoGastos
-                    .filter(r =>
-                      !r.nombre.startsWith('Combustible - ') &&
-                      !r.nombre.startsWith('Peajes - ') &&
-                      !r.nombre.startsWith('Viáticos Ruta - ') &&
-                      !r.nombre.startsWith('Flete Base Tercero - ')
-                    )
+                    .filter(filtroGastosLogisticos)
                     .map((rubro, idx) => (
                       <RubroItem key={`log-gasto-${idx}`} rubro={rubro} />
                     ))}
