@@ -126,7 +126,7 @@ def _distribuir_admin_a_zona(escenario, zona, zonas_count: int) -> Dict:
     marca = zona.marca
 
     # Contar marcas para prorrateo
-    marcas_count = Marca.objects.filter(activo=True).count() or 1
+    marcas_count = Marca.objects.filter(activa=True).count() or 1
 
     # Costos admin de la marca
     personal_marca = Decimal('0')
