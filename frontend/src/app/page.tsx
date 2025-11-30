@@ -7,10 +7,12 @@ import { LoadingOverlay } from '@/components/ui/LoadingSpinner';
 import { RefreshCw, Play, AlertCircle } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import PyGDetallado from '@/components/PyGDetallado';
+import PyGZonas from '@/components/PyGZonas';
+import PyGMunicipios from '@/components/PyGMunicipios';
 import LejaniasComercial from '@/components/LejaniasComercial';
 import LejaniasLogistica from '@/components/LejaniasLogistica';
 
-type ViewType = 'pyg' | 'lejanias-comercial' | 'lejanias-logistica';
+type ViewType = 'pyg' | 'pyg-zonas' | 'pyg-municipios' | 'lejanias-comercial' | 'lejanias-logistica';
 
 export default function DashboardPage() {
   const [marcasDisponibles, setMarcasDisponibles] = useState<string[]>([]);
@@ -25,6 +27,8 @@ export default function DashboardPage() {
   const [selectedMarcaPyG, setSelectedMarcaPyG] = useState<string | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [selectedZonaId, setSelectedZonaId] = useState<number | null>(null);
+  const [selectedZonaNombre, setSelectedZonaNombre] = useState<string | null>(null);
 
   useEffect(() => {
     cargarDatosIniciales();
@@ -308,6 +312,114 @@ export default function DashboardPage() {
                     escenarioId={selectedScenarioId!}
                     marcaId={selectedMarcaPyG || resultado.marcas[0]?.marca_id}
                   />
+                </>
+              ) : (
+                <div className="bg-white border border-gray-200 rounded p-12 text-center">
+                  <p className="text-sm text-gray-600">
+                    Selecciona las marcas y ejecuta la simulación para ver los resultados
+                  </p>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Vista P&G por Zonas */}
+          {activeView === 'pyg-zonas' && (
+            <>
+              {resultado ? (
+                <>
+                  {/* Selector de marca si hay múltiples */}
+                  {resultado.marcas.length > 1 && (
+                    <div className="mb-3 bg-white border border-gray-200 rounded p-2">
+                      <label className="text-xs font-medium text-gray-700 block mb-1">
+                        Selecciona una marca:
+                      </label>
+                      <select
+                        value={selectedMarcaPyG || resultado.marcas[0]?.marca_id || ''}
+                        onChange={(e) => setSelectedMarcaPyG(e.target.value)}
+                        className="w-full text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      >
+                        {resultado.marcas.map((marca) => (
+                          <option key={marca.marca_id} value={marca.marca_id}>
+                            {marca.nombre}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  <PyGZonas
+                    key={`pyg-zonas-${refreshKey}`}
+                    escenarioId={selectedScenarioId!}
+                    marcaId={selectedMarcaPyG || resultado.marcas[0]?.marca_id}
+                    onZonaSelect={(zonaId, zonaNombre) => {
+                      setSelectedZonaId(zonaId);
+                      setSelectedZonaNombre(zonaNombre);
+                      setActiveView('pyg-municipios');
+                    }}
+                  />
+                </>
+              ) : (
+                <div className="bg-white border border-gray-200 rounded p-12 text-center">
+                  <p className="text-sm text-gray-600">
+                    Selecciona las marcas y ejecuta la simulación para ver los resultados
+                  </p>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Vista P&G por Municipios */}
+          {activeView === 'pyg-municipios' && (
+            <>
+              {resultado ? (
+                <>
+                  {/* Selector de marca si hay múltiples */}
+                  {resultado.marcas.length > 1 && (
+                    <div className="mb-3 bg-white border border-gray-200 rounded p-2">
+                      <label className="text-xs font-medium text-gray-700 block mb-1">
+                        Selecciona una marca:
+                      </label>
+                      <select
+                        value={selectedMarcaPyG || resultado.marcas[0]?.marca_id || ''}
+                        onChange={(e) => {
+                          setSelectedMarcaPyG(e.target.value);
+                          setSelectedZonaId(null);
+                          setSelectedZonaNombre(null);
+                        }}
+                        className="w-full text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      >
+                        {resultado.marcas.map((marca) => (
+                          <option key={marca.marca_id} value={marca.marca_id}>
+                            {marca.nombre}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {selectedZonaId ? (
+                    <PyGMunicipios
+                      key={`pyg-municipios-${selectedZonaId}-${refreshKey}`}
+                      escenarioId={selectedScenarioId!}
+                      zonaId={selectedZonaId}
+                      zonaNombre={selectedZonaNombre || undefined}
+                      onBack={() => {
+                        setSelectedZonaId(null);
+                        setSelectedZonaNombre(null);
+                        setActiveView('pyg-zonas');
+                      }}
+                    />
+                  ) : (
+                    <PyGZonas
+                      key={`pyg-zonas-selector-${refreshKey}`}
+                      escenarioId={selectedScenarioId!}
+                      marcaId={selectedMarcaPyG || resultado.marcas[0]?.marca_id}
+                      onZonaSelect={(zonaId, zonaNombre) => {
+                        setSelectedZonaId(zonaId);
+                        setSelectedZonaNombre(zonaNombre);
+                      }}
+                    />
+                  )}
                 </>
               ) : (
                 <div className="bg-white border border-gray-200 rounded p-12 text-center">

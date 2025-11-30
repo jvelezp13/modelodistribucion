@@ -345,6 +345,45 @@ class APIClient {
   async obtenerTasaRenta(): Promise<TasaRentaResponse> {
     return this.request<TasaRentaResponse>('/api/impuestos/renta');
   }
+
+  /**
+   * Obtiene el P&G desglosado por zonas para una marca
+   */
+  async obtenerPyGZonas(
+    escenarioId: number,
+    marcaId: string
+  ): Promise<PyGZonasResponse> {
+    return this.request<PyGZonasResponse>(
+      `/api/pyg/zonas?escenario_id=${escenarioId}&marca_id=${marcaId}`
+    );
+  }
+
+  /**
+   * Obtiene el P&G desglosado por municipios para una zona
+   */
+  async obtenerPyGMunicipios(
+    zonaId: number,
+    escenarioId: number
+  ): Promise<PyGMunicipiosResponse> {
+    return this.request<PyGMunicipiosResponse>(
+      `/api/pyg/municipios?zona_id=${zonaId}&escenario_id=${escenarioId}`
+    );
+  }
+
+  /**
+   * Obtiene las zonas de una marca para el selector
+   */
+  async obtenerZonasMarca(
+    escenarioId: number,
+    marcaId: string
+  ): Promise<ZonaBasica[]> {
+    const response = await this.obtenerPyGZonas(escenarioId, marcaId);
+    return response.zonas.map(z => ({
+      id: z.zona.id,
+      nombre: z.zona.nombre,
+      participacion_ventas: z.zona.participacion_ventas
+    }));
+  }
 }
 
 // Interfaz para respuesta de tasa de renta
@@ -356,6 +395,69 @@ export interface TasaRentaResponse {
   nombre?: string;
   periodicidad?: string;
   mensaje?: string;
+}
+
+// Interfaces para P&G por Zonas y Municipios
+export interface PyGCategoria {
+  personal: number;
+  gastos: number;
+  total: number;
+}
+
+export interface PyGZona {
+  zona: {
+    id: number;
+    nombre: string;
+    participacion_ventas: number;
+  };
+  comercial: PyGCategoria;
+  logistico: PyGCategoria;
+  administrativo: PyGCategoria;
+  total_mensual: number;
+  total_anual: number;
+}
+
+export interface PyGZonasResponse {
+  marca_id: string;
+  marca_nombre: string;
+  escenario_id: number;
+  escenario_nombre: string;
+  total_zonas: number;
+  zonas: PyGZona[];
+}
+
+export interface PyGMunicipio {
+  municipio: {
+    id: number;
+    nombre: string;
+    codigo_dane: string;
+    participacion_ventas: number;
+    participacion_total: number;
+  };
+  zona: {
+    id: number;
+    nombre: string;
+  };
+  comercial: PyGCategoria;
+  logistico: PyGCategoria;
+  administrativo: PyGCategoria;
+  total_mensual: number;
+  total_anual: number;
+}
+
+export interface PyGMunicipiosResponse {
+  zona_id: number;
+  zona_nombre: string;
+  escenario_id: number;
+  escenario_nombre: string;
+  total_municipios: number;
+  municipios: PyGMunicipio[];
+}
+
+export interface ZonaBasica {
+  id: number;
+  nombre: string;
+  participacion_ventas: number;
 }
 
 export const apiClient = new APIClient();
