@@ -209,7 +209,14 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
   // Subtotal de vehículos ahora incluye flete base
   const subtotalLogisticoVehiculos = vehiculosConFlete.reduce((sum, v) => sum + v.totalConFlete, 0);
   const subtotalLogisticoPersonal = grupos.logisticoPersonal.reduce((sum, r) => sum + r.valor_total, 0);
-  const subtotalLogisticoGastos = grupos.logisticoGastos.reduce((sum, r) => sum + r.valor_total, 0);
+  // Excluir lejanías de gastos logísticos (se muestran aparte en Lejanías Logísticas)
+  const subtotalLogisticoGastos = grupos.logisticoGastos
+    .filter(r =>
+      !r.nombre.startsWith('Combustible - ') &&
+      !r.nombre.startsWith('Peajes - ') &&
+      !r.nombre.startsWith('Viáticos Ruta - ')
+    )
+    .reduce((sum, r) => sum + r.valor_total, 0);
 
   // Lejanías logísticas ahora solo incluye combustible + peajes + pernocta (sin flete base)
   const subtotalLejanias = lejaniasLogistica
@@ -743,8 +750,12 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
             </>
           )}
 
-          {/* Gastos Logísticos */}
-          {grupos.logisticoGastos.length > 0 && (
+          {/* Gastos Logísticos (excluyendo lejanías que se muestran aparte) */}
+          {grupos.logisticoGastos.filter(r =>
+            !r.nombre.startsWith('Combustible - ') &&
+            !r.nombre.startsWith('Peajes - ') &&
+            !r.nombre.startsWith('Viáticos Ruta - ')
+          ).length > 0 && (
             <>
               <SubSeccionHeader
                 titulo="Gastos Logísticos"
@@ -754,9 +765,15 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
               />
               {subSeccionesAbiertas.logisticoGastos && (
                 <>
-                  {grupos.logisticoGastos.map((rubro, idx) => (
-                    <RubroItem key={`log-gasto-${idx}`} rubro={rubro} />
-                  ))}
+                  {grupos.logisticoGastos
+                    .filter(r =>
+                      !r.nombre.startsWith('Combustible - ') &&
+                      !r.nombre.startsWith('Peajes - ') &&
+                      !r.nombre.startsWith('Viáticos Ruta - ')
+                    )
+                    .map((rubro, idx) => (
+                      <RubroItem key={`log-gasto-${idx}`} rubro={rubro} />
+                    ))}
                 </>
               )}
             </>
