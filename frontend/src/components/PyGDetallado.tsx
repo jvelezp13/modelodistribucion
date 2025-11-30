@@ -209,12 +209,15 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
   // Subtotal de vehículos ahora incluye flete base
   const subtotalLogisticoVehiculos = vehiculosConFlete.reduce((sum, v) => sum + v.totalConFlete, 0);
   const subtotalLogisticoPersonal = grupos.logisticoPersonal.reduce((sum, r) => sum + r.valor_total, 0);
-  // Excluir lejanías de gastos logísticos (se muestran aparte en Lejanías Logísticas)
+  // Excluir lejanías y flete base de gastos logísticos (se muestran aparte)
+  // - Combustible, Peajes, Viáticos -> en Lejanías Logísticas
+  // - Flete Base Tercero -> ya incluido en Flota de Vehículos
   const subtotalLogisticoGastos = grupos.logisticoGastos
     .filter(r =>
       !r.nombre.startsWith('Combustible - ') &&
       !r.nombre.startsWith('Peajes - ') &&
-      !r.nombre.startsWith('Viáticos Ruta - ')
+      !r.nombre.startsWith('Viáticos Ruta - ') &&
+      !r.nombre.startsWith('Flete Base Tercero - ')
     )
     .reduce((sum, r) => sum + r.valor_total, 0);
 
@@ -750,11 +753,12 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
             </>
           )}
 
-          {/* Gastos Logísticos (excluyendo lejanías que se muestran aparte) */}
+          {/* Gastos Logísticos (excluyendo lejanías y flete base que se muestran aparte) */}
           {grupos.logisticoGastos.filter(r =>
             !r.nombre.startsWith('Combustible - ') &&
             !r.nombre.startsWith('Peajes - ') &&
-            !r.nombre.startsWith('Viáticos Ruta - ')
+            !r.nombre.startsWith('Viáticos Ruta - ') &&
+            !r.nombre.startsWith('Flete Base Tercero - ')
           ).length > 0 && (
             <>
               <SubSeccionHeader
@@ -769,7 +773,8 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
                     .filter(r =>
                       !r.nombre.startsWith('Combustible - ') &&
                       !r.nombre.startsWith('Peajes - ') &&
-                      !r.nombre.startsWith('Viáticos Ruta - ')
+                      !r.nombre.startsWith('Viáticos Ruta - ') &&
+                      !r.nombre.startsWith('Flete Base Tercero - ')
                     )
                     .map((rubro, idx) => (
                       <RubroItem key={`log-gasto-${idx}`} rubro={rubro} />
