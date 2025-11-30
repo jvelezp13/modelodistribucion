@@ -200,7 +200,10 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
 
   // Calcular subtotales
   const subtotalComercialPersonal = grupos.comercialPersonal.reduce((sum, r) => sum + r.valor_total, 0);
-  const subtotalComercialGastos = grupos.comercialGastos.reduce((sum, r) => sum + r.valor_total, 0);
+  // Excluir lejanías de gastos comerciales (se muestran aparte)
+  const subtotalComercialGastos = grupos.comercialGastos
+    .filter(r => !r.nombre.startsWith('Combustible Lejanía') && !r.nombre.startsWith('Viáticos Pernocta'))
+    .reduce((sum, r) => sum + r.valor_total, 0);
   const totalComercial = subtotalComercialPersonal + subtotalComercialGastos + (marca.lejania_comercial || 0);
 
   // Subtotal de vehículos ahora incluye flete base
@@ -663,20 +666,27 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
             </>
           )}
 
-          {/* Gastos Comerciales */}
-          {grupos.comercialGastos.length > 0 && (
+          {/* Gastos Comerciales (excluyendo lejanías que se muestran aparte) */}
+          {grupos.comercialGastos.filter(r =>
+            !r.nombre.startsWith('Combustible Lejanía') &&
+            !r.nombre.startsWith('Viáticos Pernocta')
+          ).length > 0 && (
             <>
               <SubSeccionHeader
                 titulo="Gastos Comerciales"
                 subSeccion="comercialGastos"
-                valor={subtotalComercialGastos}
+                valor={grupos.comercialGastos
+                  .filter(r => !r.nombre.startsWith('Combustible Lejanía') && !r.nombre.startsWith('Viáticos Pernocta'))
+                  .reduce((sum, r) => sum + r.valor_total, 0)}
                 mostrarPorcentaje
               />
               {subSeccionesAbiertas.comercialGastos && (
                 <>
-                  {grupos.comercialGastos.map((rubro, idx) => (
-                    <RubroItem key={`com-gasto-${idx}`} rubro={rubro} />
-                  ))}
+                  {grupos.comercialGastos
+                    .filter(r => !r.nombre.startsWith('Combustible Lejanía') && !r.nombre.startsWith('Viáticos Pernocta'))
+                    .map((rubro, idx) => (
+                      <RubroItem key={`com-gasto-${idx}`} rubro={rubro} />
+                    ))}
                 </>
               )}
             </>
