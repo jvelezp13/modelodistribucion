@@ -172,7 +172,7 @@ export default function LejaniasLogistica({ escenarioId, marcaId }: LejaniasLogi
         <h2 className="text-lg font-bold text-gray-800 mb-3">
           Recorridos Logísticos - {datos.marca_nombre}
         </h2>
-        <div className="grid grid-cols-7 gap-4">
+        <div className="grid grid-cols-8 gap-3">
           <div>
             <div className="text-xs text-gray-500">Flete Base</div>
             <div className="text-sm font-semibold text-orange-600">
@@ -192,20 +192,29 @@ export default function LejaniasLogistica({ escenarioId, marcaId }: LejaniasLogi
             </div>
           </div>
           <div>
-            <div className="text-xs text-gray-500">Pernocta Total</div>
+            <div className="text-xs text-gray-500">Pernocta (Vehículo)</div>
             <div className="text-sm font-semibold text-purple-600">
-              {formatCurrency(datos.total_pernocta_mensual)}
+              {formatCurrency((datos.total_pernocta_conductor_mensual || 0) + (datos.total_parqueadero_mensual || 0))}
             </div>
             <div className="text-[10px] text-gray-400 mt-0.5">
               <span>Cond: {formatCurrency(datos.total_pernocta_conductor_mensual || 0)}</span>
               <span className="mx-1">|</span>
-              <span>Aux: {formatCurrency(datos.total_pernocta_auxiliar_mensual || 0)}</span>
+              <span>Parq: {formatCurrency(datos.total_parqueadero_mensual || 0)}</span>
             </div>
           </div>
           <div>
-            <div className="text-xs text-gray-500">Parqueadero</div>
-            <div className="text-sm font-semibold text-gray-600">
-              {formatCurrency(datos.total_parqueadero_mensual || 0)}
+            <div className="text-xs text-gray-500">Auxiliar (Empresa)</div>
+            <div className="text-sm font-semibold text-teal-600">
+              {formatCurrency(datos.total_auxiliar_empresa_mensual || 0)}
+            </div>
+            <div className="text-[10px] text-gray-400 mt-0.5">
+              Siempre paga empresa
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-gray-500">Pernocta Total</div>
+            <div className="text-sm font-semibold text-purple-800">
+              {formatCurrency(datos.total_pernocta_mensual)}
             </div>
           </div>
           <div>

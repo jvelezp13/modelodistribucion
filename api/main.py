@@ -521,6 +521,8 @@ def obtener_detalle_lejanias_logistica(
         total_pernocta_conductor = 0.0
         total_pernocta_auxiliar = 0.0
         total_parqueadero = 0.0
+        # Separar auxiliar empresa (siempre paga la empresa, sin importar el esquema)
+        total_auxiliar_empresa = 0.0
 
         for ruta in rutas:
             # Buscar gastos de esta ruta específica
@@ -698,6 +700,8 @@ def obtener_detalle_lejanias_logistica(
             total_pernocta_conductor += pernocta_conductor_mensual
             total_pernocta_auxiliar += pernocta_auxiliar_mensual
             total_parqueadero += parqueadero_mensual
+            # El auxiliar SIEMPRE lo paga la empresa (sin importar esquema)
+            total_auxiliar_empresa += pernocta_auxiliar_mensual
 
         total_mensual = total_flete_base + total_combustible + total_peaje + total_pernocta
 
@@ -716,6 +720,7 @@ def obtener_detalle_lejanias_logistica(
             'total_pernocta_conductor_mensual': total_pernocta_conductor,
             'total_pernocta_auxiliar_mensual': total_pernocta_auxiliar,
             'total_parqueadero_mensual': total_parqueadero,
+            'total_auxiliar_empresa_mensual': total_auxiliar_empresa,
             'total_mensual': total_mensual,
             'total_anual': total_mensual * 12,
             'rutas': detalle_rutas
