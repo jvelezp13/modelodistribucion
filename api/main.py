@@ -589,6 +589,11 @@ def obtener_detalle_lejanias_logistica(
             tipo_combustible = vehiculo.tipo_combustible if vehiculo else None
             consumo_galon_km = float(vehiculo.consumo_galon_km) if vehiculo and vehiculo.consumo_galon_km else 0
 
+            # Calcular recorridos mensuales y combustible por recorrido
+            recorridos_mensuales = float(ruta.viajes_por_periodo) * 4.33 if ruta.viajes_por_periodo else 0
+            combustible_por_recorrido = combustible_mensual / recorridos_mensuales if recorridos_mensuales > 0 else 0
+            peaje_por_recorrido = peaje_mensual / recorridos_mensuales if recorridos_mensuales > 0 else 0
+
             detalle_rutas.append({
                 'ruta_id': ruta.id,
                 'ruta_nombre': ruta.nombre,
@@ -614,9 +619,11 @@ def obtener_detalle_lejanias_logistica(
                     'tipo_combustible': tipo_combustible,
                     'consumo_km_galon': consumo_galon_km,
                     'recorridos_por_periodo': ruta.viajes_por_periodo,
-                    'recorridos_mensuales': float(ruta.viajes_por_periodo) * 4.33 if ruta.viajes_por_periodo else 0,
+                    'recorridos_mensuales': recorridos_mensuales,
                     'distancia_circuito_km': distancia_circuito,
                     'distancia_efectiva_km': max(0, distancia_circuito - (float(config.umbral_lejania_logistica_km) if config else 60)) if distancia_circuito else 0,
+                    'combustible_por_recorrido': combustible_por_recorrido,
+                    'peaje_por_recorrido': peaje_por_recorrido,
                     'municipios': detalle_municipios,
                     'tramos': detalle_tramos,
                 }

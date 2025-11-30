@@ -509,7 +509,7 @@ function DetalleRecorrido({
       {/* Info del vehículo y circuito */}
       {recorrido.detalle && (
         <div className="mb-4 p-2 bg-white rounded border border-gray-200">
-          <div className="grid grid-cols-6 gap-2 text-xs">
+          <div className="grid grid-cols-4 gap-2 text-xs mb-2">
             <div>
               <span className="text-gray-500">Bodega:</span>{' '}
               <span className="font-medium">{recorrido.detalle.bodega || 'N/A'}</span>
@@ -526,6 +526,8 @@ function DetalleRecorrido({
               <span className="text-gray-500">Rendimiento:</span>{' '}
               <span className="font-medium">{recorrido.detalle.consumo_km_galon || 0} km/gal</span>
             </div>
+          </div>
+          <div className="grid grid-cols-4 gap-2 text-xs pt-2 border-t border-gray-100">
             <div>
               <span className="text-gray-500">Recorridos/mes:</span>{' '}
               <span className="font-medium">{recorrido.detalle.recorridos_mensuales != null ? Number(recorrido.detalle.recorridos_mensuales).toFixed(1) : 'N/A'}</span>
@@ -533,6 +535,14 @@ function DetalleRecorrido({
             <div>
               <span className="text-gray-500">Km lejanía:</span>{' '}
               <span className="font-medium text-blue-600">{recorrido.detalle.distancia_efectiva_km != null ? Number(recorrido.detalle.distancia_efectiva_km).toFixed(1) : '0'}</span>
+            </div>
+            <div>
+              <span className="text-gray-500">Comb/recorrido:</span>{' '}
+              <span className="font-medium text-blue-600">{formatCurrency(recorrido.detalle.combustible_por_recorrido || 0)}</span>
+            </div>
+            <div>
+              <span className="text-gray-500">Peaje/recorrido:</span>{' '}
+              <span className="font-medium text-yellow-600">{formatCurrency(recorrido.detalle.peaje_por_recorrido || 0)}</span>
             </div>
           </div>
         </div>
@@ -553,6 +563,9 @@ function DetalleRecorrido({
                 <span className="flex items-center gap-1 text-blue-600">
                   <ArrowRight size={12} />
                   <span className="text-gray-500">{tramo.distancia_km || 0} km</span>
+                  {tramo.peaje > 0 && (
+                    <span className="text-yellow-600">({formatCurrency(tramo.peaje)})</span>
+                  )}
                 </span>
                 <span className="font-medium text-gray-700">{tramo.destino}</span>
               </React.Fragment>
