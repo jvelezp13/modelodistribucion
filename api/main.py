@@ -375,6 +375,27 @@ def obtener_detalle_lejanias_comercial(
                         'es_visita_local': False,
                     })
 
+            # Construir detalle de pernocta si aplica
+            detalle_pernocta = None
+            if zona.requiere_pernocta and zona.noches_pernocta > 0 and config:
+                desayuno = float(config.desayuno_comercial)
+                almuerzo = float(config.almuerzo_comercial)
+                cena = float(config.cena_comercial)
+                alojamiento = float(config.alojamiento_comercial)
+                gasto_por_noche = desayuno + almuerzo + cena + alojamiento
+                periodos_mes = float(zona.periodos_por_mes())
+
+                detalle_pernocta = {
+                    'noches': zona.noches_pernocta,
+                    'desayuno': desayuno,
+                    'almuerzo': almuerzo,
+                    'cena': cena,
+                    'alojamiento': alojamiento,
+                    'gasto_por_noche': gasto_por_noche,
+                    'periodos_mes': periodos_mes,
+                    'total_mensual': gasto_por_noche * zona.noches_pernocta * periodos_mes,
+                }
+
             detalle_zonas.append({
                 'zona_id': zona.id,
                 'zona_nombre': zona.nombre,
@@ -391,6 +412,7 @@ def obtener_detalle_lejanias_comercial(
                     'base': base_vendedor.nombre if base_vendedor else None,
                     'tipo_vehiculo': zona.tipo_vehiculo_comercial,
                     'municipios': detalle_municipios,
+                    'pernocta': detalle_pernocta,
                 }
             })
 
