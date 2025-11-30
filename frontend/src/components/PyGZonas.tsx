@@ -534,6 +534,12 @@ function ZonaRow({
                     <span className="text-gray-500">Gastos:</span>
                     <span className="font-medium">{formatCurrency(zona.comercial.gastos)}</span>
                   </div>
+                  {zona.comercial.lejanias !== undefined && zona.comercial.lejanias > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Lejanías:</span>
+                      <span className="font-medium text-orange-600">{formatCurrency(zona.comercial.lejanias)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between border-t pt-1 mt-1">
                     <span className="font-medium text-gray-700">Total:</span>
                     <span className="font-bold text-gray-900">{formatCurrency(zona.comercial.total)}</span>
@@ -556,6 +562,12 @@ function ZonaRow({
                     <span className="text-gray-500">Gastos:</span>
                     <span className="font-medium">{formatCurrency(zona.logistico.gastos)}</span>
                   </div>
+                  {zona.logistico.lejanias !== undefined && zona.logistico.lejanias > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Lejanías:</span>
+                      <span className="font-medium text-orange-600">{formatCurrency(zona.logistico.lejanias)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between border-t pt-1 mt-1">
                     <span className="font-medium text-gray-700">Total:</span>
                     <span className="font-bold text-gray-900">{formatCurrency(zona.logistico.total)}</span>

@@ -1395,17 +1395,29 @@ def _serializar_pyg(pyg: Dict) -> Dict:
         except (TypeError, ValueError):
             return 0.0
 
+    comercial = {
+        'personal': to_float(pyg.get('comercial', {}).get('personal', 0)),
+        'gastos': to_float(pyg.get('comercial', {}).get('gastos', 0)),
+        'total': to_float(pyg.get('comercial', {}).get('total', 0)),
+    }
+    # Agregar lejanías si existen
+    lejanias_comercial = pyg.get('comercial', {}).get('lejanias')
+    if lejanias_comercial is not None:
+        comercial['lejanias'] = to_float(lejanias_comercial)
+
+    logistico = {
+        'personal': to_float(pyg.get('logistico', {}).get('personal', 0)),
+        'gastos': to_float(pyg.get('logistico', {}).get('gastos', 0)),
+        'total': to_float(pyg.get('logistico', {}).get('total', 0)),
+    }
+    # Agregar lejanías si existen
+    lejanias_logistico = pyg.get('logistico', {}).get('lejanias')
+    if lejanias_logistico is not None:
+        logistico['lejanias'] = to_float(lejanias_logistico)
+
     return {
-        'comercial': {
-            'personal': to_float(pyg.get('comercial', {}).get('personal', 0)),
-            'gastos': to_float(pyg.get('comercial', {}).get('gastos', 0)),
-            'total': to_float(pyg.get('comercial', {}).get('total', 0)),
-        },
-        'logistico': {
-            'personal': to_float(pyg.get('logistico', {}).get('personal', 0)),
-            'gastos': to_float(pyg.get('logistico', {}).get('gastos', 0)),
-            'total': to_float(pyg.get('logistico', {}).get('total', 0)),
-        },
+        'comercial': comercial,
+        'logistico': logistico,
         'administrativo': {
             'personal': to_float(pyg.get('administrativo', {}).get('personal', 0)),
             'gastos': to_float(pyg.get('administrativo', {}).get('gastos', 0)),

@@ -401,6 +401,7 @@ export interface TasaRentaResponse {
 export interface PyGCategoria {
   personal: number;
   gastos: number;
+  lejanias?: number;  // Lejanías calculadas dinámicamente (comercial o logística)
   total: number;
 }
 
