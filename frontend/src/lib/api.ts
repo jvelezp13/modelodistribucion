@@ -224,6 +224,7 @@ export interface DetalleLejaniasLogistica {
   total_pernocta_conductor_mensual: number;
   total_pernocta_auxiliar_mensual: number;
   total_parqueadero_mensual: number;
+  total_auxiliar_empresa_mensual: number;  // Auxiliar siempre paga empresa
   total_pernocta_mensual: number;  // Total combinado
   total_mensual: number;
   total_anual: number;
