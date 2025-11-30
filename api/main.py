@@ -1131,16 +1131,20 @@ def obtener_pyg_zonas(
 ) -> Dict[str, Any]:
     """
     Obtiene el P&G desglosado por zona comercial para una marca.
+    Incluye ventas mensuales y configuración de descuentos para calcular rentabilidad.
 
     Args:
         escenario_id: ID del escenario
         marca_id: ID de la marca
 
     Returns:
-        Lista de P&G por zona con totales
+        Lista de P&G por zona con ventas, costos y rentabilidad
     """
     try:
-        from core.models import Escenario, Marca
+        from core.models import (
+            Escenario, Marca, ProyeccionVentasConfig,
+            ConfiguracionDescuentos, Impuesto
+        )
         from api.pyg_service import calcular_pyg_todas_zonas
 
         escenario = Escenario.objects.get(pk=escenario_id)
@@ -1148,13 +1152,77 @@ def obtener_pyg_zonas(
 
         zonas = calcular_pyg_todas_zonas(escenario, marca)
 
+        # Obtener ventas mensuales de la marca
+        ventas_mensuales = {}
+        try:
+            config_ventas = ProyeccionVentasConfig.objects.get(
+                marca=marca,
+                escenario=escenario,
+                anio=escenario.anio
+            )
+            ventas_mensuales = {k: float(v) for k, v in config_ventas.calcular_ventas_mensuales().items()}
+        except ProyeccionVentasConfig.DoesNotExist:
+            pass
+
+        # Obtener configuración de descuentos
+        config_descuentos = None
+        try:
+            config = ConfiguracionDescuentos.objects.prefetch_related('tramos').get(
+                marca=marca,
+                activa=True
+            )
+            # Calcular descuento ponderado
+            descuento_ponderado = 0.0
+            tramos_data = []
+            for tramo in config.tramos.all().order_by('orden'):
+                peso = float(tramo.porcentaje_ventas) / 100
+                descuento = float(tramo.porcentaje_descuento) / 100
+                descuento_ponderado += peso * descuento
+                tramos_data.append({
+                    'orden': tramo.orden,
+                    'porcentaje_ventas': float(tramo.porcentaje_ventas),
+                    'porcentaje_descuento': float(tramo.porcentaje_descuento),
+                })
+
+            config_descuentos = {
+                'descuento_pie_factura_ponderado': descuento_ponderado * 100,
+                'tramos': tramos_data,
+                'porcentaje_rebate': float(config.porcentaje_rebate),
+                'aplica_descuento_financiero': config.aplica_descuento_financiero,
+                'porcentaje_descuento_financiero': float(config.porcentaje_descuento_financiero),
+            }
+        except ConfiguracionDescuentos.DoesNotExist:
+            config_descuentos = {
+                'descuento_pie_factura_ponderado': 0,
+                'tramos': [],
+                'porcentaje_rebate': 0,
+                'aplica_descuento_financiero': False,
+                'porcentaje_descuento_financiero': 0,
+            }
+
+        # Obtener tasa de impuesto de renta
+        tasa_impuesto = 0.33  # Default
+        try:
+            impuesto_renta = Impuesto.objects.filter(
+                tipo='renta',
+                aplicacion='sobre_utilidad',
+                activo=True
+            ).first()
+            if impuesto_renta:
+                tasa_impuesto = float(impuesto_renta.porcentaje) / 100
+        except Exception:
+            pass
+
         return {
             'escenario_id': escenario_id,
             'escenario_nombre': escenario.nombre,
             'marca_id': marca_id,
             'marca_nombre': marca.nombre,
             'zonas': [_serializar_pyg_zona(z) for z in zonas],
-            'total_zonas': len(zonas)
+            'total_zonas': len(zonas),
+            'ventas_mensuales': ventas_mensuales,
+            'configuracion_descuentos': config_descuentos,
+            'tasa_impuesto_renta': tasa_impuesto,
         }
 
     except Escenario.DoesNotExist:

@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { apiClient, PyGZonasResponse, PyGZona } from '@/lib/api';
-import { ChevronDown, ChevronRight, MapPin, TrendingUp, Users, Truck, Building2 } from 'lucide-react';
+import { apiClient, PyGZonasResponse, PyGZona, MESES, getMesActual, VentasMensualesDesglose } from '@/lib/api';
+import { ChevronDown, ChevronRight, MapPin, TrendingUp, TrendingDown, Users, Truck, Building2, Calendar, DollarSign, Percent } from 'lucide-react';
 
 interface PyGZonasProps {
   escenarioId: number;
@@ -15,6 +15,7 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedZonas, setExpandedZonas] = useState<Set<number>>(new Set());
+  const [mesSeleccionado, setMesSeleccionado] = useState<string>(getMesActual());
 
   useEffect(() => {
     const fetchData = async () => {
@@ -61,16 +62,88 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
     return `${value.toFixed(1)}%`;
   };
 
+  // Obtener ventas del mes seleccionado
+  const getVentasMes = (): number => {
+    if (!data?.ventas_mensuales) return 0;
+    const ventas = data.ventas_mensuales as VentasMensualesDesglose;
+    return ventas[mesSeleccionado as keyof VentasMensualesDesglose] || 0;
+  };
+
+  const ventasTotalMes = getVentasMes();
+
+  // Calcular ventas de una zona según su participación
+  const calcularVentasZona = (zona: PyGZona): number => {
+    return ventasTotalMes * (zona.zona.participacion_ventas / 100);
+  };
+
+  // Calcular margen bruto de una zona (ventas - CMV)
+  const calcularMargenBrutoZona = (zona: PyGZona): number => {
+    const ventas = calcularVentasZona(zona);
+    const descuentoPonderado = data?.configuracion_descuentos?.descuento_pie_factura_ponderado || 0;
+    // Margen bruto = ventas * descuento_pie_factura (el descuento ES el margen del distribuidor)
+    return ventas * (descuentoPonderado / 100);
+  };
+
+  // Calcular utilidad operacional de una zona
+  const calcularUtilidadOperacional = (zona: PyGZona): number => {
+    const margenBruto = calcularMargenBrutoZona(zona);
+    return margenBruto - zona.total_mensual;
+  };
+
+  // Calcular otros ingresos (rebate + descuento financiero)
+  const calcularOtrosIngresos = (zona: PyGZona): number => {
+    if (!data?.configuracion_descuentos) return 0;
+    const ventas = calcularVentasZona(zona);
+    const config = data.configuracion_descuentos;
+
+    const rebate = ventas * (config.porcentaje_rebate / 100);
+    const descFinanciero = config.aplica_descuento_financiero
+      ? ventas * (config.porcentaje_descuento_financiero / 100)
+      : 0;
+
+    return rebate + descFinanciero;
+  };
+
+  // Calcular utilidad antes de impuestos
+  const calcularUtilidadAntesImpuestos = (zona: PyGZona): number => {
+    return calcularUtilidadOperacional(zona) + calcularOtrosIngresos(zona);
+  };
+
+  // Calcular utilidad neta (después de impuestos)
+  const calcularUtilidadNeta = (zona: PyGZona): number => {
+    const utilidadAntesImp = calcularUtilidadAntesImpuestos(zona);
+    const tasaImpuesto = data?.tasa_impuesto_renta || 0.33;
+    const impuesto = utilidadAntesImp > 0 ? utilidadAntesImp * tasaImpuesto : 0;
+    return utilidadAntesImp - impuesto;
+  };
+
+  // Calcular margen neto sobre ventas
+  const calcularMargenNeto = (zona: PyGZona): number => {
+    const ventas = calcularVentasZona(zona);
+    if (ventas === 0) return 0;
+    return (calcularUtilidadNeta(zona) / ventas) * 100;
+  };
+
   // Calcular totales
   const calcularTotales = () => {
-    if (!data?.zonas) return { comercial: 0, logistico: 0, administrativo: 0, total: 0 };
+    if (!data?.zonas) return {
+      comercial: 0, logistico: 0, administrativo: 0, costoTotal: 0,
+      ventas: 0, margenBruto: 0, utilidadOperacional: 0, utilidadNeta: 0
+    };
 
     return data.zonas.reduce((acc, zona) => ({
       comercial: acc.comercial + zona.comercial.total,
       logistico: acc.logistico + zona.logistico.total,
       administrativo: acc.administrativo + zona.administrativo.total,
-      total: acc.total + zona.total_mensual
-    }), { comercial: 0, logistico: 0, administrativo: 0, total: 0 });
+      costoTotal: acc.costoTotal + zona.total_mensual,
+      ventas: acc.ventas + calcularVentasZona(zona),
+      margenBruto: acc.margenBruto + calcularMargenBrutoZona(zona),
+      utilidadOperacional: acc.utilidadOperacional + calcularUtilidadOperacional(zona),
+      utilidadNeta: acc.utilidadNeta + calcularUtilidadNeta(zona)
+    }), {
+      comercial: 0, logistico: 0, administrativo: 0, costoTotal: 0,
+      ventas: 0, margenBruto: 0, utilidadOperacional: 0, utilidadNeta: 0
+    });
   };
 
   const totales = calcularTotales();
@@ -100,9 +173,11 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
     );
   }
 
+  const margenNetoTotal = totales.ventas > 0 ? (totales.utilidadNeta / totales.ventas) * 100 : 0;
+
   return (
     <div className="space-y-4">
-      {/* Header */}
+      {/* Header con selector de mes */}
       <div className="bg-white border border-gray-200 rounded">
         <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
           <div className="flex justify-between items-center">
@@ -114,15 +189,65 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
                 {data.total_zonas} zonas | {data.escenario_nombre}
               </p>
             </div>
-            <div className="text-right">
-              <div className="text-xs text-gray-500">Total Mensual</div>
-              <div className="text-lg font-bold text-gray-900">{formatCurrency(totales.total)}</div>
+            <div className="flex items-center gap-4">
+              {/* Selector de mes */}
+              <div className="flex items-center gap-2">
+                <Calendar size={14} className="text-gray-500" />
+                <select
+                  value={mesSeleccionado}
+                  onChange={(e) => setMesSeleccionado(e.target.value)}
+                  className="text-xs border border-gray-300 rounded px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  {MESES.map((mes) => (
+                    <option key={mes.value} value={mes.value}>
+                      {mes.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Resumen por categoría */}
-        <div className="grid grid-cols-3 gap-4 p-4 bg-gray-50 border-b border-gray-200">
+        {/* Resumen ejecutivo */}
+        <div className="grid grid-cols-4 gap-4 p-4 bg-gradient-to-r from-slate-50 to-gray-50 border-b border-gray-200">
+          <div className="text-center">
+            <div className="flex items-center justify-center gap-1 text-xs text-gray-500 mb-1">
+              <DollarSign size={12} />
+              <span>Ventas del Mes</span>
+            </div>
+            <div className="text-sm font-bold text-gray-800">{formatCurrency(totales.ventas)}</div>
+          </div>
+          <div className="text-center">
+            <div className="flex items-center justify-center gap-1 text-xs text-gray-500 mb-1">
+              <Percent size={12} />
+              <span>Margen Bruto</span>
+            </div>
+            <div className="text-sm font-bold text-emerald-600">{formatCurrency(totales.margenBruto)}</div>
+          </div>
+          <div className="text-center">
+            <div className="flex items-center justify-center gap-1 text-xs text-gray-500 mb-1">
+              <TrendingUp size={12} />
+              <span>Util. Operacional</span>
+            </div>
+            <div className={`text-sm font-bold ${totales.utilidadOperacional >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+              {formatCurrency(totales.utilidadOperacional)}
+            </div>
+          </div>
+          <div className="text-center">
+            <div className="flex items-center justify-center gap-1 text-xs text-gray-500 mb-1">
+              {margenNetoTotal >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+              <span>Util. Neta</span>
+            </div>
+            <div className={`text-sm font-bold ${totales.utilidadNeta >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {formatCurrency(totales.utilidadNeta)}
+              <span className="text-[10px] ml-1">({formatPercent(margenNetoTotal)})</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Resumen por categoría de costos */}
+        <div className="grid grid-cols-4 gap-4 p-4 bg-gray-50 border-b border-gray-200">
           <div className="text-center">
             <div className="flex items-center justify-center gap-1 text-xs text-gray-500 mb-1">
               <Users size={12} />
@@ -144,6 +269,12 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
             </div>
             <div className="text-sm font-semibold text-gray-800">{formatCurrency(totales.administrativo)}</div>
           </div>
+          <div className="text-center">
+            <div className="flex items-center justify-center gap-1 text-xs text-gray-500 mb-1">
+              <span>Total Costos</span>
+            </div>
+            <div className="text-sm font-bold text-gray-900">{formatCurrency(totales.costoTotal)}</div>
+          </div>
         </div>
 
         {/* Tabla de zonas */}
@@ -152,11 +283,13 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
             <thead className="bg-gray-100 border-b border-gray-200">
               <tr>
                 <th className="text-left px-3 py-2 font-semibold text-gray-700">Zona</th>
-                <th className="text-right px-3 py-2 font-semibold text-gray-700">Part. Ventas</th>
-                <th className="text-right px-3 py-2 font-semibold text-gray-700">Comercial</th>
-                <th className="text-right px-3 py-2 font-semibold text-gray-700">Logístico</th>
-                <th className="text-right px-3 py-2 font-semibold text-gray-700">Admin.</th>
-                <th className="text-right px-3 py-2 font-semibold text-gray-700">Total Mensual</th>
+                <th className="text-right px-3 py-2 font-semibold text-gray-700">Part.</th>
+                <th className="text-right px-3 py-2 font-semibold text-gray-700">Ventas</th>
+                <th className="text-right px-3 py-2 font-semibold text-gray-700">Margen Bruto</th>
+                <th className="text-right px-3 py-2 font-semibold text-gray-700">Costos</th>
+                <th className="text-right px-3 py-2 font-semibold text-gray-700">Util. Oper.</th>
+                <th className="text-right px-3 py-2 font-semibold text-gray-700">Util. Neta</th>
+                <th className="text-right px-3 py-2 font-semibold text-gray-700">Margen</th>
                 <th className="text-center px-3 py-2 font-semibold text-gray-700">Acciones</th>
               </tr>
             </thead>
@@ -171,6 +304,13 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
                   formatCurrency={formatCurrency}
                   formatPercent={formatPercent}
                   isEven={idx % 2 === 0}
+                  ventasZona={calcularVentasZona(zona)}
+                  margenBruto={calcularMargenBrutoZona(zona)}
+                  utilidadOperacional={calcularUtilidadOperacional(zona)}
+                  utilidadNeta={calcularUtilidadNeta(zona)}
+                  margenNeto={calcularMargenNeto(zona)}
+                  otrosIngresos={calcularOtrosIngresos(zona)}
+                  tasaImpuesto={data.tasa_impuesto_renta}
                 />
               ))}
             </tbody>
@@ -178,10 +318,18 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
               <tr>
                 <td className="px-3 py-2 font-bold text-gray-800">TOTAL</td>
                 <td className="text-right px-3 py-2 font-bold text-gray-800">100%</td>
-                <td className="text-right px-3 py-2 font-bold text-gray-800">{formatCurrency(totales.comercial)}</td>
-                <td className="text-right px-3 py-2 font-bold text-gray-800">{formatCurrency(totales.logistico)}</td>
-                <td className="text-right px-3 py-2 font-bold text-gray-800">{formatCurrency(totales.administrativo)}</td>
-                <td className="text-right px-3 py-2 font-bold text-gray-800">{formatCurrency(totales.total)}</td>
+                <td className="text-right px-3 py-2 font-bold text-gray-800">{formatCurrency(totales.ventas)}</td>
+                <td className="text-right px-3 py-2 font-bold text-emerald-700">{formatCurrency(totales.margenBruto)}</td>
+                <td className="text-right px-3 py-2 font-bold text-gray-800">{formatCurrency(totales.costoTotal)}</td>
+                <td className={`text-right px-3 py-2 font-bold ${totales.utilidadOperacional >= 0 ? 'text-blue-700' : 'text-red-700'}`}>
+                  {formatCurrency(totales.utilidadOperacional)}
+                </td>
+                <td className={`text-right px-3 py-2 font-bold ${totales.utilidadNeta >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                  {formatCurrency(totales.utilidadNeta)}
+                </td>
+                <td className={`text-right px-3 py-2 font-bold ${margenNetoTotal >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                  {formatPercent(margenNetoTotal)}
+                </td>
                 <td></td>
               </tr>
             </tfoot>
@@ -189,32 +337,48 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
         </div>
       </div>
 
-      {/* Gráfico de participación */}
+      {/* Gráfico de rentabilidad por zona */}
       <div className="bg-white border border-gray-200 rounded p-4">
         <h4 className="text-xs font-semibold text-gray-700 mb-3 flex items-center gap-1">
           <TrendingUp size={14} />
-          Distribución de Costos por Zona
+          Rentabilidad por Zona (Margen Neto %)
         </h4>
         <div className="space-y-2">
-          {data.zonas.map(zona => {
-            const porcentaje = totales.total > 0 ? (zona.total_mensual / totales.total) * 100 : 0;
-            return (
-              <div key={zona.zona.id} className="flex items-center gap-2">
-                <div className="w-24 text-xs text-gray-600 truncate" title={zona.zona.nombre}>
-                  {zona.zona.nombre}
+          {data.zonas
+            .map(zona => ({
+              zona,
+              margen: calcularMargenNeto(zona),
+              ventas: calcularVentasZona(zona)
+            }))
+            .sort((a, b) => b.margen - a.margen)
+            .map(({ zona, margen, ventas }) => {
+              const isPositive = margen >= 0;
+              const barWidth = Math.min(Math.abs(margen) * 5, 100); // Escala para visualización
+
+              return (
+                <div key={zona.zona.id} className="flex items-center gap-2">
+                  <div className="w-28 text-xs text-gray-600 truncate" title={zona.zona.nombre}>
+                    {zona.zona.nombre}
+                  </div>
+                  <div className="flex-1 bg-gray-100 rounded-full h-4 overflow-hidden relative">
+                    <div
+                      className={`h-full rounded-full transition-all duration-300 ${
+                        isPositive ? 'bg-green-500' : 'bg-red-500'
+                      }`}
+                      style={{ width: `${barWidth}%` }}
+                    />
+                  </div>
+                  <div className={`w-20 text-right text-xs font-medium ${
+                    isPositive ? 'text-green-700' : 'text-red-700'
+                  }`}>
+                    {formatPercent(margen)}
+                  </div>
+                  <div className="w-24 text-right text-[10px] text-gray-500">
+                    {formatCurrency(ventas)}
+                  </div>
                 </div>
-                <div className="flex-1 bg-gray-100 rounded-full h-4 overflow-hidden">
-                  <div
-                    className="h-full bg-blue-500 rounded-full transition-all duration-300"
-                    style={{ width: `${porcentaje}%` }}
-                  />
-                </div>
-                <div className="w-16 text-right text-xs font-medium text-gray-700">
-                  {formatPercent(porcentaje)}
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
         </div>
       </div>
     </div>
@@ -229,9 +393,21 @@ interface ZonaRowProps {
   formatCurrency: (value: number) => string;
   formatPercent: (value: number) => string;
   isEven: boolean;
+  ventasZona: number;
+  margenBruto: number;
+  utilidadOperacional: number;
+  utilidadNeta: number;
+  margenNeto: number;
+  otrosIngresos: number;
+  tasaImpuesto: number;
 }
 
-function ZonaRow({ zona, isExpanded, onToggle, onVerMunicipios, formatCurrency, formatPercent, isEven }: ZonaRowProps) {
+function ZonaRow({
+  zona, isExpanded, onToggle, onVerMunicipios, formatCurrency, formatPercent, isEven,
+  ventasZona, margenBruto, utilidadOperacional, utilidadNeta, margenNeto, otrosIngresos, tasaImpuesto
+}: ZonaRowProps) {
+  const isRentable = utilidadNeta >= 0;
+
   return (
     <>
       <tr className={`border-b border-gray-100 hover:bg-blue-50 transition-colors ${isEven ? 'bg-white' : 'bg-gray-50'}`}>
@@ -241,7 +417,7 @@ function ZonaRow({ zona, isExpanded, onToggle, onVerMunicipios, formatCurrency, 
             className="flex items-center gap-1.5 text-gray-800 hover:text-blue-600"
           >
             {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-            <MapPin size={12} className="text-gray-400" />
+            <MapPin size={12} className={isRentable ? 'text-green-500' : 'text-red-500'} />
             <span className="font-medium">{zona.zona.nombre}</span>
           </button>
         </td>
@@ -250,10 +426,22 @@ function ZonaRow({ zona, isExpanded, onToggle, onVerMunicipios, formatCurrency, 
             {formatPercent(zona.zona.participacion_ventas)}
           </span>
         </td>
-        <td className="text-right px-3 py-2 text-gray-700">{formatCurrency(zona.comercial.total)}</td>
-        <td className="text-right px-3 py-2 text-gray-700">{formatCurrency(zona.logistico.total)}</td>
-        <td className="text-right px-3 py-2 text-gray-700">{formatCurrency(zona.administrativo.total)}</td>
-        <td className="text-right px-3 py-2 font-semibold text-gray-900">{formatCurrency(zona.total_mensual)}</td>
+        <td className="text-right px-3 py-2 text-gray-700">{formatCurrency(ventasZona)}</td>
+        <td className="text-right px-3 py-2 text-emerald-600">{formatCurrency(margenBruto)}</td>
+        <td className="text-right px-3 py-2 text-gray-700">{formatCurrency(zona.total_mensual)}</td>
+        <td className={`text-right px-3 py-2 ${utilidadOperacional >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+          {formatCurrency(utilidadOperacional)}
+        </td>
+        <td className={`text-right px-3 py-2 font-semibold ${isRentable ? 'text-green-600' : 'text-red-600'}`}>
+          {formatCurrency(utilidadNeta)}
+        </td>
+        <td className="text-right px-3 py-2">
+          <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+            isRentable ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+          }`}>
+            {formatPercent(margenNeto)}
+          </span>
+        </td>
         <td className="text-center px-3 py-2">
           {onVerMunicipios && (
             <button
@@ -267,7 +455,69 @@ function ZonaRow({ zona, isExpanded, onToggle, onVerMunicipios, formatCurrency, 
       </tr>
       {isExpanded && (
         <tr className="bg-gray-50">
-          <td colSpan={7} className="px-6 py-3">
+          <td colSpan={9} className="px-6 py-3">
+            {/* Resumen P&G de la zona */}
+            <div className="bg-white rounded border border-gray-200 p-4 mb-3">
+              <h5 className="text-xs font-semibold text-gray-700 mb-3">Estado de Resultados - {zona.zona.nombre}</h5>
+              <div className="grid grid-cols-2 gap-4 text-xs">
+                <div className="space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Ventas del Período:</span>
+                    <span className="font-medium">{formatCurrency(ventasZona)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">(-) CMV:</span>
+                    <span className="font-medium text-gray-500">{formatCurrency(ventasZona - margenBruto)}</span>
+                  </div>
+                  <div className="flex justify-between border-t pt-1">
+                    <span className="font-semibold text-emerald-700">Margen Bruto:</span>
+                    <span className="font-bold text-emerald-700">{formatCurrency(margenBruto)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">(-) Costos Operativos:</span>
+                    <span className="font-medium text-gray-500">{formatCurrency(zona.total_mensual)}</span>
+                  </div>
+                  <div className="flex justify-between border-t pt-1">
+                    <span className="font-semibold text-blue-700">Utilidad Operacional:</span>
+                    <span className={`font-bold ${utilidadOperacional >= 0 ? 'text-blue-700' : 'text-red-700'}`}>
+                      {formatCurrency(utilidadOperacional)}
+                    </span>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">(+) Otros Ingresos (Rebate, Desc. Fin.):</span>
+                    <span className="font-medium text-teal-600">{formatCurrency(otrosIngresos)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Utilidad antes de Impuestos:</span>
+                    <span className="font-medium">{formatCurrency(utilidadOperacional + otrosIngresos)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">(-) Impuesto Renta ({formatPercent(tasaImpuesto * 100)}):</span>
+                    <span className="font-medium text-gray-500">
+                      {formatCurrency((utilidadOperacional + otrosIngresos) > 0
+                        ? (utilidadOperacional + otrosIngresos) * tasaImpuesto
+                        : 0)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between border-t pt-1">
+                    <span className="font-semibold text-green-700">Utilidad Neta:</span>
+                    <span className={`font-bold ${isRentable ? 'text-green-700' : 'text-red-700'}`}>
+                      {formatCurrency(utilidadNeta)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Margen Neto:</span>
+                    <span className={`font-medium ${isRentable ? 'text-green-600' : 'text-red-600'}`}>
+                      {formatPercent(margenNeto)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Desglose de costos */}
             <div className="grid grid-cols-3 gap-4 text-xs">
               {/* Comercial */}
               <div className="bg-white rounded border border-gray-200 p-3">
@@ -334,10 +584,6 @@ function ZonaRow({ zona, isExpanded, onToggle, onVerMunicipios, formatCurrency, 
                   </div>
                 </div>
               </div>
-            </div>
-            <div className="mt-3 text-right">
-              <span className="text-xs text-gray-500">Total Anual: </span>
-              <span className="text-sm font-bold text-gray-800">{formatCurrency(zona.total_anual)}</span>
             </div>
           </td>
         </tr>

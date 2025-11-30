@@ -417,6 +417,14 @@ export interface PyGZona {
   total_anual: number;
 }
 
+export interface ConfigDescuentosZonas {
+  descuento_pie_factura_ponderado: number;
+  tramos: TramoDescuento[];
+  porcentaje_rebate: number;
+  aplica_descuento_financiero: boolean;
+  porcentaje_descuento_financiero: number;
+}
+
 export interface PyGZonasResponse {
   marca_id: string;
   marca_nombre: string;
@@ -424,6 +432,9 @@ export interface PyGZonasResponse {
   escenario_nombre: string;
   total_zonas: number;
   zonas: PyGZona[];
+  ventas_mensuales: VentasMensualesDesglose;
+  configuracion_descuentos: ConfigDescuentosZonas;
+  tasa_impuesto_renta: number;
 }
 
 export interface PyGMunicipio {
