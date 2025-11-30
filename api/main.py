@@ -518,6 +518,9 @@ def obtener_detalle_lejanias_logistica(
         total_combustible = 0.0
         total_peaje = 0.0
         total_pernocta = 0.0
+        total_pernocta_conductor = 0.0
+        total_pernocta_auxiliar = 0.0
+        total_parqueadero = 0.0
 
         for ruta in rutas:
             # Buscar gastos de esta ruta específica
@@ -594,6 +597,61 @@ def obtener_detalle_lejanias_logistica(
             combustible_por_recorrido = combustible_mensual / recorridos_mensuales if recorridos_mensuales > 0 else 0
             peaje_por_recorrido = peaje_mensual / recorridos_mensuales if recorridos_mensuales > 0 else 0
 
+            # Calcular componentes de pernocta (conductor, auxiliar, parqueadero)
+            pernocta_conductor_mensual = 0.0
+            pernocta_auxiliar_mensual = 0.0
+            parqueadero_mensual = 0.0
+            detalle_pernocta = None
+
+            if ruta.requiere_pernocta and ruta.noches_pernocta > 0 and config:
+                # Gasto por noche del conductor
+                gasto_conductor_noche = (
+                    float(config.desayuno_conductor or 0) +
+                    float(config.almuerzo_conductor or 0) +
+                    float(config.cena_conductor or 0) +
+                    float(config.alojamiento_conductor or 0)
+                )
+
+                # Gasto por noche del auxiliar (por cada auxiliar)
+                cantidad_auxiliares = vehiculo.cantidad_auxiliares if vehiculo else 1
+                gasto_auxiliar_noche = (
+                    float(config.desayuno_auxiliar or 0) +
+                    float(config.almuerzo_auxiliar or 0) +
+                    float(config.cena_auxiliar or 0) +
+                    float(config.alojamiento_auxiliar or 0)
+                ) * cantidad_auxiliares
+
+                # Parqueadero por noche
+                parqueadero_noche = float(config.parqueadero_logistica or 0)
+
+                # Calcular mensuales
+                noches_mes = ruta.noches_pernocta * recorridos_mensuales
+                pernocta_conductor_mensual = gasto_conductor_noche * noches_mes
+                pernocta_auxiliar_mensual = gasto_auxiliar_noche * noches_mes
+                parqueadero_mensual = parqueadero_noche * noches_mes
+
+                detalle_pernocta = {
+                    'noches': ruta.noches_pernocta,
+                    'recorridos_mes': recorridos_mensuales,
+                    'noches_mes': noches_mes,
+                    'conductor': {
+                        'desayuno': float(config.desayuno_conductor or 0),
+                        'almuerzo': float(config.almuerzo_conductor or 0),
+                        'cena': float(config.cena_conductor or 0),
+                        'alojamiento': float(config.alojamiento_conductor or 0),
+                        'gasto_por_noche': gasto_conductor_noche,
+                    },
+                    'auxiliar': {
+                        'cantidad': cantidad_auxiliares,
+                        'desayuno': float(config.desayuno_auxiliar or 0),
+                        'almuerzo': float(config.almuerzo_auxiliar or 0),
+                        'cena': float(config.cena_auxiliar or 0),
+                        'alojamiento': float(config.alojamiento_auxiliar or 0),
+                        'gasto_por_noche': gasto_auxiliar_noche,
+                    },
+                    'parqueadero': parqueadero_noche,
+                }
+
             detalle_rutas.append({
                 'ruta_id': ruta.id,
                 'ruta_nombre': ruta.nombre,
@@ -611,6 +669,9 @@ def obtener_detalle_lejanias_logistica(
                 'combustible_mensual': combustible_mensual,
                 'peaje_mensual': peaje_mensual,
                 'pernocta_mensual': pernocta_mensual,
+                'pernocta_conductor_mensual': pernocta_conductor_mensual,
+                'pernocta_auxiliar_mensual': pernocta_auxiliar_mensual,
+                'parqueadero_mensual': parqueadero_mensual,
                 'total_mensual': ruta_total,
                 'distancia_circuito_km': distancia_circuito,
                 'detalle': {
@@ -626,6 +687,7 @@ def obtener_detalle_lejanias_logistica(
                     'peaje_por_recorrido': peaje_por_recorrido,
                     'municipios': detalle_municipios,
                     'tramos': detalle_tramos,
+                    'pernocta': detalle_pernocta,
                 }
             })
 
@@ -633,6 +695,9 @@ def obtener_detalle_lejanias_logistica(
             total_combustible += combustible_mensual
             total_peaje += peaje_mensual
             total_pernocta += pernocta_mensual
+            total_pernocta_conductor += pernocta_conductor_mensual
+            total_pernocta_auxiliar += pernocta_auxiliar_mensual
+            total_parqueadero += parqueadero_mensual
 
         total_mensual = total_flete_base + total_combustible + total_peaje + total_pernocta
 
@@ -648,6 +713,9 @@ def obtener_detalle_lejanias_logistica(
             'total_combustible_mensual': total_combustible,
             'total_peaje_mensual': total_peaje,
             'total_pernocta_mensual': total_pernocta,
+            'total_pernocta_conductor_mensual': total_pernocta_conductor,
+            'total_pernocta_auxiliar_mensual': total_pernocta_auxiliar,
+            'total_parqueadero_mensual': total_parqueadero,
             'total_mensual': total_mensual,
             'total_anual': total_mensual * 12,
             'rutas': detalle_rutas
