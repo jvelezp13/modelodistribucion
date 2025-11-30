@@ -1070,13 +1070,42 @@ def obtener_pyg_marca(
     """
     try:
         from core.models import Escenario, Marca
-        from admin_panel.core.services import PyGService
+        from api.pyg_service import calcular_pyg_todas_zonas
 
         escenario = Escenario.objects.get(pk=escenario_id)
         marca = Marca.objects.get(marca_id=marca_id)
 
-        service = PyGService(escenario)
-        resultado = service.get_pyg_marca(marca)
+        # Calcular P&G de todas las zonas y sumar para obtener el total de la marca
+        zonas = calcular_pyg_todas_zonas(escenario, marca)
+
+        # Calcular totales sumando todas las zonas
+        from decimal import Decimal
+        total_comercial_personal = sum(z['comercial']['personal'] for z in zonas)
+        total_comercial_gastos = sum(z['comercial']['gastos'] for z in zonas)
+        total_logistico_personal = sum(z['logistico']['personal'] for z in zonas)
+        total_logistico_gastos = sum(z['logistico']['gastos'] for z in zonas)
+        total_admin_personal = sum(z['administrativo']['personal'] for z in zonas)
+        total_admin_gastos = sum(z['administrativo']['gastos'] for z in zonas)
+
+        resultado = {
+            'comercial': {
+                'personal': total_comercial_personal,
+                'gastos': total_comercial_gastos,
+                'total': total_comercial_personal + total_comercial_gastos
+            },
+            'logistico': {
+                'personal': total_logistico_personal,
+                'gastos': total_logistico_gastos,
+                'total': total_logistico_personal + total_logistico_gastos
+            },
+            'administrativo': {
+                'personal': total_admin_personal,
+                'gastos': total_admin_gastos,
+                'total': total_admin_personal + total_admin_gastos
+            },
+            'total_mensual': sum(z['total_mensual'] for z in zonas),
+            'total_anual': sum(z['total_anual'] for z in zonas)
+        }
 
         return {
             'escenario_id': escenario_id,
