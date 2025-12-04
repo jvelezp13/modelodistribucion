@@ -97,16 +97,21 @@ def calculate_hr_expenses(escenario):
             valor_dotacion = (count_dotacion * politica.valor_dotacion_completa) / politica.frecuencia_dotacion_meses
 
             if valor_dotacion > 0:
-                model_gasto.objects.create(
-                    escenario=escenario,
-                    tipo='dotacion',
-                    marca=marca_obj,
-                    nombre=f'Provisión Dotación{nombre_suffix}',
-                    valor_mensual=valor_dotacion,
-                    asignacion=asignacion,
-                    tipo_asignacion_geo=tipo_asig_geo,
-                    zona=zona_obj
-                )
+                # Preparar datos del gasto
+                datos_gasto = {
+                    'escenario': escenario,
+                    'tipo': 'dotacion',
+                    'marca': marca_obj,
+                    'nombre': f'Provisión Dotación{nombre_suffix}',
+                    'valor_mensual': valor_dotacion,
+                    'asignacion': asignacion,
+                    'tipo_asignacion_geo': tipo_asig_geo,
+                }
+                # Solo agregar zona si el modelo la soporta (GastoComercial/Logistico sí, GastoAdministrativo no)
+                if hasattr(model_gasto, '_meta') and 'zona' in [f.name for f in model_gasto._meta.get_fields()]:
+                    datos_gasto['zona'] = zona_obj
+
+                model_gasto.objects.create(**datos_gasto)
 
             # --- 2. EXÁMENES MÉDICOS ---
             if tipo_personal == 'comercial':
@@ -120,32 +125,38 @@ def calculate_hr_expenses(escenario):
                              (count_total * costo_periodico / 12)
 
             if valor_examenes > 0:
-                model_gasto.objects.create(
-                    escenario=escenario,
-                    tipo='examenes',
-                    marca=marca_obj,
-                    nombre=f'Provisión Exámenes Médicos{nombre_suffix}',
-                    valor_mensual=valor_examenes,
-                    asignacion=asignacion,
-                    tipo_asignacion_geo=tipo_asig_geo,
-                    zona=zona_obj
-                )
+                datos_gasto = {
+                    'escenario': escenario,
+                    'tipo': 'examenes',
+                    'marca': marca_obj,
+                    'nombre': f'Provisión Exámenes Médicos{nombre_suffix}',
+                    'valor_mensual': valor_examenes,
+                    'asignacion': asignacion,
+                    'tipo_asignacion_geo': tipo_asig_geo,
+                }
+                if hasattr(model_gasto, '_meta') and 'zona' in [f.name for f in model_gasto._meta.get_fields()]:
+                    datos_gasto['zona'] = zona_obj
+
+                model_gasto.objects.create(**datos_gasto)
 
             # --- 3. EPP (SOLO COMERCIAL) ---
             if tipo_personal == 'comercial':
                 valor_epp = (count_total * politica.valor_epp_anual_comercial) / politica.frecuencia_epp_meses
 
                 if valor_epp > 0:
-                    model_gasto.objects.create(
-                        escenario=escenario,
-                        tipo='epp',
-                        marca=marca_obj,
-                        nombre=f'Provisión EPP (Comercial){nombre_suffix}',
-                        valor_mensual=valor_epp,
-                        asignacion=asignacion,
-                        tipo_asignacion_geo=tipo_asig_geo,
-                        zona=zona_obj
-                    )
+                    datos_gasto = {
+                        'escenario': escenario,
+                        'tipo': 'epp',
+                        'marca': marca_obj,
+                        'nombre': f'Provisión EPP (Comercial){nombre_suffix}',
+                        'valor_mensual': valor_epp,
+                        'asignacion': asignacion,
+                        'tipo_asignacion_geo': tipo_asig_geo,
+                    }
+                    if hasattr(model_gasto, '_meta') and 'zona' in [f.name for f in model_gasto._meta.get_fields()]:
+                        datos_gasto['zona'] = zona_obj
+
+                    model_gasto.objects.create(**datos_gasto)
 
     # Ejecutar para cada tipo de personal
     process_expenses(PersonalComercial, GastoComercial, 'comercial')
