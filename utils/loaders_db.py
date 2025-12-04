@@ -228,10 +228,18 @@ class DataLoaderDB:
                 recursos_comerciales[tipo_key].append(data)
 
             # Cargar gastos comerciales
+            # IMPORTANTE: Excluir gastos de lejanías porque se calculan dinámicamente
+            # mediante CalculadoraLejanias y se agregan en marca.lejania_comercial
             gastos_comerciales = []
             gastos_qs = GastoComercial.objects.filter(marca=marca, **self._get_filter_kwargs())
 
             for gasto in gastos_qs:
+                # Filtrar gastos de lejanías (mismo criterio que pyg_service.py)
+                nombre = gasto.nombre or ''
+                if nombre.startswith('Combustible Lejanía') or nombre.startswith('Viáticos Pernocta'):
+                    logger.debug(f"[DEBUG] Excluyendo gasto de lejanía: {nombre}")
+                    continue
+
                 gastos_comerciales.append({
                     'tipo': gasto.tipo,
                     'nombre': gasto.nombre,
@@ -315,10 +323,23 @@ class DataLoaderDB:
                 })
 
             # Cargar gastos logísticos
+            # IMPORTANTE: Excluir gastos de lejanías logísticas porque se calculan dinámicamente
+            # mediante CalculadoraLejanias y se agregan en marca.lejania_logistica
             gastos_logisticos = []
             gastos_qs = GastoLogistico.objects.filter(marca=marca, **self._get_filter_kwargs())
 
             for gasto in gastos_qs:
+                # Filtrar gastos de lejanías logísticas (mismo criterio que pyg_service.py)
+                nombre = gasto.nombre or ''
+                if (nombre.startswith('Combustible - ') or
+                    nombre.startswith('Peaje - ') or
+                    nombre.startswith('Viáticos Conductor - ') or
+                    nombre.startswith('Viáticos Auxiliar - ') or
+                    nombre.startswith('Flete Base Tercero - ') or
+                    nombre == 'Flete Transporte (Tercero)'):
+                    logger.debug(f"[DEBUG] Excluyendo gasto de lejanía logística: {nombre}")
+                    continue
+
                 gastos_logisticos.append({
                     'tipo': gasto.tipo,
                     'nombre': gasto.nombre,

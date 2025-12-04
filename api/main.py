@@ -1286,9 +1286,12 @@ def diagnosticar_rubros_detallado(
     Muestra exactamente qué rubros se envían al frontend para P&G Detallado.
     """
     try:
-        from api.pyg_general_service import obtener_pyg_general
+        # Crear simulador para obtener los rubros
+        loader = get_loader(escenario_id=escenario_id)
+        simulator = Simulator(loader=loader)
+        simulator.cargar_marcas([marca_id])
+        resultado = simulator.ejecutar_simulacion()
 
-        resultado = obtener_pyg_general(escenario_id, mes_seleccionado=1)
         marca_data = next((m for m in resultado.marcas if m.marca_id == marca_id), None)
 
         if not marca_data:
