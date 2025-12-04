@@ -174,26 +174,47 @@ def _calcular_lejanias_zona(escenario, zona, participacion: Decimal) -> Dict:
 
     - Lejanías comerciales: se calculan directamente para la zona
     - Lejanías logísticas: se prorratean según participación de la zona en ventas de marca
-      NOTA: Las lejanías logísticas NO incluyen flete_base, que se contabiliza
-      en Flota de Vehículos (gastos fijos).
+
+    NOTA: Las lejanías logísticas incluyen:
+    - Flete base de rutas (terceros)
+    - Combustible, peajes, pernocta
+    - Costos fijos de vehículos (monitoreo, seguros, etc.) - calculados aparte
     """
+    from core.models import Vehiculo
+
     try:
         calc = CalculadoraLejanias(escenario)
+        marca = zona.marca
 
         # Lejanía comercial: directa para esta zona
         lejania_comercial_zona = calc.calcular_lejania_comercial_zona(zona)
         comercial_total = lejania_comercial_zona['total_mensual']
 
         # Lejanía logística: calcular para toda la marca y prorratear
-        # Las rutas logísticas no están asociadas a zonas, sino a la marca completa
-        logistica_marca = calc.calcular_lejanias_logisticas_marca(zona.marca)
+        logistica_marca = calc.calcular_lejanias_logisticas_marca(marca)
 
-        # Incluir TODO el cálculo de lejanías logísticas (flete + combustible + peajes + pernocta)
-        # Esto garantiza consistencia con P&G Detallado que suma:
-        # - Flota de Vehículos (incluye flete_base)
-        # - Lejanías Logísticas (combustible + peajes + pernocta)
-        # En P&G Zonas mostramos todo junto en "lejanías" para simplificar
-        logistica_total = logistica_marca['total_mensual'] * participacion
+        # El cálculo de lejanías incluye flete_base pero NO los costos fijos de vehículos
+        # (monitoreo, seguros mercancía, etc.) que están en la tabla Vehiculo.
+        # Necesitamos agregar esos costos para que coincida con P&G Detallado.
+        costos_fijos_vehiculos = Decimal('0')
+        vehiculos = Vehiculo.objects.filter(escenario=escenario, marca=marca)
+        for v in vehiculos:
+            # Costos que aplican a todos los esquemas (incluyendo terceros)
+            costos_fijos_vehiculos += (v.costo_monitoreo_mensual + v.costo_seguro_mercancia_mensual) * v.cantidad
+            # Costos adicionales para renting y tradicional
+            if v.esquema in ['renting', 'tradicional']:
+                costos_fijos_vehiculos += (v.costo_lavado_mensual + v.costo_parqueadero_mensual) * v.cantidad
+                if v.esquema == 'renting':
+                    costos_fijos_vehiculos += v.canon_renting * v.cantidad
+                elif v.esquema == 'tradicional':
+                    if v.vida_util_anios > 0:
+                        depreciacion = (v.costo_compra - v.valor_residual) / (v.vida_util_anios * 12)
+                        costos_fijos_vehiculos += depreciacion * v.cantidad
+                    costos_fijos_vehiculos += (v.costo_mantenimiento_mensual + v.costo_seguro_mensual) * v.cantidad
+
+        # Total logístico = lejanías de rutas + costos fijos de vehículos
+        logistica_rutas = logistica_marca['total_mensual']
+        logistica_total = (logistica_rutas + costos_fijos_vehiculos) * participacion
 
         return {
             'comercial': comercial_total,
