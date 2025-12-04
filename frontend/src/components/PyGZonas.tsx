@@ -119,12 +119,21 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
     return calcularUtilidadOperacional(zona) + calcularOtrosIngresos(zona);
   };
 
+  // Calcular ICA (sobre ventas)
+  const calcularICA = (zona: PyGZona): number => {
+    const ventas = calcularVentasZona(zona);
+    const tasaICA = data?.tasa_ica || 0;
+    return ventas * tasaICA;
+  };
+
   // Calcular utilidad neta (después de impuestos)
   const calcularUtilidadNeta = (zona: PyGZona): number => {
     const utilidadAntesImp = calcularUtilidadAntesImpuestos(zona);
+    const ica = calcularICA(zona);
+    const utilidadDespuesICA = utilidadAntesImp - ica;
     const tasaImpuesto = data?.tasa_impuesto_renta || 0.33;
-    const impuesto = utilidadAntesImp > 0 ? utilidadAntesImp * tasaImpuesto : 0;
-    return utilidadAntesImp - impuesto;
+    const impuesto = utilidadDespuesICA > 0 ? utilidadDespuesICA * tasaImpuesto : 0;
+    return utilidadDespuesICA - impuesto;
   };
 
   // Calcular margen neto sobre ventas
@@ -338,6 +347,8 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
                   margenNeto={calcularMargenNeto(zona)}
                   otrosIngresos={calcularOtrosIngresos(zona)}
                   tasaImpuesto={data.tasa_impuesto_renta}
+                  tasaICA={data.tasa_ica || 0}
+                  ica={calcularICA(zona)}
                 />
               ))}
             </tbody>
@@ -427,11 +438,13 @@ interface ZonaRowProps {
   margenNeto: number;
   otrosIngresos: number;
   tasaImpuesto: number;
+  tasaICA: number;
+  ica: number;
 }
 
 function ZonaRow({
   zona, isExpanded, onToggle, onVerMunicipios, formatCurrency, formatPercent, isEven,
-  ventasZona, margenBruto, utilidadOperacional, utilidadNeta, margenNeto, otrosIngresos, tasaImpuesto
+  ventasZona, margenBruto, utilidadOperacional, utilidadNeta, margenNeto, otrosIngresos, tasaImpuesto, tasaICA, ica
 }: ZonaRowProps) {
   const isRentable = utilidadNeta >= 0;
 
@@ -520,11 +533,17 @@ function ZonaRow({
                     <span className="text-gray-600">Utilidad antes de Impuestos:</span>
                     <span className="font-medium">{formatCurrency(utilidadOperacional + otrosIngresos)}</span>
                   </div>
+                  {tasaICA > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">(-) ICA ({formatPercent(tasaICA * 100)}):</span>
+                      <span className="font-medium text-orange-600">{formatCurrency(ica)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <span className="text-gray-600">(-) Impuesto Renta ({formatPercent(tasaImpuesto * 100)}):</span>
                     <span className="font-medium text-gray-500">
-                      {formatCurrency((utilidadOperacional + otrosIngresos) > 0
-                        ? (utilidadOperacional + otrosIngresos) * tasaImpuesto
+                      {formatCurrency((utilidadOperacional + otrosIngresos - ica) > 0
+                        ? (utilidadOperacional + otrosIngresos - ica) * tasaImpuesto
                         : 0)}
                     </span>
                   </div>

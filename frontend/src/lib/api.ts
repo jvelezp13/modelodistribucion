@@ -472,6 +472,7 @@ export interface PyGZonasResponse {
   ventas_mensuales: VentasMensualesDesglose;
   configuracion_descuentos: ConfigDescuentosZonas;
   tasa_impuesto_renta: number;
+  tasa_ica: number;
 }
 
 export interface PyGMunicipio {
@@ -500,6 +501,8 @@ export interface PyGMunicipiosResponse {
   escenario_nombre: string;
   total_municipios: number;
   municipios: PyGMunicipio[];
+  tasa_impuesto_renta: number;
+  tasa_ica: number;
 }
 
 export interface ZonaBasica {

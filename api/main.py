@@ -1213,6 +1213,19 @@ def obtener_pyg_zonas(
         except Exception:
             pass
 
+        # Obtener tasa de ICA (sobre ventas)
+        tasa_ica = 0.0  # Default (no aplica si no está configurado)
+        try:
+            impuesto_ica = Impuesto.objects.filter(
+                tipo='ica',
+                aplicacion='sobre_ventas',
+                activo=True
+            ).first()
+            if impuesto_ica:
+                tasa_ica = float(impuesto_ica.porcentaje) / 100
+        except Exception:
+            pass
+
         # Calcular utilidad neta por zona para ordenar (usar mes actual como referencia)
         from datetime import datetime
         mes_actual = f"mes_{datetime.now().month}"
@@ -1239,9 +1252,13 @@ def obtener_pyg_zonas(
             # Utilidad antes de impuestos
             utilidad_antes_impuestos = utilidad_operacional + otros_ingresos
 
+            # ICA (sobre ventas)
+            ica = ventas_zona * tasa_ica
+
             # Utilidad neta (después de impuestos)
-            impuesto = utilidad_antes_impuestos * tasa_impuesto if utilidad_antes_impuestos > 0 else 0
-            utilidad_neta = utilidad_antes_impuestos - impuesto
+            utilidad_despues_ica = utilidad_antes_impuestos - ica
+            impuesto = utilidad_despues_ica * tasa_impuesto if utilidad_despues_ica > 0 else 0
+            utilidad_neta = utilidad_despues_ica - impuesto
 
             # Margen neto %
             margen_neto = (utilidad_neta / ventas_zona * 100) if ventas_zona > 0 else 0
@@ -1266,6 +1283,7 @@ def obtener_pyg_zonas(
             'ventas_mensuales': ventas_mensuales,
             'configuracion_descuentos': config_descuentos,
             'tasa_impuesto_renta': tasa_impuesto,
+            'tasa_ica': tasa_ica,
         }
 
     except Escenario.DoesNotExist:
@@ -1475,10 +1493,38 @@ def obtener_pyg_municipios(
         from core.models import Escenario, Zona
         from api.pyg_service import calcular_pyg_todos_municipios
 
+        from core.models import Impuesto
+
         escenario = Escenario.objects.get(pk=escenario_id)
         zona = Zona.objects.get(pk=zona_id, escenario=escenario)
 
         municipios = calcular_pyg_todos_municipios(escenario, zona)
+
+        # Obtener tasa de impuesto de renta
+        tasa_impuesto = 0.33  # Default
+        try:
+            impuesto_renta = Impuesto.objects.filter(
+                tipo='renta',
+                aplicacion='sobre_utilidad',
+                activo=True
+            ).first()
+            if impuesto_renta:
+                tasa_impuesto = float(impuesto_renta.porcentaje) / 100
+        except Exception:
+            pass
+
+        # Obtener tasa de ICA
+        tasa_ica = 0.0
+        try:
+            impuesto_ica = Impuesto.objects.filter(
+                tipo='ica',
+                aplicacion='sobre_ventas',
+                activo=True
+            ).first()
+            if impuesto_ica:
+                tasa_ica = float(impuesto_ica.porcentaje) / 100
+        except Exception:
+            pass
 
         return {
             'escenario_id': escenario_id,
@@ -1486,7 +1532,9 @@ def obtener_pyg_municipios(
             'zona_id': zona_id,
             'zona_nombre': zona.nombre,
             'municipios': [_serializar_pyg_municipio(m) for m in municipios],
-            'total_municipios': len(municipios)
+            'total_municipios': len(municipios),
+            'tasa_impuesto_renta': tasa_impuesto,
+            'tasa_ica': tasa_ica
         }
 
     except Escenario.DoesNotExist:
