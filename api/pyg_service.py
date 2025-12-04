@@ -234,7 +234,19 @@ def _distribuir_costos_a_zona(
     escenario, zona, participacion: Decimal, zonas_count: int,
     modelo_personal, modelo_gasto
 ) -> Dict:
-    """Distribuye costos de personal y gastos a una zona según tipo_asignacion_geo."""
+    """
+    Distribuye costos de personal y gastos a una zona según tipo_asignacion_geo.
+
+    Para gastos logísticos:
+    - Excluye gastos de lejanías (ya calculados dinámicamente por CalculadoraLejanias)
+    - Excluye gastos de flota de vehículos (ya calculados desde tabla Vehiculo en _calcular_lejanias_zona)
+
+    Esto es consistente con P&G Detallado que separa:
+    - Personal: desde tabla Personal*
+    - Gastos: desde tabla Gasto* (excluyendo lejanías y flota)
+    - Flota: desde tabla Vehiculo
+    - Lejanías: desde CalculadoraLejanias
+    """
     from core.models import GastoLogistico, GastoComercial
 
     marca = zona.marca
@@ -259,18 +271,21 @@ def _distribuir_costos_a_zona(
         elif asignacion_geo == 'compartido':
             personal_total += costo / zonas_count
 
-    # Gastos - filtrar solo lejanías (ya calculadas en el simulador)
-    # NOTA: Los gastos de flota de vehículos SÍ se incluyen aquí porque
-    # P&G Zonas no tiene separación de "Flota" - todo va en "gastos"
+    # Gastos - excluir lejanías y flota (calculados aparte)
     gastos_qs = modelo_gasto.objects.filter(
         escenario=escenario,
         marca=marca
     )
     for g in gastos_qs:
-        # Excluir gastos de lejanías que ya están en el cálculo del simulador
+        # Excluir gastos de lejanías que ya están en el cálculo dinámico
         if modelo_gasto == GastoLogistico and _es_gasto_lejania_logistica(g):
             continue
         if modelo_gasto == GastoComercial and _es_gasto_lejania_comercial(g):
+            continue
+
+        # Excluir gastos de flota de vehículos (se calculan desde tabla Vehiculo)
+        # Esto evita doble conteo ya que _calcular_lejanias_zona incluye costos de vehículos
+        if modelo_gasto == GastoLogistico and _es_gasto_flota_vehiculos(g):
             continue
 
         asignacion_geo = getattr(g, 'tipo_asignacion_geo', 'proporcional')
@@ -292,32 +307,46 @@ def _distribuir_costos_a_zona(
 
 
 def _distribuir_admin_a_zona(escenario, zona, zonas_count: int) -> Dict:
-    """Distribuye costos administrativos a una zona (siempre equitativo)."""
+    """
+    Distribuye costos administrativos a una zona (siempre equitativo).
+
+    Usa la misma lógica que el P&G Detallado (endpoint comparar-pyg):
+    - Personal/Gastos individuales (marca=marca, asignacion='individual')
+    - Personal/Gastos compartidos (marca=null, asignacion='compartido') prorrateados entre marcas
+    """
     from core.models import PersonalAdministrativo, GastoAdministrativo, Marca
 
     marca = zona.marca
 
-    # Contar marcas para prorrateo
+    # Contar marcas activas para prorrateo de recursos compartidos
     marcas_count = Marca.objects.filter(activa=True).count() or 1
 
     # Costos admin de la marca
     personal_marca = Decimal('0')
     gastos_marca = Decimal('0')
 
-    # Personal administrativo de la marca
-    for p in PersonalAdministrativo.objects.filter(escenario=escenario, marca=marca):
+    # Personal administrativo INDIVIDUAL de la marca
+    for p in PersonalAdministrativo.objects.filter(
+        escenario=escenario, marca=marca, asignacion='individual'
+    ):
         personal_marca += Decimal(str(p.calcular_costo_mensual()))
 
-    # Personal administrativo compartido (se prorratean entre marcas)
-    for p in PersonalAdministrativo.objects.filter(escenario=escenario, marca__isnull=True):
+    # Personal administrativo COMPARTIDO (sin marca) - prorratear entre marcas
+    for p in PersonalAdministrativo.objects.filter(
+        escenario=escenario, marca__isnull=True, asignacion='compartido'
+    ):
         personal_marca += Decimal(str(p.calcular_costo_mensual())) / marcas_count
 
-    # Gastos administrativos de la marca
-    for g in GastoAdministrativo.objects.filter(escenario=escenario, marca=marca):
+    # Gastos administrativos INDIVIDUALES de la marca
+    for g in GastoAdministrativo.objects.filter(
+        escenario=escenario, marca=marca, asignacion='individual'
+    ):
         gastos_marca += g.valor_mensual
 
-    # Gastos administrativos compartidos
-    for g in GastoAdministrativo.objects.filter(escenario=escenario, marca__isnull=True):
+    # Gastos administrativos COMPARTIDOS (sin marca) - prorratear entre marcas
+    for g in GastoAdministrativo.objects.filter(
+        escenario=escenario, marca__isnull=True, asignacion='compartido'
+    ):
         gastos_marca += g.valor_mensual / marcas_count
 
     # Los costos admin se distribuyen equitativamente entre zonas
