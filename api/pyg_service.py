@@ -91,14 +91,17 @@ def _es_gasto_lejania_logistica(gasto) -> bool:
 
     Estos gastos son creados por signals cuando se configura una ruta,
     pero su valor ya está incluido en el cálculo de lejanías del simulador.
+
+    NOTA: Flete Base Tercero NO se excluye aquí porque NO está incluido
+    en las lejanías (se separó para que aparezca en Flota de Vehículos).
     """
     nombre = gasto.nombre or ''
     return (
         nombre.startswith('Combustible - ') or
         nombre.startswith('Peajes - ') or
-        nombre.startswith('Viáticos Ruta - ') or
-        nombre.startswith('Flete Base Tercero - ') or
-        nombre == 'Flete Transporte (Tercero)'  # Legacy, debería estar eliminado
+        nombre.startswith('Viáticos Ruta - ')
+        # Flete Base Tercero se incluye en gastos (no en lejanías)
+        # nombre == 'Flete Transporte (Tercero)' - Legacy eliminado
     )
 
 
@@ -120,6 +123,8 @@ def _calcular_lejanias_zona(escenario, zona, participacion: Decimal) -> Dict:
 
     - Lejanías comerciales: se calculan directamente para la zona
     - Lejanías logísticas: se prorratean según participación de la zona en ventas de marca
+      NOTA: Las lejanías logísticas NO incluyen flete_base, que se contabiliza
+      en Flota de Vehículos (gastos fijos).
     """
     try:
         calc = CalculadoraLejanias(escenario)
@@ -131,7 +136,16 @@ def _calcular_lejanias_zona(escenario, zona, participacion: Decimal) -> Dict:
         # Lejanía logística: calcular para toda la marca y prorratear
         # Las rutas logísticas no están asociadas a zonas, sino a la marca completa
         logistica_marca = calc.calcular_lejanias_logisticas_marca(zona.marca)
-        logistica_total = logistica_marca['total_mensual'] * participacion
+
+        # IMPORTANTE: Excluir flete_base de lejanías porque ya está en Flota de Vehículos
+        # Lejanías = combustible + peajes + pernocta (costos variables de ruta)
+        # Flete base = costo fijo por operación del vehículo/tercero
+        lejanias_sin_flete = (
+            logistica_marca['total_combustible_mensual'] +
+            logistica_marca['total_peaje_mensual'] +
+            logistica_marca['total_pernocta_mensual']
+        )
+        logistica_total = lejanias_sin_flete * participacion
 
         return {
             'comercial': comercial_total,
