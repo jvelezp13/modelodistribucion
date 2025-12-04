@@ -38,57 +38,65 @@ def calculate_hr_expenses(escenario):
     
     # Función auxiliar para procesar gastos por grupo (marca, tipo_asignacion_geo, zona)
     def process_expenses(model_personal, model_gasto, tipo_personal):
-        qs = model_personal.objects.filter(escenario=escenario)
+        try:
+            qs = model_personal.objects.filter(escenario=escenario)
 
-        # Agrupar por (marca, tipo_asignacion_geo, zona) para respetar la asignación del personal
-        # Usar values para obtener grupos únicos
-        grupos = qs.values('marca', 'tipo_asignacion_geo', 'zona').distinct()
+            # Agrupar por (marca, tipo_asignacion_geo, zona) para respetar la asignación del personal
+            # Usar values para obtener grupos únicos
+            grupos = qs.values('marca', 'tipo_asignacion_geo', 'zona').distinct()
 
-        # Limpiar gastos de provisiones existentes para este escenario y modelo
-        # (se recrearán con los valores correctos)
-        model_gasto.objects.filter(
-            escenario=escenario,
-            tipo__in=['dotacion', 'epp', 'examenes']
-        ).delete()
+            # Limpiar gastos de provisiones existentes para este escenario y modelo
+            # (se recrearán con los valores correctos)
+            model_gasto.objects.filter(
+                escenario=escenario,
+                tipo__in=['dotacion', 'epp', 'examenes']
+            ).delete()
+        except Exception as e:
+            logger.error(f"ERROR en process_expenses({tipo_personal}) - setup: {str(e)}", exc_info=True)
+            return
 
         for grupo in grupos:
-            marca_id = grupo['marca']
-            tipo_asig_geo_original = grupo['tipo_asignacion_geo']
-            zona_id = grupo['zona']
+            try:
+                marca_id = grupo['marca']
+                tipo_asig_geo_original = grupo['tipo_asignacion_geo']
+                zona_id = grupo['zona']
 
-            # Filtrar personal de este grupo (usar valores originales, incluyendo None)
-            filtro = {
-                'marca_id': marca_id,
-                'zona_id': zona_id,
-            }
-            if tipo_asig_geo_original is not None:
-                filtro['tipo_asignacion_geo'] = tipo_asig_geo_original
-            else:
-                filtro['tipo_asignacion_geo__isnull'] = True
+                # Filtrar personal de este grupo (usar valores originales, incluyendo None)
+                filtro = {
+                    'marca_id': marca_id,
+                    'zona_id': zona_id,
+                }
+                if tipo_asig_geo_original is not None:
+                    filtro['tipo_asignacion_geo'] = tipo_asig_geo_original
+                else:
+                    filtro['tipo_asignacion_geo__isnull'] = True
 
-            personal_grupo = qs.filter(**filtro)
+                personal_grupo = qs.filter(**filtro)
 
-            # Aplicar default para tipo_asignacion_geo al crear el gasto
-            tipo_asig_geo = tipo_asig_geo_original or 'proporcional'
+                # Aplicar default para tipo_asignacion_geo al crear el gasto
+                tipo_asig_geo = tipo_asig_geo_original or 'proporcional'
 
-            # Obtener objetos relacionados
-            marca_obj = Marca.objects.get(pk=marca_id) if marca_id else None
-            zona_obj = None
-            if zona_id and tipo_asig_geo == 'directo':
-                zona_obj = Zona.objects.get(pk=zona_id)
+                # Obtener objetos relacionados
+                marca_obj = Marca.objects.get(pk=marca_id) if marca_id else None
+                zona_obj = None
+                if zona_id and tipo_asig_geo == 'directo':
+                    zona_obj = Zona.objects.get(pk=zona_id)
 
-            asignacion = 'compartido' if marca_id is None else 'individual'
+                asignacion = 'compartido' if marca_id is None else 'individual'
 
-            # Sumar cantidad de empleados
-            count_total = personal_grupo.aggregate(total=Sum('cantidad'))['total'] or 0
-            if count_total == 0:
+                # Sumar cantidad de empleados
+                count_total = personal_grupo.aggregate(total=Sum('cantidad'))['total'] or 0
+                if count_total == 0:
+                    continue
+
+                # Generar nombre descriptivo para el gasto
+                if zona_obj:
+                    nombre_suffix = f" - {zona_obj.nombre}"
+                else:
+                    nombre_suffix = ""
+            except Exception as e:
+                logger.error(f"ERROR procesando grupo en {tipo_personal}: {str(e)}", exc_info=True)
                 continue
-
-            # Generar nombre descriptivo para el gasto
-            if zona_obj:
-                nombre_suffix = f" - {zona_obj.nombre}"
-            else:
-                nombre_suffix = ""
 
             # --- 1. DOTACIÓN (Aplica a todos con salario <= tope) ---
             count_dotacion = personal_grupo.filter(salario_base__lte=tope_dotacion).aggregate(
