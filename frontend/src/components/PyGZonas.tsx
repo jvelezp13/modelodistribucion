@@ -119,21 +119,35 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
     return calcularUtilidadOperacional(zona) + calcularOtrosIngresos(zona);
   };
 
-  // Calcular ICA (sobre ventas)
+  // Calcular ICA (sobre ventas) - se incluye en costos administrativos
   const calcularICA = (zona: PyGZona): number => {
     const ventas = calcularVentasZona(zona);
     const tasaICA = data?.tasa_ica || 0;
     return ventas * tasaICA;
   };
 
-  // Calcular utilidad neta (después de impuestos)
+  // Calcular total costos de una zona incluyendo ICA en administrativo
+  const calcularCostosTotalConICA = (zona: PyGZona): number => {
+    return zona.total_mensual + calcularICA(zona);
+  };
+
+  // Calcular utilidad operacional de una zona (ICA ya incluido en costos)
+  const calcularUtilidadOperacionalConICA = (zona: PyGZona): number => {
+    const margenBruto = calcularMargenBrutoZona(zona);
+    return margenBruto - calcularCostosTotalConICA(zona);
+  };
+
+  // Calcular utilidad antes de impuestos (ICA ya está en costos)
+  const calcularUtilidadAntesImpuestosConICA = (zona: PyGZona): number => {
+    return calcularUtilidadOperacionalConICA(zona) + calcularOtrosIngresos(zona);
+  };
+
+  // Calcular utilidad neta (después de impuesto de renta solamente)
   const calcularUtilidadNeta = (zona: PyGZona): number => {
-    const utilidadAntesImp = calcularUtilidadAntesImpuestos(zona);
-    const ica = calcularICA(zona);
-    const utilidadDespuesICA = utilidadAntesImp - ica;
+    const utilidadAntesImp = calcularUtilidadAntesImpuestosConICA(zona);
     const tasaImpuesto = data?.tasa_impuesto_renta || 0.33;
-    const impuesto = utilidadDespuesICA > 0 ? utilidadDespuesICA * tasaImpuesto : 0;
-    return utilidadDespuesICA - impuesto;
+    const impuesto = utilidadAntesImp > 0 ? utilidadAntesImp * tasaImpuesto : 0;
+    return utilidadAntesImp - impuesto;
   };
 
   // Calcular margen neto sobre ventas
@@ -146,7 +160,7 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
   // Calcular totales con desglose detallado para diagnóstico
   const calcularTotales = () => {
     if (!data?.zonas) return {
-      comercial: 0, logistico: 0, administrativo: 0, costoTotal: 0,
+      comercial: 0, logistico: 0, administrativo: 0, costoTotal: 0, ica: 0,
       ventas: 0, margenBruto: 0, utilidadOperacional: 0, utilidadNeta: 0,
       // Subtotales para diagnóstico
       comercialPersonal: 0, comercialGastos: 0, comercialLejanias: 0,
@@ -154,26 +168,30 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
       administrativoPersonal: 0, administrativoGastos: 0
     };
 
-    return data.zonas.reduce((acc, zona) => ({
-      comercial: acc.comercial + zona.comercial.total,
-      logistico: acc.logistico + zona.logistico.total,
-      administrativo: acc.administrativo + zona.administrativo.total,
-      costoTotal: acc.costoTotal + zona.total_mensual,
-      ventas: acc.ventas + calcularVentasZona(zona),
-      margenBruto: acc.margenBruto + calcularMargenBrutoZona(zona),
-      utilidadOperacional: acc.utilidadOperacional + calcularUtilidadOperacional(zona),
-      utilidadNeta: acc.utilidadNeta + calcularUtilidadNeta(zona),
-      // Subtotales para diagnóstico
-      comercialPersonal: acc.comercialPersonal + zona.comercial.personal,
-      comercialGastos: acc.comercialGastos + zona.comercial.gastos,
-      comercialLejanias: acc.comercialLejanias + (zona.comercial.lejanias || 0),
-      logisticoPersonal: acc.logisticoPersonal + zona.logistico.personal,
-      logisticoGastos: acc.logisticoGastos + zona.logistico.gastos,
-      logisticoLejanias: acc.logisticoLejanias + (zona.logistico.lejanias || 0),
-      administrativoPersonal: acc.administrativoPersonal + zona.administrativo.personal,
-      administrativoGastos: acc.administrativoGastos + zona.administrativo.gastos
-    }), {
-      comercial: 0, logistico: 0, administrativo: 0, costoTotal: 0,
+    return data.zonas.reduce((acc, zona) => {
+      const icaZona = calcularICA(zona);
+      return {
+        comercial: acc.comercial + zona.comercial.total,
+        logistico: acc.logistico + zona.logistico.total,
+        administrativo: acc.administrativo + zona.administrativo.total + icaZona, // ICA incluido en administrativo
+        costoTotal: acc.costoTotal + zona.total_mensual + icaZona, // Costo total incluye ICA
+        ica: acc.ica + icaZona,
+        ventas: acc.ventas + calcularVentasZona(zona),
+        margenBruto: acc.margenBruto + calcularMargenBrutoZona(zona),
+        utilidadOperacional: acc.utilidadOperacional + calcularUtilidadOperacionalConICA(zona),
+        utilidadNeta: acc.utilidadNeta + calcularUtilidadNeta(zona),
+        // Subtotales para diagnóstico
+        comercialPersonal: acc.comercialPersonal + zona.comercial.personal,
+        comercialGastos: acc.comercialGastos + zona.comercial.gastos,
+        comercialLejanias: acc.comercialLejanias + (zona.comercial.lejanias || 0),
+        logisticoPersonal: acc.logisticoPersonal + zona.logistico.personal,
+        logisticoGastos: acc.logisticoGastos + zona.logistico.gastos,
+        logisticoLejanias: acc.logisticoLejanias + (zona.logistico.lejanias || 0),
+        administrativoPersonal: acc.administrativoPersonal + zona.administrativo.personal,
+        administrativoGastos: acc.administrativoGastos + zona.administrativo.gastos
+      };
+    }, {
+      comercial: 0, logistico: 0, administrativo: 0, costoTotal: 0, ica: 0,
       ventas: 0, margenBruto: 0, utilidadOperacional: 0, utilidadNeta: 0,
       // Subtotales para diagnóstico
       comercialPersonal: 0, comercialGastos: 0, comercialLejanias: 0,
@@ -342,7 +360,8 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
                   isEven={idx % 2 === 0}
                   ventasZona={calcularVentasZona(zona)}
                   margenBruto={calcularMargenBrutoZona(zona)}
-                  utilidadOperacional={calcularUtilidadOperacional(zona)}
+                  utilidadOperacional={calcularUtilidadOperacionalConICA(zona)}
+                  costosTotalConICA={calcularCostosTotalConICA(zona)}
                   utilidadNeta={calcularUtilidadNeta(zona)}
                   margenNeto={calcularMargenNeto(zona)}
                   otrosIngresos={calcularOtrosIngresos(zona)}
@@ -434,6 +453,7 @@ interface ZonaRowProps {
   ventasZona: number;
   margenBruto: number;
   utilidadOperacional: number;
+  costosTotalConICA: number;
   utilidadNeta: number;
   margenNeto: number;
   otrosIngresos: number;
@@ -444,7 +464,7 @@ interface ZonaRowProps {
 
 function ZonaRow({
   zona, isExpanded, onToggle, onVerMunicipios, formatCurrency, formatPercent, isEven,
-  ventasZona, margenBruto, utilidadOperacional, utilidadNeta, margenNeto, otrosIngresos, tasaImpuesto, tasaICA, ica
+  ventasZona, margenBruto, utilidadOperacional, costosTotalConICA, utilidadNeta, margenNeto, otrosIngresos, tasaImpuesto, tasaICA, ica
 }: ZonaRowProps) {
   const isRentable = utilidadNeta >= 0;
 
@@ -468,7 +488,7 @@ function ZonaRow({
         </td>
         <td className="text-right px-3 py-2 text-gray-700">{formatCurrency(ventasZona)}</td>
         <td className="text-right px-3 py-2 text-emerald-600">{formatCurrency(margenBruto)}</td>
-        <td className="text-right px-3 py-2 text-gray-700">{formatCurrency(zona.total_mensual)}</td>
+        <td className="text-right px-3 py-2 text-gray-700">{formatCurrency(costosTotalConICA)}</td>
         <td className={`text-right px-3 py-2 ${utilidadOperacional >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
           {formatCurrency(utilidadOperacional)}
         </td>
@@ -514,8 +534,8 @@ function ZonaRow({
                     <span className="font-bold text-emerald-700">{formatCurrency(margenBruto)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">(-) Costos Operativos:</span>
-                    <span className="font-medium text-gray-500">{formatCurrency(zona.total_mensual)}</span>
+                    <span className="text-gray-600">(-) Costos Operativos (inc. ICA):</span>
+                    <span className="font-medium text-gray-500">{formatCurrency(costosTotalConICA)}</span>
                   </div>
                   <div className="flex justify-between border-t pt-1">
                     <span className="font-semibold text-blue-700">Utilidad Operacional:</span>
@@ -533,17 +553,11 @@ function ZonaRow({
                     <span className="text-gray-600">Utilidad antes de Impuestos:</span>
                     <span className="font-medium">{formatCurrency(utilidadOperacional + otrosIngresos)}</span>
                   </div>
-                  {tasaICA > 0 && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">(-) ICA ({formatPercent(tasaICA * 100)}):</span>
-                      <span className="font-medium text-orange-600">{formatCurrency(ica)}</span>
-                    </div>
-                  )}
                   <div className="flex justify-between">
                     <span className="text-gray-600">(-) Impuesto Renta ({formatPercent(tasaImpuesto * 100)}):</span>
                     <span className="font-medium text-gray-500">
-                      {formatCurrency((utilidadOperacional + otrosIngresos - ica) > 0
-                        ? (utilidadOperacional + otrosIngresos - ica) * tasaImpuesto
+                      {formatCurrency((utilidadOperacional + otrosIngresos) > 0
+                        ? (utilidadOperacional + otrosIngresos) * tasaImpuesto
                         : 0)}
                     </span>
                   </div>
@@ -636,9 +650,15 @@ function ZonaRow({
                     <span className="text-gray-500">Gastos:</span>
                     <span className="font-medium">{formatCurrency(zona.administrativo.gastos)}</span>
                   </div>
+                  {ica > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">ICA ({formatPercent(tasaICA * 100)} s/ventas):</span>
+                      <span className="font-medium text-orange-600">{formatCurrency(ica)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between border-t pt-1 mt-1">
                     <span className="font-medium text-gray-700">Total:</span>
-                    <span className="font-bold text-gray-900">{formatCurrency(zona.administrativo.total)}</span>
+                    <span className="font-bold text-gray-900">{formatCurrency(zona.administrativo.total + ica)}</span>
                   </div>
                 </div>
               </div>

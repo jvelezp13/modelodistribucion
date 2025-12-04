@@ -279,7 +279,6 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
 
   const subtotalAdministrativoPersonal = grupos.administrativoPersonal.reduce((sum, r) => sum + r.valor_total, 0);
   const subtotalAdministrativoGastos = grupos.administrativoGastos.reduce((sum, r) => sum + r.valor_total, 0);
-  const totalAdministrativo = subtotalAdministrativoPersonal + subtotalAdministrativoGastos;
 
   // ==========================================
   // CÁLCULOS P&G MODELO DISTRIBUIDOR
@@ -296,6 +295,12 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
 
   const ingresosPorVentas = obtenerVentasMes();
 
+  // ICA se calcula sobre ventas y va en Costos Administrativos (es gasto deducible)
+  const impuestoICA = ingresosPorVentas * tasaICA;
+
+  // Total Administrativo incluye ICA
+  const totalAdministrativo = subtotalAdministrativoPersonal + subtotalAdministrativoGastos + impuestoICA;
+
   // 2. COSTO DE MERCANCÍA VENDIDA (CMV)
   // CMV = Ventas × (1 - descuento_pie_factura_ponderado)
   const config = marca.configuracion_descuentos;
@@ -305,10 +310,10 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
   // 3. MARGEN BRUTO (Utilidad Bruta de Distribución)
   const margenBruto = ingresosPorVentas - costoMercanciaVendida;
 
-  // 4. COSTOS OPERATIVOS
+  // 4. COSTOS OPERATIVOS (incluye ICA en administrativo)
   const totalCostosOperativos = totalComercial + totalLogistico + totalAdministrativo;
 
-  // 5. UTILIDAD OPERACIONAL
+  // 5. UTILIDAD OPERACIONAL (ya con ICA descontado)
   const utilidadOperacional = margenBruto - totalCostosOperativos;
 
   // 6. OTROS INGRESOS (Rebate y Descuento Financiero)
@@ -325,16 +330,11 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
   // 7. UTILIDAD ANTES DE IMPUESTOS
   const utilidadAntesImpuestos = utilidadOperacional + totalOtrosIngresos;
 
-  // 8. IMPUESTOS
-  // ICA se calcula sobre ventas
-  const impuestoICA = ingresosPorVentas * tasaICA;
-  // Renta se calcula sobre utilidad después de ICA
-  const utilidadDespuesICA = utilidadAntesImpuestos - impuestoICA;
-  const impuestoRenta = utilidadDespuesICA > 0 ? utilidadDespuesICA * tasaImpuestoRenta : 0;
-  const totalImpuestos = impuestoICA + impuestoRenta;
+  // 8. IMPUESTO DE RENTA (ICA ya está en costos administrativos)
+  const impuestoRenta = utilidadAntesImpuestos > 0 ? utilidadAntesImpuestos * tasaImpuestoRenta : 0;
 
   // 9. UTILIDAD NETA
-  const utilidadNeta = utilidadAntesImpuestos - totalImpuestos;
+  const utilidadNeta = utilidadAntesImpuestos - impuestoRenta;
 
   // MÁRGENES
   const margenBrutoPorcentaje = ingresosPorVentas > 0 ? (margenBruto / ingresosPorVentas) * 100 : 0;
@@ -972,6 +972,15 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
             </>
           )}
 
+          {/* ICA - Impuesto de Industria y Comercio (gasto deducible) */}
+          {impuestoICA > 0 && (
+            <LineaItem
+              titulo={`ICA - Industria y Comercio (${(tasaICA * 100).toFixed(2)}% s/ ventas)`}
+              valor={impuestoICA}
+              indent={1}
+            />
+          )}
+
           <LineaItem titulo="Total Costos Administrativos" valor={totalAdministrativo} bold />
         </div>
       )}
@@ -1037,15 +1046,11 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
         </div>
       )}
 
-      {/* SECCIÓN: IMPUESTOS */}
-      <SeccionHeader titulo="Impuestos" seccion="impuestos" valor={totalImpuestos} bgColor="bg-gray-700" />
+      {/* SECCIÓN: IMPUESTO DE RENTA */}
+      <SeccionHeader titulo="Impuesto de Renta" seccion="impuestos" valor={impuestoRenta} bgColor="bg-gray-700" />
       {seccionesAbiertas.impuestos && (
         <div>
-          {tasaICA > 0 && (
-            <LineaItem titulo={`ICA (${(tasaICA * 100).toFixed(2)}% sobre ventas)`} valor={impuestoICA} indent={1} negativo />
-          )}
-          <LineaItem titulo={`Impuesto de Renta (${(tasaImpuestoRenta * 100).toFixed(0)}%)`} valor={impuestoRenta} indent={1} negativo />
-          <LineaItem titulo="Total Impuestos" valor={totalImpuestos} bold />
+          <LineaItem titulo={`Impuesto de Renta (${(tasaImpuestoRenta * 100).toFixed(0)}% sobre utilidad)`} valor={impuestoRenta} indent={1} negativo />
         </div>
       )}
 
