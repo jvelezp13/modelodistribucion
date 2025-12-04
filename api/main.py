@@ -1866,7 +1866,7 @@ def diagnostico_comparar_pyg(
     try:
         from core.models import Escenario, Marca, Zona
         from core.calculator_lejanias import CalculadoraLejanias
-        from core.simulator import Simulador
+        from core.simulator import Simulator
         from utils.loaders_db import DataLoaderDB
         from api.pyg_service import calcular_pyg_zona
         from decimal import Decimal
@@ -1879,9 +1879,9 @@ def diagnostico_comparar_pyg(
         # Esto garantiza que los valores coincidan con lo que muestra el frontend
         # =====================================================================
         loader = DataLoaderDB(escenario_id=escenario_id)
-        simulador = Simulador(loader=loader)
-        simulador.cargar_marcas([marca_id])
-        resultado = simulador.simular()
+        simulator = Simulator(loader=loader)
+        simulator.cargar_marcas([marca_id])
+        resultado = simulator.simular()
 
         # Encontrar la marca en los resultados
         marca_sim = next((m for m in resultado.marcas if m.marca_id == marca_id), None)
