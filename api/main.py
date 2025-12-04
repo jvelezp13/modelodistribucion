@@ -1724,7 +1724,7 @@ def diagnostico_personal_detallado(
                 'diferencia': float((total_directo + total_proporcional + total_compartido) - total_distribuido)
             }
 
-        def procesar_gastos(modelo, categoria, filtro_lejanias=None):
+        def procesar_gastos(modelo, categoria, filtro_excluir=None):
             """Procesa gastos de una categoría."""
             items = []
             total = Decimal('0')
@@ -1735,8 +1735,8 @@ def diagnostico_personal_detallado(
             for g in gastos_qs:
                 nombre = g.nombre or 'Sin nombre'
 
-                # Filtrar lejanías si se especifica
-                if filtro_lejanias and filtro_lejanias(nombre):
+                # Filtrar gastos que deben excluirse (lejanías, flota, etc.)
+                if filtro_excluir and filtro_excluir(g):
                     continue
 
                 valor = g.valor_mensual or Decimal('0')
@@ -1770,24 +1770,39 @@ def diagnostico_personal_detallado(
                 'diferencia': float(total - total_distribuido)
             }
 
-        # Filtros para excluir lejanías (ya calculadas dinámicamente)
+        # Filtros para excluir lejanías y flota (ya calculados aparte)
         def es_lejania_comercial(nombre):
             return nombre.startswith('Combustible Lejanía') or nombre.startswith('Viáticos Pernocta')
 
         def es_lejania_logistica(nombre):
-            # NOTA: Flete Base Tercero NO se excluye porque está en Flota de Vehículos, no en lejanías
             return (
                 nombre.startswith('Combustible - ') or
                 nombre.startswith('Peajes - ') or
-                nombre.startswith('Viáticos Ruta - ')
+                nombre.startswith('Viáticos Ruta - ') or
+                nombre.startswith('Flete Base Tercero - ')
             )
+
+        def es_flota_vehiculos(gasto):
+            """Excluir gastos de flota que ya están en P&G Detallado como rubros tipo=vehiculo"""
+            nombre = gasto.nombre or ''
+            tipo = gasto.tipo or ''
+            tipos_flota = ['canon_renting', 'depreciacion_vehiculo', 'mantenimiento_vehiculos',
+                          'lavado_vehiculos', 'parqueadero_vehiculos', 'monitoreo_satelital']
+            nombres_flota = ['Canon Renting Flota', 'Depreciación Flota Propia', 'Mantenimiento Flota Propia',
+                            'Seguros Flota Propia', 'Aseo y Limpieza Vehículos', 'Parqueaderos',
+                            'Monitoreo Satelital (GPS)', 'Seguro de Mercancía']
+            return tipo in tipos_flota or nombre in nombres_flota
+
+        def filtro_logistico(gasto):
+            nombre = gasto.nombre or ''
+            return es_lejania_logistica(nombre) or es_flota_vehiculos(gasto)
 
         # Procesar cada categoría
         comercial_personal = procesar_personal(PersonalComercial, 'comercial')
-        comercial_gastos = procesar_gastos(GastoComercial, 'comercial', es_lejania_comercial)
+        comercial_gastos = procesar_gastos(GastoComercial, 'comercial', lambda g: es_lejania_comercial(g.nombre or ''))
 
         logistico_personal = procesar_personal(PersonalLogistico, 'logistico')
-        logistico_gastos = procesar_gastos(GastoLogistico, 'logistico', es_lejania_logistica)
+        logistico_gastos = procesar_gastos(GastoLogistico, 'logistico', filtro_logistico)
 
         administrativo_personal = procesar_personal(PersonalAdministrativo, 'administrativo')
         administrativo_gastos = procesar_gastos(GastoAdministrativo, 'administrativo')

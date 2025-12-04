@@ -91,18 +91,62 @@ def _es_gasto_lejania_logistica(gasto) -> bool:
 
     Estos gastos son creados por signals cuando se configura una ruta,
     pero su valor ya está incluido en el cálculo de lejanías del simulador.
-
-    NOTA: Flete Base Tercero NO se excluye aquí porque NO está incluido
-    en las lejanías (se separó para que aparezca en Flota de Vehículos).
     """
     nombre = gasto.nombre or ''
     return (
         nombre.startswith('Combustible - ') or
         nombre.startswith('Peajes - ') or
-        nombre.startswith('Viáticos Ruta - ')
-        # Flete Base Tercero se incluye en gastos (no en lejanías)
-        # nombre == 'Flete Transporte (Tercero)' - Legacy eliminado
+        nombre.startswith('Viáticos Ruta - ') or
+        nombre.startswith('Flete Base Tercero - ')
     )
+
+
+def _es_gasto_flota_vehiculos(gasto) -> bool:
+    """
+    Identifica gastos que corresponden a la Flota de Vehículos.
+
+    Estos gastos se crean automáticamente desde la tabla Vehiculo por signals
+    y NO deben sumarse en 'gastos' porque ya están contabilizados en P&G Detallado
+    como rubros de tipo='vehiculo'.
+
+    Los gastos de flota incluyen:
+    - Canon Renting
+    - Depreciación
+    - Mantenimiento
+    - Seguros
+    - Monitoreo GPS
+    - Lavado/Parqueadero
+    """
+    nombre = gasto.nombre or ''
+    tipo = gasto.tipo or ''
+
+    # Excluir por tipo de gasto (todos los relacionados con vehículos)
+    tipos_flota = [
+        'canon_renting',
+        'depreciacion_vehiculo',
+        'mantenimiento_vehiculos',
+        'lavado_vehiculos',
+        'parqueadero_vehiculos',
+        'monitoreo_satelital',
+    ]
+    if tipo in tipos_flota:
+        return True
+
+    # Excluir por nombre específico (creados por signals)
+    nombres_flota = [
+        'Canon Renting Flota',
+        'Depreciación Flota Propia',
+        'Mantenimiento Flota Propia',
+        'Seguros Flota Propia',
+        'Aseo y Limpieza Vehículos',
+        'Parqueaderos',
+        'Monitoreo Satelital (GPS)',
+        'Seguro de Mercancía',
+    ]
+    if nombre in nombres_flota:
+        return True
+
+    return False
 
 
 def _es_gasto_lejania_comercial(gasto) -> bool:
@@ -190,7 +234,7 @@ def _distribuir_costos_a_zona(
         elif asignacion_geo == 'compartido':
             personal_total += costo / zonas_count
 
-    # Gastos - filtrar lejanías que ya están calculadas en el simulador
+    # Gastos - filtrar lejanías y flota que ya están calculados aparte
     gastos_qs = modelo_gasto.objects.filter(
         escenario=escenario,
         marca=marca
@@ -198,6 +242,9 @@ def _distribuir_costos_a_zona(
     for g in gastos_qs:
         # Excluir gastos de lejanías que ya están en el cálculo del simulador
         if modelo_gasto == GastoLogistico and _es_gasto_lejania_logistica(g):
+            continue
+        # Excluir gastos de flota de vehículos (ya están en Flota de Vehículos)
+        if modelo_gasto == GastoLogistico and _es_gasto_flota_vehiculos(g):
             continue
         if modelo_gasto == GastoComercial and _es_gasto_lejania_comercial(g):
             continue
