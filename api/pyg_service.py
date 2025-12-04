@@ -11,7 +11,7 @@ from core.calculator_lejanias import CalculadoraLejanias
 logger = logging.getLogger(__name__)
 
 
-def calcular_pyg_zona(escenario, zona) -> Dict:
+def calcular_pyg_zona(escenario, zona, admin_totales: Dict = None) -> Dict:
     """
     Calcula el P&G para una zona comercial específica.
 
@@ -23,6 +23,12 @@ def calcular_pyg_zona(escenario, zona) -> Dict:
     Las lejanías se calculan:
     - Comerciales: directamente para esta zona específica
     - Logísticas: proporcionalmente según participación en ventas de la marca
+
+    Args:
+        escenario: Escenario activo
+        zona: Zona a calcular
+        admin_totales: Dict opcional con {'personal': X, 'gastos': Y} ya calculados
+                       por el simulador. Si no se pasa, se calculará internamente.
     """
     from core.models import (
         Zona, PersonalComercial, GastoComercial,
@@ -53,10 +59,18 @@ def calcular_pyg_zona(escenario, zona) -> Dict:
         PersonalLogistico, GastoLogistico
     )
 
-    # Calcular costos administrativos (siempre equitativo)
-    administrativo = _distribuir_admin_a_zona(
-        escenario, zona, zonas_count
-    )
+    # Calcular costos administrativos (siempre equitativo entre zonas)
+    if admin_totales:
+        # Usar los totales ya calculados por el simulador
+        factor_zona = Decimal('1') / zonas_count
+        administrativo = {
+            'personal': Decimal(str(admin_totales['personal'])) * factor_zona,
+            'gastos': Decimal(str(admin_totales['gastos'])) * factor_zona,
+            'total': (Decimal(str(admin_totales['personal'])) + Decimal(str(admin_totales['gastos']))) * factor_zona
+        }
+    else:
+        # Calcular usando el simulador (menos eficiente, pero funciona)
+        administrativo = _distribuir_admin_a_zona(escenario, zona, zonas_count)
 
     # Calcular lejanías dinámicas usando CalculadoraLejanias
     lejanias = _calcular_lejanias_zona(escenario, zona, participacion)
@@ -308,68 +322,67 @@ def _distribuir_costos_a_zona(
 
 def _distribuir_admin_a_zona(escenario, zona, zonas_count: int) -> Dict:
     """
-    Distribuye costos administrativos a una zona (siempre equitativo).
+    Distribuye costos administrativos a una zona (siempre equitativo entre zonas).
 
-    Calcula EXACTAMENTE como el Simulador (core/simulator.py):
-    1. Personal/Gastos de la marca (marca=marca, sin filtrar asignacion)
-       - Los 'individual' van directo
-       - Los 'compartido' van a rubros_compartidos y se prorratean entre marcas
-    2. Personal/Gastos compartidos globales (marca=null, asignacion='compartido')
-       - Se prorratean entre todas las marcas activas
+    Usa el SIMULADOR para obtener los valores exactos de admin (igual que P&G Detallado),
+    luego divide equitativamente entre las zonas de la marca.
     """
-    from core.models import PersonalAdministrativo, GastoAdministrativo, Marca
+    from core.simulator import Simulator
+    from utils.loaders_db import DataLoaderDB
 
     marca = zona.marca
 
-    # Contar marcas activas para prorrateo de recursos compartidos
-    marcas_count = Marca.objects.filter(activa=True).count() or 1
+    # Usar el simulador para obtener los valores exactos de admin
+    # Esto garantiza que coincida con P&G Detallado
+    loader = DataLoaderDB(escenario_id=escenario.id)
+    simulator = Simulator(loader=loader)
+    simulator.cargar_marcas([marca.marca_id])
+    resultado = simulator.ejecutar_simulacion()
 
-    # Costos admin de la marca
-    personal_marca = Decimal('0')
-    gastos_marca = Decimal('0')
+    # Encontrar la marca en los resultados
+    marca_sim = next((m for m in resultado.marcas if m.marca_id == marca.marca_id), None)
 
-    # Personal de la marca (todos los que tienen marca=marca)
-    for p in PersonalAdministrativo.objects.filter(escenario=escenario, marca=marca):
-        costo = Decimal(str(p.calcular_costo_mensual()))
-        if p.asignacion == 'individual':
-            personal_marca += costo
-        else:
-            # Compartido con marca: prorratear entre marcas
-            personal_marca += costo / marcas_count
+    if not marca_sim:
+        # Fallback si no se encuentra
+        return {
+            'personal': Decimal('0'),
+            'gastos': Decimal('0'),
+            'total': Decimal('0')
+        }
 
-    # Personal compartido global (sin marca) - prorratear entre marcas
-    for p in PersonalAdministrativo.objects.filter(
-        escenario=escenario, marca__isnull=True, asignacion='compartido'
-    ):
-        personal_marca += Decimal(str(p.calcular_costo_mensual())) / marcas_count
+    # Sumar rubros administrativos del simulador
+    personal_total = Decimal('0')
+    gastos_total = Decimal('0')
 
-    # Gastos de la marca (todos los que tienen marca=marca)
-    for g in GastoAdministrativo.objects.filter(escenario=escenario, marca=marca):
-        if g.asignacion == 'individual':
-            gastos_marca += g.valor_mensual
-        else:
-            # Compartido con marca: prorratear entre marcas
-            gastos_marca += g.valor_mensual / marcas_count
-
-    # Gastos compartidos globales (sin marca) - prorratear entre marcas
-    for g in GastoAdministrativo.objects.filter(
-        escenario=escenario, marca__isnull=True, asignacion='compartido'
-    ):
-        gastos_marca += g.valor_mensual / marcas_count
+    todos_rubros = marca_sim.rubros_individuales + marca_sim.rubros_compartidos_asignados
+    for rubro in todos_rubros:
+        if rubro.categoria == 'administrativo':
+            valor = Decimal(str(rubro.valor_total))
+            if rubro.tipo == 'personal':
+                personal_total += valor
+            else:
+                gastos_total += valor
 
     # Los costos admin se distribuyen equitativamente entre zonas
     factor_zona = Decimal('1') / zonas_count
 
     return {
-        'personal': personal_marca * factor_zona,
-        'gastos': gastos_marca * factor_zona,
-        'total': (personal_marca + gastos_marca) * factor_zona
+        'personal': personal_total * factor_zona,
+        'gastos': gastos_total * factor_zona,
+        'total': (personal_total + gastos_total) * factor_zona
     }
 
 
 def calcular_pyg_todas_zonas(escenario, marca) -> List[Dict]:
-    """Calcula P&G para todas las zonas de una marca."""
+    """
+    Calcula P&G para todas las zonas de una marca.
+
+    Ejecuta el simulador UNA sola vez para obtener los totales administrativos
+    correctos, luego los distribuye entre las zonas.
+    """
     from core.models import Zona
+    from core.simulator import Simulator
+    from utils.loaders_db import DataLoaderDB
 
     zonas = Zona.objects.filter(
         escenario=escenario,
@@ -377,7 +390,37 @@ def calcular_pyg_todas_zonas(escenario, marca) -> List[Dict]:
         activo=True
     ).order_by('nombre')
 
-    return [calcular_pyg_zona(escenario, zona) for zona in zonas]
+    # Ejecutar simulador UNA vez para obtener totales admin correctos
+    loader = DataLoaderDB(escenario_id=escenario.id)
+    simulator = Simulator(loader=loader)
+    simulator.cargar_marcas([marca.marca_id])
+    resultado = simulator.ejecutar_simulacion()
+
+    # Encontrar la marca en los resultados
+    marca_sim = next((m for m in resultado.marcas if m.marca_id == marca.marca_id), None)
+
+    admin_totales = None
+    if marca_sim:
+        # Sumar rubros administrativos del simulador
+        personal_total = Decimal('0')
+        gastos_total = Decimal('0')
+
+        todos_rubros = marca_sim.rubros_individuales + marca_sim.rubros_compartidos_asignados
+        for rubro in todos_rubros:
+            if rubro.categoria == 'administrativo':
+                valor = Decimal(str(rubro.valor_total))
+                if rubro.tipo == 'personal':
+                    personal_total += valor
+                else:
+                    gastos_total += valor
+
+        admin_totales = {
+            'personal': personal_total,
+            'gastos': gastos_total
+        }
+
+    # Calcular P&G por zona, pasando los totales admin pre-calculados
+    return [calcular_pyg_zona(escenario, zona, admin_totales) for zona in zonas]
 
 
 def calcular_pyg_municipio(escenario, zona_municipio) -> Dict:
