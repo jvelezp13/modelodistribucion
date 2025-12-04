@@ -41,9 +41,15 @@ def calculate_hr_expenses(escenario):
         try:
             qs = model_personal.objects.filter(escenario=escenario)
 
-            # Agrupar por (marca, tipo_asignacion_geo, zona) para respetar la asignación del personal
-            # Usar values para obtener grupos únicos
-            grupos = qs.values('marca', 'tipo_asignacion_geo', 'zona').distinct()
+            # Determinar campos de agrupación según el modelo
+            # PersonalAdministrativo NO tiene 'zona', solo PersonalComercial y PersonalLogistico
+            campos_agrupacion = ['marca', 'tipo_asignacion_geo']
+            tiene_zona = 'zona' in [f.name for f in model_personal._meta.get_fields()]
+            if tiene_zona:
+                campos_agrupacion.append('zona')
+
+            # Agrupar por los campos disponibles
+            grupos = qs.values(*campos_agrupacion).distinct()
 
             # Limpiar gastos de provisiones existentes para este escenario y modelo
             # (se recrearán con los valores correctos)
@@ -59,13 +65,14 @@ def calculate_hr_expenses(escenario):
             try:
                 marca_id = grupo['marca']
                 tipo_asig_geo_original = grupo['tipo_asignacion_geo']
-                zona_id = grupo['zona']
+                zona_id = grupo.get('zona', None)  # Usar .get() porque PersonalAdministrativo no tiene 'zona'
 
                 # Filtrar personal de este grupo (usar valores originales, incluyendo None)
                 filtro = {
                     'marca_id': marca_id,
-                    'zona_id': zona_id,
                 }
+                if tiene_zona:
+                    filtro['zona_id'] = zona_id
                 if tipo_asig_geo_original is not None:
                     filtro['tipo_asignacion_geo'] = tipo_asig_geo_original
                 else:
