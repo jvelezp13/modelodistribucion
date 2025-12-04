@@ -1249,7 +1249,12 @@ def obtener_pyg_zonas(
             return margen_neto
 
         # Ordenar zonas por margen neto (de mayor a menor)
-        zonas_ordenadas = sorted(zonas, key=calcular_utilidad_neta_zona, reverse=True)
+        # Si no hay ventas configuradas, ordenar por participación en ventas
+        if ventas_mes_actual > 0:
+            zonas_ordenadas = sorted(zonas, key=calcular_utilidad_neta_zona, reverse=True)
+        else:
+            # Sin ventas configuradas, ordenar por participación (mayor a menor)
+            zonas_ordenadas = sorted(zonas, key=lambda z: z['zona']['participacion_ventas'], reverse=True)
 
         return {
             'escenario_id': escenario_id,
