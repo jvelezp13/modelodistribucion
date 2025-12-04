@@ -237,11 +237,10 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
 
   // Calcular subtotales
   const subtotalComercialPersonal = grupos.comercialPersonal.reduce((sum, r) => sum + r.valor_total, 0);
-  // Excluir lejanías de gastos comerciales (se muestran aparte)
-  const subtotalComercialGastos = grupos.comercialGastos
-    .filter(r => !r.nombre.startsWith('Combustible Lejanía') && !r.nombre.startsWith('Viáticos Pernocta'))
-    .reduce((sum, r) => sum + r.valor_total, 0);
-  const totalComercial = subtotalComercialPersonal + subtotalComercialGastos + (marca.lejania_comercial || 0);
+  // Incluir TODAS las gastos comerciales (las lejanías ya están en los rubros)
+  const subtotalComercialGastos = grupos.comercialGastos.reduce((sum, r) => sum + r.valor_total, 0);
+  // NO sumar marca.lejania_comercial porque ya está incluido en los rubros
+  const totalComercial = subtotalComercialPersonal + subtotalComercialGastos;
 
   // Subtotal de vehículos ahora incluye flete base
   const subtotalLogisticoVehiculos = vehiculosConFlete.reduce((sum, v) => sum + v.totalConFlete, 0);
