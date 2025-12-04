@@ -1277,6 +1277,81 @@ def obtener_pyg_zonas(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/debug/diferencia-pyg")
+def diagnosticar_diferencia_pyg(
+    escenario_id: int,
+    marca_id: str
+) -> Dict[str, Any]:
+    """
+    Diagnostica diferencias entre P&G Detallado y P&G por Zonas.
+    """
+    try:
+        from core.models import (
+            Escenario, Marca, Zona,
+            PersonalComercial, GastoComercial
+        )
+        from api.pyg_service import calcular_pyg_todas_zonas
+        from decimal import Decimal
+
+        escenario = Escenario.objects.get(pk=escenario_id)
+        marca = Marca.objects.get(marca_id=marca_id)
+
+        # TOTAL DETALLADO
+        personal_comercial = PersonalComercial.objects.filter(escenario=escenario, marca=marca)
+        total_personal = sum(float(p.calcular_costo_mensual()) for p in personal_comercial)
+
+        gastos_comerciales = GastoComercial.objects.filter(escenario=escenario, marca=marca)
+        total_gastos = sum(float(g.valor_mensual) for g in gastos_comerciales)
+
+        total_detallado = total_personal + total_gastos
+
+        # TOTAL ZONAS
+        zonas_pyg = calcular_pyg_todas_zonas(escenario, marca)
+        total_zonas = sum(float(z['comercial']['total']) for z in zonas_pyg)
+
+        # DIFERENCIA
+        diferencia = total_detallado - total_zonas
+
+        # PARTICIPACIONES
+        zonas_activas = Zona.objects.filter(escenario=escenario, marca=marca, activo=True)
+        suma_participaciones = sum(float(z.participacion_ventas or 0) for z in zonas_activas)
+
+        # POR TIPO
+        personal_por_tipo = {}
+        for tipo in ['directo', 'proporcional', 'compartido']:
+            qs = personal_comercial.filter(tipo_asignacion_geo=tipo)
+            personal_por_tipo[tipo] = {
+                'count': qs.count(),
+                'total': sum(float(p.calcular_costo_mensual()) for p in qs)
+            }
+
+        gastos_por_tipo = {}
+        for tipo in ['directo', 'proporcional', 'compartido']:
+            qs = gastos_comerciales.filter(tipo_asignacion_geo=tipo)
+            gastos_por_tipo[tipo] = {
+                'count': qs.count(),
+                'total': sum(float(g.valor_mensual) for g in qs)
+            }
+
+        return {
+            'escenario': escenario.nombre,
+            'marca': marca.nombre,
+            'total_detallado': total_detallado,
+            'total_personal': total_personal,
+            'total_gastos': total_gastos,
+            'total_zonas': total_zonas,
+            'diferencia': diferencia,
+            'diferencia_porcentaje': (diferencia / total_detallado * 100) if total_detallado > 0 else 0,
+            'suma_participaciones': suma_participaciones,
+            'personal_por_tipo': personal_por_tipo,
+            'gastos_por_tipo': gastos_por_tipo,
+        }
+
+    except Exception as e:
+        logger.error(f"Error en diagnóstico: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/pyg/zona/{zona_id}")
 def obtener_pyg_zona(
     zona_id: int,
