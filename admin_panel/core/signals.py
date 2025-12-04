@@ -75,7 +75,6 @@ def calculate_hr_expenses(escenario):
             marca_obj = Marca.objects.get(pk=marca_id) if marca_id else None
             zona_obj = None
             if zona_id and tipo_asig_geo == 'directo':
-                from .models import Zona
                 zona_obj = Zona.objects.get(pk=zona_id)
 
             asignacion = 'compartido' if marca_id is None else 'individual'
