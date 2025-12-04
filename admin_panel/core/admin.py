@@ -253,13 +253,20 @@ class PersonalComercialAdmin(DuplicarMixin, admin.ModelAdmin):
             return f"${total:,.0f}"
         except FactorPrestacional.DoesNotExist:
             return f"${obj.salario_base:,.0f} (Sin Factor)"
+        except Exception as e:
+            return f"Error: {str(e)[:30]}"
     costo_total_estimado.short_description = 'Costo Total (Est.)'
 
     def changelist_view(self, request, extra_context=None):
         response = super().changelist_view(request, extra_context)
         try:
             qs = response.context_data['cl'].queryset
-            total_general = sum(obj.calcular_costo_mensual() for obj in qs)
+            total_general = 0
+            for obj in qs:
+                try:
+                    total_general += obj.calcular_costo_mensual() or 0
+                except Exception:
+                    pass  # Ignorar errores individuales
             total_registros = qs.count()
             promedio = total_general / total_registros if total_registros > 0 else 0
 
@@ -321,13 +328,20 @@ class PersonalLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
             return f"${total:,.0f}"
         except FactorPrestacional.DoesNotExist:
             return f"${obj.salario_base:,.0f} (Sin Factor)"
+        except Exception as e:
+            return f"Error: {str(e)[:30]}"
     costo_total_estimado.short_description = 'Costo Total (Est.)'
 
     def changelist_view(self, request, extra_context=None):
         response = super().changelist_view(request, extra_context)
         try:
             qs = response.context_data['cl'].queryset
-            total_general = sum(obj.calcular_costo_mensual() for obj in qs)
+            total_general = 0
+            for obj in qs:
+                try:
+                    total_general += obj.calcular_costo_mensual() or 0
+                except Exception:
+                    pass  # Ignorar errores individuales
             total_registros = qs.count()
             promedio = total_general / total_registros if total_registros > 0 else 0
 
@@ -639,13 +653,13 @@ class PersonalAdministrativoAdmin(DuplicarMixin, admin.ModelAdmin):
     valor_mensual.short_description = 'Valor Mensual'
 
     def costo_total_estimado(self, obj):
-        if obj.tipo_contrato == 'honorarios':
-            return f"${obj.honorarios_mensuales:,.0f}" if obj.honorarios_mensuales else "-"
-
-        if not obj.salario_base:
-            return "-"
-
         try:
+            if obj.tipo_contrato == 'honorarios':
+                return f"${obj.honorarios_mensuales:,.0f}" if obj.honorarios_mensuales else "-"
+
+            if not obj.salario_base:
+                return "-"
+
             factor = FactorPrestacional.objects.get(perfil=obj.perfil_prestacional)
             total = obj.salario_base * (1 + factor.factor_total)
 
@@ -661,13 +675,20 @@ class PersonalAdministrativoAdmin(DuplicarMixin, admin.ModelAdmin):
             return f"${total:,.0f}"
         except FactorPrestacional.DoesNotExist:
             return f"${obj.salario_base:,.0f} (Sin Factor)"
+        except Exception as e:
+            return f"Error: {str(e)[:30]}"
     costo_total_estimado.short_description = 'Costo Total (Est.)'
 
     def changelist_view(self, request, extra_context=None):
         response = super().changelist_view(request, extra_context)
         try:
             qs = response.context_data['cl'].queryset
-            total_general = sum(obj.calcular_costo_mensual() for obj in qs)
+            total_general = 0
+            for obj in qs:
+                try:
+                    total_general += obj.calcular_costo_mensual() or 0
+                except Exception:
+                    pass  # Ignorar errores individuales
             total_registros = qs.count()
             promedio = total_general / total_registros if total_registros > 0 else 0
 
