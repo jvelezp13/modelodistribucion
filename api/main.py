@@ -1987,43 +1987,52 @@ def diagnostico_comparar_pyg(
         total_logistico = flota_total + personal_logistico + gastos_logistico + lejanias_logistico
 
         # --- ADMINISTRATIVO ---
-        # Usar la misma lógica que el Simulador (services.py):
-        # - Personal/Gastos individuales (marca=marca, asignacion='individual')
-        # - Personal/Gastos compartidos (marca=null, asignacion='compartido') prorrateados entre marcas
+        # Calcular EXACTAMENTE como el Simulador (core/simulator.py):
+        # 1. Personal/Gastos de la marca (marca=marca, sin filtrar asignacion)
+        #    - Los 'individual' van directo
+        #    - Los 'compartido' van a rubros_compartidos y se prorratean
+        # 2. Personal/Gastos compartidos globales (marca=null, asignacion='compartido')
+        #    - Se prorratean entre todas las marcas activas
         from core.models import Marca as MarcaModel
         marcas_activas = MarcaModel.objects.filter(activa=True).count() or 1
 
-        # Personal individual de la marca
-        personal_admin_individual = Decimal('0')
-        for p in PersonalAdministrativo.objects.filter(
-            escenario=escenario, marca=marca, asignacion='individual'
-        ):
-            personal_admin_individual += Decimal(str(p.calcular_costo_mensual()))
+        # Personal de la marca (todos los que tienen marca=marca)
+        personal_admin_marca = Decimal('0')
+        for p in PersonalAdministrativo.objects.filter(escenario=escenario, marca=marca):
+            costo = Decimal(str(p.calcular_costo_mensual()))
+            if p.asignacion == 'individual':
+                # Individual: 100% a esta marca
+                personal_admin_marca += costo
+            else:
+                # Compartido con marca: se prorratean entre marcas según criterio
+                # El simulador los agrega a rubros_compartidos y luego prorratean
+                # Por simplicidad aquí dividimos equitativamente
+                personal_admin_marca += costo / marcas_activas
 
-        # Personal compartido (sin marca) - prorratear entre marcas
-        personal_admin_compartido = Decimal('0')
+        # Personal compartido global (sin marca) - prorratear entre marcas
         for p in PersonalAdministrativo.objects.filter(
             escenario=escenario, marca__isnull=True, asignacion='compartido'
         ):
-            personal_admin_compartido += Decimal(str(p.calcular_costo_mensual())) / marcas_activas
+            personal_admin_marca += Decimal(str(p.calcular_costo_mensual())) / marcas_activas
 
-        personal_admin = personal_admin_individual + personal_admin_compartido
+        personal_admin = personal_admin_marca
 
-        # Gastos individuales de la marca
-        gastos_admin_individual = Decimal('0')
-        for g in GastoAdministrativo.objects.filter(
-            escenario=escenario, marca=marca, asignacion='individual'
-        ):
-            gastos_admin_individual += g.valor_mensual
+        # Gastos de la marca (todos los que tienen marca=marca)
+        gastos_admin_marca = Decimal('0')
+        for g in GastoAdministrativo.objects.filter(escenario=escenario, marca=marca):
+            if g.asignacion == 'individual':
+                gastos_admin_marca += g.valor_mensual
+            else:
+                # Compartido con marca: prorratear
+                gastos_admin_marca += g.valor_mensual / marcas_activas
 
-        # Gastos compartidos (sin marca) - prorratear entre marcas
-        gastos_admin_compartido = Decimal('0')
+        # Gastos compartidos globales (sin marca) - prorratear entre marcas
         for g in GastoAdministrativo.objects.filter(
             escenario=escenario, marca__isnull=True, asignacion='compartido'
         ):
-            gastos_admin_compartido += g.valor_mensual / marcas_activas
+            gastos_admin_marca += g.valor_mensual / marcas_activas
 
-        gastos_admin = gastos_admin_individual + gastos_admin_compartido
+        gastos_admin = gastos_admin_marca
 
         total_admin = personal_admin + gastos_admin
 
