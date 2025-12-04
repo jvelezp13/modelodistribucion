@@ -384,6 +384,18 @@ class APIClient {
       participacion_ventas: z.zona.participacion_ventas
     }));
   }
+
+  /**
+   * Obtiene diagnóstico detallado del personal para validación
+   */
+  async obtenerDiagnosticoPersonal(
+    escenarioId: number,
+    marcaId: string
+  ): Promise<DiagnosticoPersonalResponse> {
+    return this.request<DiagnosticoPersonalResponse>(
+      `/api/diagnostico/personal-detallado?escenario_id=${escenarioId}&marca_id=${marcaId}`
+    );
+  }
 }
 
 // Interfaz para respuesta de tasa de renta
@@ -470,6 +482,65 @@ export interface ZonaBasica {
   id: number;
   nombre: string;
   participacion_ventas: number;
+}
+
+// Interfaces para diagnóstico de personal
+export interface PersonalItem {
+  nombre: string;
+  cantidad: number;
+  costo_unitario: number;
+  costo_total: number;
+  asignacion: 'directo' | 'proporcional' | 'compartido';
+  zona_asignada: string | null;
+  zona_destino: string;
+  distribuido: number;
+  perdido: number;
+}
+
+export interface GastoItem {
+  nombre: string;
+  valor: number;
+  asignacion: 'directo' | 'proporcional' | 'compartido';
+  zona_asignada: string | null;
+  distribuido: number;
+}
+
+export interface PersonalResumen {
+  items: PersonalItem[];
+  total_costo: number;
+  total_directo: number;
+  total_proporcional: number;
+  total_compartido: number;
+  total_distribuido: number;
+  diferencia: number;
+}
+
+export interface GastosResumen {
+  items: GastoItem[];
+  total: number;
+  total_distribuido: number;
+  diferencia: number;
+}
+
+export interface CategoriaResumen {
+  personal: PersonalResumen;
+  gastos: GastosResumen;
+  total_categoria: number;
+  total_distribuido: number;
+  diferencia: number;
+}
+
+export interface DiagnosticoPersonalResponse {
+  escenario: { id: number; nombre: string };
+  marca: { id: string; nombre: string };
+  zonas: {
+    cantidad: number;
+    suma_participaciones: number;
+    lista: Array<{ id: number; nombre: string; participacion: number }>;
+  };
+  comercial: CategoriaResumen;
+  logistico: CategoriaResumen;
+  administrativo: CategoriaResumen;
 }
 
 export const apiClient = new APIClient();

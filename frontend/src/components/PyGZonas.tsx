@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { apiClient, PyGZonasResponse, PyGZona, MESES, getMesActual, VentasMensualesDesglose } from '@/lib/api';
-import { ChevronDown, ChevronRight, MapPin, TrendingUp, TrendingDown, Users, Truck, Building2, Calendar, DollarSign, Percent } from 'lucide-react';
+import { apiClient, PyGZonasResponse, PyGZona, MESES, getMesActual, VentasMensualesDesglose, DiagnosticoPersonalResponse } from '@/lib/api';
+import { ChevronDown, ChevronRight, MapPin, TrendingUp, TrendingDown, Users, Truck, Building2, Calendar, DollarSign, Percent, AlertTriangle } from 'lucide-react';
 
 interface PyGZonasProps {
   escenarioId: number;
@@ -16,6 +16,9 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
   const [error, setError] = useState<string | null>(null);
   const [expandedZonas, setExpandedZonas] = useState<Set<number>>(new Set());
   const [mesSeleccionado, setMesSeleccionado] = useState<string>(getMesActual());
+  const [diagnostico, setDiagnostico] = useState<DiagnosticoPersonalResponse | null>(null);
+  const [showDiagnostico, setShowDiagnostico] = useState(true);
+  const [expandedCategoria, setExpandedCategoria] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -24,8 +27,12 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
       setLoading(true);
       setError(null);
       try {
-        const response = await apiClient.obtenerPyGZonas(escenarioId, marcaId);
-        setData(response);
+        const [zonasResponse, diagResponse] = await Promise.all([
+          apiClient.obtenerPyGZonas(escenarioId, marcaId),
+          apiClient.obtenerDiagnosticoPersonal(escenarioId, marcaId)
+        ]);
+        setData(zonasResponse);
+        setDiagnostico(diagResponse);
       } catch (err) {
         console.error('Error cargando P&G por zonas:', err);
         setError('Error al cargar los datos de P&G por zonas');
@@ -295,23 +302,61 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
         </div>
 
         {/* Panel de Diagnóstico - Subtotales detallados para comparar con P&G Detallado */}
+        {showDiagnostico && (
         <div className="p-4 bg-amber-50 border-b border-amber-200">
-          <h4 className="text-xs font-semibold text-amber-800 mb-3 flex items-center gap-2">
-            <span className="px-2 py-0.5 bg-amber-200 rounded text-[10px]">DIAGNÓSTICO</span>
-            Subtotales para validación vs P&G Detallado
-          </h4>
+          <div className="flex justify-between items-center mb-3">
+            <h4 className="text-xs font-semibold text-amber-800 flex items-center gap-2">
+              <AlertTriangle size={14} />
+              <span className="px-2 py-0.5 bg-amber-200 rounded text-[10px]">DIAGNÓSTICO</span>
+              Subtotales para validación vs P&G Detallado
+            </h4>
+            <button
+              onClick={() => setShowDiagnostico(false)}
+              className="text-[10px] text-amber-600 hover:text-amber-800"
+            >
+              Ocultar
+            </button>
+          </div>
+
+          {/* Info de zonas */}
+          {diagnostico && (
+            <div className="mb-3 p-2 bg-white rounded border border-amber-200 text-[10px]">
+              <span className="font-medium text-gray-700">Zonas:</span>{' '}
+              <span className="text-gray-600">{diagnostico.zonas.cantidad} zonas |</span>{' '}
+              <span className="text-gray-600">Suma participaciones: </span>
+              <span className={diagnostico.zonas.suma_participaciones === 100 ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
+                {diagnostico.zonas.suma_participaciones.toFixed(1)}%
+              </span>
+              {diagnostico.zonas.suma_participaciones !== 100 && (
+                <span className="text-red-600 ml-1">(Debería ser 100%)</span>
+              )}
+            </div>
+          )}
+
           <div className="grid grid-cols-3 gap-4 text-xs">
             {/* Comercial */}
             <div className="bg-white rounded border border-amber-200 p-3">
-              <div className="font-semibold text-gray-700 mb-2 flex items-center gap-1">
-                <Users size={12} />
-                COSTOS COMERCIALES
+              <div
+                className="font-semibold text-gray-700 mb-2 flex items-center justify-between cursor-pointer"
+                onClick={() => setExpandedCategoria(expandedCategoria === 'comercial' ? null : 'comercial')}
+              >
+                <div className="flex items-center gap-1">
+                  <Users size={12} />
+                  COSTOS COMERCIALES
+                </div>
+                {expandedCategoria === 'comercial' ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
               </div>
               <div className="space-y-1">
                 <div className="flex justify-between">
                   <span className="text-gray-500">Personal Comercial:</span>
                   <span className="font-medium">{formatCurrency(totales.comercialPersonal)}</span>
                 </div>
+                {diagnostico && diagnostico.comercial.personal.diferencia > 0 && (
+                  <div className="flex justify-between text-red-600">
+                    <span className="text-[10px]">No distribuido:</span>
+                    <span className="text-[10px] font-medium">-{formatCurrency(diagnostico.comercial.personal.diferencia)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-gray-500">Gastos Comerciales:</span>
                   <span className="font-medium">{formatCurrency(totales.comercialGastos)}</span>
@@ -325,19 +370,70 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
                   <span className="font-bold text-gray-900">{formatCurrency(totales.comercial)}</span>
                 </div>
               </div>
+
+              {/* Detalle expandido del personal comercial */}
+              {expandedCategoria === 'comercial' && diagnostico && (
+                <div className="mt-3 pt-3 border-t border-amber-200">
+                  <div className="text-[10px] font-medium text-gray-600 mb-2">Detalle Personal ({diagnostico.comercial.personal.items.length}):</div>
+                  <div className="space-y-1 max-h-48 overflow-y-auto">
+                    {diagnostico.comercial.personal.items.map((item, idx) => (
+                      <div key={idx} className={`text-[10px] p-1.5 rounded ${item.perdido > 0 ? 'bg-red-50' : 'bg-gray-50'}`}>
+                        <div className="flex justify-between">
+                          <span className="font-medium text-gray-700">{item.nombre}</span>
+                          <span className="font-medium">{formatCurrency(item.costo_total)}</span>
+                        </div>
+                        <div className="flex justify-between text-gray-500">
+                          <span>{item.asignacion} → {item.zona_destino}</span>
+                          {item.perdido > 0 && (
+                            <span className="text-red-600">-{formatCurrency(item.perdido)}</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-2 pt-2 border-t border-gray-200 text-[10px]">
+                    <div className="flex justify-between">
+                      <span>Total costo:</span>
+                      <span className="font-medium">{formatCurrency(diagnostico.comercial.personal.total_costo)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Total distribuido:</span>
+                      <span className="font-medium">{formatCurrency(diagnostico.comercial.personal.total_distribuido)}</span>
+                    </div>
+                    {diagnostico.comercial.personal.diferencia > 0 && (
+                      <div className="flex justify-between text-red-600 font-medium">
+                        <span>Diferencia (no distribuido):</span>
+                        <span>{formatCurrency(diagnostico.comercial.personal.diferencia)}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Logístico */}
             <div className="bg-white rounded border border-amber-200 p-3">
-              <div className="font-semibold text-gray-700 mb-2 flex items-center gap-1">
-                <Truck size={12} />
-                COSTOS LOGÍSTICOS
+              <div
+                className="font-semibold text-gray-700 mb-2 flex items-center justify-between cursor-pointer"
+                onClick={() => setExpandedCategoria(expandedCategoria === 'logistico' ? null : 'logistico')}
+              >
+                <div className="flex items-center gap-1">
+                  <Truck size={12} />
+                  COSTOS LOGÍSTICOS
+                </div>
+                {expandedCategoria === 'logistico' ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
               </div>
               <div className="space-y-1">
                 <div className="flex justify-between">
                   <span className="text-gray-500">Personal Logístico:</span>
                   <span className="font-medium">{formatCurrency(totales.logisticoPersonal)}</span>
                 </div>
+                {diagnostico && diagnostico.logistico.personal.diferencia > 0 && (
+                  <div className="flex justify-between text-red-600">
+                    <span className="text-[10px]">No distribuido:</span>
+                    <span className="text-[10px] font-medium">-{formatCurrency(diagnostico.logistico.personal.diferencia)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-gray-500">Gastos Logísticos:</span>
                   <span className="font-medium">{formatCurrency(totales.logisticoGastos)}</span>
@@ -351,19 +447,70 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
                   <span className="font-bold text-gray-900">{formatCurrency(totales.logistico)}</span>
                 </div>
               </div>
+
+              {/* Detalle expandido del personal logístico */}
+              {expandedCategoria === 'logistico' && diagnostico && (
+                <div className="mt-3 pt-3 border-t border-amber-200">
+                  <div className="text-[10px] font-medium text-gray-600 mb-2">Detalle Personal ({diagnostico.logistico.personal.items.length}):</div>
+                  <div className="space-y-1 max-h-48 overflow-y-auto">
+                    {diagnostico.logistico.personal.items.map((item, idx) => (
+                      <div key={idx} className={`text-[10px] p-1.5 rounded ${item.perdido > 0 ? 'bg-red-50' : 'bg-gray-50'}`}>
+                        <div className="flex justify-between">
+                          <span className="font-medium text-gray-700">{item.nombre}</span>
+                          <span className="font-medium">{formatCurrency(item.costo_total)}</span>
+                        </div>
+                        <div className="flex justify-between text-gray-500">
+                          <span>{item.asignacion} → {item.zona_destino}</span>
+                          {item.perdido > 0 && (
+                            <span className="text-red-600">-{formatCurrency(item.perdido)}</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-2 pt-2 border-t border-gray-200 text-[10px]">
+                    <div className="flex justify-between">
+                      <span>Total costo:</span>
+                      <span className="font-medium">{formatCurrency(diagnostico.logistico.personal.total_costo)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Total distribuido:</span>
+                      <span className="font-medium">{formatCurrency(diagnostico.logistico.personal.total_distribuido)}</span>
+                    </div>
+                    {diagnostico.logistico.personal.diferencia > 0 && (
+                      <div className="flex justify-between text-red-600 font-medium">
+                        <span>Diferencia (no distribuido):</span>
+                        <span>{formatCurrency(diagnostico.logistico.personal.diferencia)}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Administrativo */}
             <div className="bg-white rounded border border-amber-200 p-3">
-              <div className="font-semibold text-gray-700 mb-2 flex items-center gap-1">
-                <Building2 size={12} />
-                COSTOS ADMINISTRATIVOS
+              <div
+                className="font-semibold text-gray-700 mb-2 flex items-center justify-between cursor-pointer"
+                onClick={() => setExpandedCategoria(expandedCategoria === 'administrativo' ? null : 'administrativo')}
+              >
+                <div className="flex items-center gap-1">
+                  <Building2 size={12} />
+                  COSTOS ADMINISTRATIVOS
+                </div>
+                {expandedCategoria === 'administrativo' ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
               </div>
               <div className="space-y-1">
                 <div className="flex justify-between">
                   <span className="text-gray-500">Personal Admin:</span>
                   <span className="font-medium">{formatCurrency(totales.administrativoPersonal)}</span>
                 </div>
+                {diagnostico && diagnostico.administrativo.personal.diferencia > 0 && (
+                  <div className="flex justify-between text-red-600">
+                    <span className="text-[10px]">No distribuido:</span>
+                    <span className="text-[10px] font-medium">-{formatCurrency(diagnostico.administrativo.personal.diferencia)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-gray-500">Gastos Admin:</span>
                   <span className="font-medium">{formatCurrency(totales.administrativoGastos)}</span>
@@ -373,12 +520,52 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
                   <span className="font-bold text-gray-900">{formatCurrency(totales.administrativo)}</span>
                 </div>
               </div>
+
+              {/* Detalle expandido del personal administrativo */}
+              {expandedCategoria === 'administrativo' && diagnostico && (
+                <div className="mt-3 pt-3 border-t border-amber-200">
+                  <div className="text-[10px] font-medium text-gray-600 mb-2">Detalle Personal ({diagnostico.administrativo.personal.items.length}):</div>
+                  <div className="space-y-1 max-h-48 overflow-y-auto">
+                    {diagnostico.administrativo.personal.items.map((item, idx) => (
+                      <div key={idx} className={`text-[10px] p-1.5 rounded ${item.perdido > 0 ? 'bg-red-50' : 'bg-gray-50'}`}>
+                        <div className="flex justify-between">
+                          <span className="font-medium text-gray-700">{item.nombre}</span>
+                          <span className="font-medium">{formatCurrency(item.costo_total)}</span>
+                        </div>
+                        <div className="flex justify-between text-gray-500">
+                          <span>{item.asignacion} → {item.zona_destino}</span>
+                          {item.perdido > 0 && (
+                            <span className="text-red-600">-{formatCurrency(item.perdido)}</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-2 pt-2 border-t border-gray-200 text-[10px]">
+                    <div className="flex justify-between">
+                      <span>Total costo:</span>
+                      <span className="font-medium">{formatCurrency(diagnostico.administrativo.personal.total_costo)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Total distribuido:</span>
+                      <span className="font-medium">{formatCurrency(diagnostico.administrativo.personal.total_distribuido)}</span>
+                    </div>
+                    {diagnostico.administrativo.personal.diferencia > 0 && (
+                      <div className="flex justify-between text-red-600 font-medium">
+                        <span>Diferencia (no distribuido):</span>
+                        <span>{formatCurrency(diagnostico.administrativo.personal.diferencia)}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
           <div className="mt-3 text-[10px] text-amber-700">
-            Compara estos valores con el P&G Detallado para identificar diferencias.
+            Haz clic en cada categoría para ver el detalle del personal y su distribución a zonas.
           </div>
         </div>
+        )}
 
         {/* Tabla de zonas */}
         <div className="overflow-x-auto">

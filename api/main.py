@@ -1626,6 +1626,214 @@ def _serializar_pyg_municipio(pyg_mun: Dict) -> Dict:
     return resultado
 
 
+@app.get("/api/diagnostico/personal-detallado")
+def diagnostico_personal_detallado(
+    escenario_id: int,
+    marca_id: str
+) -> Dict[str, Any]:
+    """
+    Diagnóstico detallado del personal por categoría y tipo de asignación geográfica.
+    Muestra cada persona, su costo y cómo se distribuye a las zonas.
+    """
+    try:
+        from core.models import (
+            Escenario, Marca, Zona,
+            PersonalComercial, PersonalLogistico, PersonalAdministrativo,
+            GastoComercial, GastoLogistico, GastoAdministrativo
+        )
+        from decimal import Decimal
+
+        escenario = Escenario.objects.get(pk=escenario_id)
+        marca = Marca.objects.get(marca_id=marca_id)
+
+        # Obtener zonas activas
+        zonas = list(Zona.objects.filter(
+            escenario=escenario,
+            marca=marca,
+            activo=True
+        ).order_by('nombre'))
+        zonas_count = len(zonas) or 1
+        suma_participaciones = sum(float(z.participacion_ventas or 0) for z in zonas)
+
+        def procesar_personal(modelo, categoria):
+            """Procesa personal de una categoría y calcula distribución."""
+            items = []
+            total_directo = Decimal('0')
+            total_proporcional = Decimal('0')
+            total_compartido = Decimal('0')
+            total_distribuido = Decimal('0')
+
+            personal_qs = modelo.objects.filter(escenario=escenario, marca=marca)
+
+            for p in personal_qs:
+                costo = Decimal(str(p.calcular_costo_mensual()))
+                asignacion = getattr(p, 'tipo_asignacion_geo', 'proporcional')
+                zona_asignada = getattr(p, 'zona', None)
+                cargo = getattr(p, 'cargo', None)
+                cargo_nombre = cargo.nombre if cargo else 'Sin cargo'
+
+                # Calcular cuánto se distribuye realmente
+                distribuido = Decimal('0')
+                zona_destino = None
+
+                if asignacion == 'directo':
+                    if zona_asignada:
+                        distribuido = costo
+                        zona_destino = zona_asignada.nombre
+                    else:
+                        distribuido = Decimal('0')  # No tiene zona asignada, se pierde
+                        zona_destino = "SIN ZONA (NO DISTRIBUIDO)"
+                    total_directo += costo
+                elif asignacion == 'proporcional':
+                    # Se distribuye según participación de cada zona
+                    distribuido = costo * (Decimal(str(suma_participaciones)) / 100)
+                    zona_destino = f"Todas ({suma_participaciones:.1f}%)"
+                    total_proporcional += costo
+                elif asignacion == 'compartido':
+                    # Se divide equitativamente entre zonas
+                    distribuido = costo  # Total sí se distribuye
+                    zona_destino = f"Equitativo ({zonas_count} zonas)"
+                    total_compartido += costo
+
+                total_distribuido += distribuido
+
+                items.append({
+                    'nombre': f"{cargo_nombre} ({p.cantidad})" if p.cantidad > 1 else cargo_nombre,
+                    'cantidad': p.cantidad,
+                    'costo_unitario': float(costo / p.cantidad) if p.cantidad else 0,
+                    'costo_total': float(costo),
+                    'asignacion': asignacion,
+                    'zona_asignada': zona_asignada.nombre if zona_asignada else None,
+                    'zona_destino': zona_destino,
+                    'distribuido': float(distribuido),
+                    'perdido': float(costo - distribuido) if distribuido < costo else 0
+                })
+
+            return {
+                'items': items,
+                'total_costo': float(total_directo + total_proporcional + total_compartido),
+                'total_directo': float(total_directo),
+                'total_proporcional': float(total_proporcional),
+                'total_compartido': float(total_compartido),
+                'total_distribuido': float(total_distribuido),
+                'diferencia': float((total_directo + total_proporcional + total_compartido) - total_distribuido)
+            }
+
+        def procesar_gastos(modelo, categoria, filtro_lejanias=None):
+            """Procesa gastos de una categoría."""
+            items = []
+            total = Decimal('0')
+            total_distribuido = Decimal('0')
+
+            gastos_qs = modelo.objects.filter(escenario=escenario, marca=marca)
+
+            for g in gastos_qs:
+                nombre = g.nombre or 'Sin nombre'
+
+                # Filtrar lejanías si se especifica
+                if filtro_lejanias and filtro_lejanias(nombre):
+                    continue
+
+                valor = g.valor_mensual or Decimal('0')
+                asignacion = getattr(g, 'tipo_asignacion_geo', 'proporcional')
+                zona_asignada = getattr(g, 'zona', None)
+
+                distribuido = Decimal('0')
+                if asignacion == 'directo':
+                    if zona_asignada:
+                        distribuido = valor
+                elif asignacion == 'proporcional':
+                    distribuido = valor * (Decimal(str(suma_participaciones)) / 100)
+                elif asignacion == 'compartido':
+                    distribuido = valor
+
+                total += valor
+                total_distribuido += distribuido
+
+                items.append({
+                    'nombre': nombre,
+                    'valor': float(valor),
+                    'asignacion': asignacion,
+                    'zona_asignada': zona_asignada.nombre if zona_asignada else None,
+                    'distribuido': float(distribuido)
+                })
+
+            return {
+                'items': items,
+                'total': float(total),
+                'total_distribuido': float(total_distribuido),
+                'diferencia': float(total - total_distribuido)
+            }
+
+        # Filtros para excluir lejanías (ya calculadas dinámicamente)
+        def es_lejania_comercial(nombre):
+            return nombre.startswith('Combustible Lejanía') or nombre.startswith('Viáticos Pernocta')
+
+        def es_lejania_logistica(nombre):
+            return (
+                nombre.startswith('Combustible - ') or
+                nombre.startswith('Peajes - ') or
+                nombre.startswith('Viáticos Ruta - ') or
+                nombre.startswith('Flete Base Tercero - ') or
+                nombre == 'Flete Transporte (Tercero)'
+            )
+
+        # Procesar cada categoría
+        comercial_personal = procesar_personal(PersonalComercial, 'comercial')
+        comercial_gastos = procesar_gastos(GastoComercial, 'comercial', es_lejania_comercial)
+
+        logistico_personal = procesar_personal(PersonalLogistico, 'logistico')
+        logistico_gastos = procesar_gastos(GastoLogistico, 'logistico', es_lejania_logistica)
+
+        administrativo_personal = procesar_personal(PersonalAdministrativo, 'administrativo')
+        administrativo_gastos = procesar_gastos(GastoAdministrativo, 'administrativo')
+
+        return {
+            'escenario': {
+                'id': escenario_id,
+                'nombre': escenario.nombre
+            },
+            'marca': {
+                'id': marca_id,
+                'nombre': marca.nombre
+            },
+            'zonas': {
+                'cantidad': zonas_count,
+                'suma_participaciones': suma_participaciones,
+                'lista': [{'id': z.id, 'nombre': z.nombre, 'participacion': float(z.participacion_ventas or 0)} for z in zonas]
+            },
+            'comercial': {
+                'personal': comercial_personal,
+                'gastos': comercial_gastos,
+                'total_categoria': comercial_personal['total_costo'] + comercial_gastos['total'],
+                'total_distribuido': comercial_personal['total_distribuido'] + comercial_gastos['total_distribuido'],
+                'diferencia': comercial_personal['diferencia'] + comercial_gastos['diferencia']
+            },
+            'logistico': {
+                'personal': logistico_personal,
+                'gastos': logistico_gastos,
+                'total_categoria': logistico_personal['total_costo'] + logistico_gastos['total'],
+                'total_distribuido': logistico_personal['total_distribuido'] + logistico_gastos['total_distribuido'],
+                'diferencia': logistico_personal['diferencia'] + logistico_gastos['diferencia']
+            },
+            'administrativo': {
+                'personal': administrativo_personal,
+                'gastos': administrativo_gastos,
+                'total_categoria': administrativo_personal['total_costo'] + administrativo_gastos['total'],
+                'total_distribuido': administrativo_personal['total_distribuido'] + administrativo_gastos['total_distribuido'],
+                'diferencia': administrativo_personal['diferencia'] + administrativo_gastos['diferencia']
+            }
+        }
+
+    except Escenario.DoesNotExist:
+        raise HTTPException(status_code=404, detail=f"Escenario no encontrado: {escenario_id}")
+    except Marca.DoesNotExist:
+        raise HTTPException(status_code=404, detail=f"Marca no encontrada: {marca_id}")
+    except Exception as e:
+        logger.error(f"Error en diagnóstico personal detallado: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
