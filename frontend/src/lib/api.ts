@@ -408,6 +408,18 @@ class APIClient {
       `/api/diagnostico/comparar-pyg?escenario_id=${escenarioId}&marca_id=${marcaId}`
     );
   }
+
+  /**
+   * Obtiene diagnóstico detallado de costos logísticos por zona
+   */
+  async obtenerDiagnosticoLogistico(
+    escenarioId: number,
+    marcaId: string
+  ): Promise<DiagnosticoLogisticoResponse> {
+    return this.request<DiagnosticoLogisticoResponse>(
+      `/api/diagnostico/logistico-detallado?escenario_id=${escenarioId}&marca_id=${marcaId}`
+    );
+  }
 }
 
 // Interfaz para respuesta de tasa de renta
@@ -598,6 +610,80 @@ export interface ComparacionPyGResponse {
     logistico: number;
     administrativo: number;
     total: number;
+  }>;
+}
+
+// Interfaz para diagnóstico logístico detallado
+export interface DiagnosticoLogisticoResponse {
+  escenario: string;
+  marca: string;
+  resumen: {
+    total_flota_simulador: number;
+    total_personal_simulador: number;
+    total_gastos_simulador: number;
+    total_lejanias_simulador: number;
+    total_costo_por_municipios: number;
+    total_distribuido_a_zonas: number;
+    diferencia: number;
+  };
+  rubros_logisticos_simulador: Array<{
+    nombre: string;
+    tipo: string;
+    valor: number;
+    asignacion: string;
+  }>;
+  costos_por_municipio: Record<string, {
+    municipio_nombre: string;
+    flete_total: number;
+    combustible_total: number;
+    peaje_total: number;
+    pernocta_total: number;
+    costo_total: number;
+    rutas: Array<{
+      ruta_id: number;
+      ruta_nombre: string;
+      flete: number;
+      combustible: number;
+      peaje: number;
+      pernocta: number;
+    }>;
+  }>;
+  rutas_logisticas: Array<{
+    ruta_id: number;
+    ruta_nombre: string;
+    vehiculo: string | null;
+    vehiculo_id: number | null;
+    esquema: string | null;
+    frecuencia: string;
+    viajes_por_periodo: number;
+    recorridos_mensuales: number;
+    municipios: Array<{
+      orden: number;
+      municipio_id: number;
+      municipio_nombre: string;
+      flete_base: number;
+      zonas_que_lo_atienden: Array<{
+        zona_id: number;
+        zona_nombre: string;
+        venta_proyectada: number;
+      }>;
+      cantidad_zonas: number;
+    }>;
+  }>;
+  distribucion_a_zonas: Array<{
+    zona_id: number;
+    zona_nombre: string;
+    participacion_ventas: number;
+    costo_logistico_asignado: number;
+    municipios_con_costo: Array<{
+      municipio_id: number;
+      municipio_nombre: string;
+      costo_total_municipio: number;
+      venta_zona: number;
+      venta_total: number;
+      proporcion: number;
+      costo_asignado: number;
+    }>;
   }>;
 }
 

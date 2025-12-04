@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { apiClient, PyGZonasResponse, PyGZona, MESES, getMesActual, VentasMensualesDesglose, DiagnosticoPersonalResponse, ComparacionPyGResponse } from '@/lib/api';
-import { ChevronDown, ChevronRight, MapPin, TrendingUp, TrendingDown, Users, Truck, Building2, Calendar, DollarSign, Percent, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
+import { apiClient, PyGZonasResponse, PyGZona, MESES, getMesActual, VentasMensualesDesglose, DiagnosticoPersonalResponse, ComparacionPyGResponse, DiagnosticoLogisticoResponse } from '@/lib/api';
+import { ChevronDown, ChevronRight, MapPin, TrendingUp, TrendingDown, Users, Truck, Building2, Calendar, DollarSign, Percent, AlertTriangle, CheckCircle, XCircle, Package, Route } from 'lucide-react';
 
 interface PyGZonasProps {
   escenarioId: number;
@@ -18,8 +18,10 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
   const [mesSeleccionado, setMesSeleccionado] = useState<string>(getMesActual());
   const [diagnostico, setDiagnostico] = useState<DiagnosticoPersonalResponse | null>(null);
   const [comparacion, setComparacion] = useState<ComparacionPyGResponse | null>(null);
+  const [diagLogistico, setDiagLogistico] = useState<DiagnosticoLogisticoResponse | null>(null);
   const [showDiagnostico, setShowDiagnostico] = useState(true);
   const [expandedCategoria, setExpandedCategoria] = useState<string | null>(null);
+  const [expandedRutas, setExpandedRutas] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     const fetchData = async () => {
@@ -28,14 +30,16 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
       setLoading(true);
       setError(null);
       try {
-        const [zonasResponse, diagResponse, comparacionResponse] = await Promise.all([
+        const [zonasResponse, diagResponse, comparacionResponse, diagLogisticoResponse] = await Promise.all([
           apiClient.obtenerPyGZonas(escenarioId, marcaId),
           apiClient.obtenerDiagnosticoPersonal(escenarioId, marcaId),
-          apiClient.obtenerComparacionPyG(escenarioId, marcaId)
+          apiClient.obtenerComparacionPyG(escenarioId, marcaId),
+          apiClient.obtenerDiagnosticoLogistico(escenarioId, marcaId)
         ]);
         setData(zonasResponse);
         setDiagnostico(diagResponse);
         setComparacion(comparacionResponse);
+        setDiagLogistico(diagLogisticoResponse);
       } catch (err) {
         console.error('Error cargando P&G por zonas:', err);
         setError('Error al cargar los datos de P&G por zonas');
@@ -304,20 +308,20 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
           </div>
         </div>
 
-        {/* Panel de Diagnóstico - Comparación P&G Detallado vs P&G Zonas */}
-        {showDiagnostico && comparacion && (
+        {/* Panel de Diagnóstico Logístico */}
+        {showDiagnostico && diagLogistico && (
         <div className="p-4 bg-slate-50 border-b border-slate-200">
           <div className="flex justify-between items-center mb-3">
             <h4 className="text-xs font-semibold text-slate-800 flex items-center gap-2">
-              {comparacion.alertas.length === 0 ? (
-                <CheckCircle size={14} className="text-green-600" />
+              <Truck size={14} className="text-blue-600" />
+              Diagnóstico de Distribución Logística
+              {Math.abs(diagLogistico.resumen.diferencia) < 1000 ? (
+                <span className="px-2 py-0.5 rounded text-[10px] bg-green-200 text-green-800">OK</span>
               ) : (
-                <AlertTriangle size={14} className="text-amber-600" />
+                <span className="px-2 py-0.5 rounded text-[10px] bg-amber-200 text-amber-800">
+                  Diferencia: {formatCurrency(diagLogistico.resumen.diferencia)}
+                </span>
               )}
-              <span className={`px-2 py-0.5 rounded text-[10px] ${comparacion.alertas.length === 0 ? 'bg-green-200 text-green-800' : 'bg-amber-200 text-amber-800'}`}>
-                {comparacion.alertas.length === 0 ? 'VALIDADO' : 'DIFERENCIAS'}
-              </span>
-              Comparación P&G Detallado vs P&G Zonas
             </h4>
             <button
               onClick={() => setShowDiagnostico(false)}
@@ -327,206 +331,171 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
             </button>
           </div>
 
-          {/* Alertas si hay diferencias */}
-          {comparacion.alertas.length > 0 && (
-            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded">
-              <div className="text-[10px] font-semibold text-amber-800 mb-2 flex items-center gap-1">
-                <AlertTriangle size={12} />
-                {comparacion.alertas.length} diferencia(s) detectada(s) (&gt;$1,000)
-              </div>
-              <div className="space-y-1">
-                {comparacion.alertas.map((alerta, idx) => (
-                  <div key={idx} className="text-[10px] flex items-center gap-2 text-amber-700">
-                    <XCircle size={10} className="text-red-500 flex-shrink-0" />
-                    <span className="font-medium">{alerta.categoria} → {alerta.campo}:</span>
-                    <span>Detallado: {formatCurrency(alerta.valor_detallado)}</span>
-                    <span>vs Zonas: {formatCurrency(alerta.valor_zonas)}</span>
-                    <span className={`font-bold ${alerta.diferencia > 0 ? 'text-red-600' : 'text-blue-600'}`}>
-                      ({alerta.diferencia > 0 ? '+' : ''}{formatCurrency(alerta.diferencia)})
-                    </span>
-                  </div>
-                ))}
-              </div>
+          {/* Resumen */}
+          <div className="grid grid-cols-4 gap-3 mb-4">
+            <div className="bg-white rounded border p-2">
+              <div className="text-[10px] text-gray-500">Flota (Simulador)</div>
+              <div className="text-sm font-bold text-gray-800">{formatCurrency(diagLogistico.resumen.total_flota_simulador)}</div>
             </div>
-          )}
+            <div className="bg-white rounded border p-2">
+              <div className="text-[10px] text-gray-500">Lejanías (Simulador)</div>
+              <div className="text-sm font-bold text-gray-800">{formatCurrency(diagLogistico.resumen.total_lejanias_simulador)}</div>
+            </div>
+            <div className="bg-white rounded border p-2">
+              <div className="text-[10px] text-gray-500">Costo por Municipios</div>
+              <div className="text-sm font-bold text-blue-700">{formatCurrency(diagLogistico.resumen.total_costo_por_municipios)}</div>
+            </div>
+            <div className="bg-white rounded border p-2">
+              <div className="text-[10px] text-gray-500">Distribuido a Zonas</div>
+              <div className="text-sm font-bold text-green-700">{formatCurrency(diagLogistico.resumen.total_distribuido_a_zonas)}</div>
+            </div>
+          </div>
 
-          {/* Tabla comparativa lado a lado */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-[10px] border-collapse">
-              <thead>
-                <tr className="bg-slate-200">
-                  <th className="text-left px-2 py-1.5 font-semibold text-slate-700 border border-slate-300">Categoría / Campo</th>
-                  <th className="text-right px-2 py-1.5 font-semibold text-blue-700 border border-slate-300 bg-blue-50">P&G Detallado</th>
-                  <th className="text-right px-2 py-1.5 font-semibold text-green-700 border border-slate-300 bg-green-50">P&G Zonas</th>
-                  <th className="text-right px-2 py-1.5 font-semibold text-slate-700 border border-slate-300">Diferencia</th>
-                  <th className="text-center px-2 py-1.5 font-semibold text-slate-700 border border-slate-300">Estado</th>
-                </tr>
-              </thead>
-              <tbody>
-                {/* COMERCIAL */}
-                <tr className="bg-slate-100">
-                  <td colSpan={5} className="px-2 py-1 font-bold text-slate-700 border border-slate-300">
-                    <div className="flex items-center gap-1">
-                      <Users size={10} />
-                      COMERCIAL
-                    </div>
-                  </td>
-                </tr>
-                <FilaComparativa
-                  label="Personal"
-                  detallado={comparacion.pyg_detallado.comercial.personal}
-                  zonas={comparacion.pyg_zonas.comercial.personal}
-                  diferencia={comparacion.diferencias.comercial.personal}
-                  formatCurrency={formatCurrency}
-                />
-                <FilaComparativa
-                  label="Gastos"
-                  detallado={comparacion.pyg_detallado.comercial.gastos}
-                  zonas={comparacion.pyg_zonas.comercial.gastos}
-                  diferencia={comparacion.diferencias.comercial.gastos}
-                  formatCurrency={formatCurrency}
-                />
-                <FilaComparativa
-                  label="Lejanías"
-                  detallado={comparacion.pyg_detallado.comercial.lejanias}
-                  zonas={comparacion.pyg_zonas.comercial.lejanias}
-                  diferencia={comparacion.diferencias.comercial.lejanias}
-                  formatCurrency={formatCurrency}
-                />
-                <FilaComparativa
-                  label="TOTAL COMERCIAL"
-                  detallado={comparacion.pyg_detallado.comercial.total}
-                  zonas={comparacion.pyg_zonas.comercial.total}
-                  diferencia={comparacion.diferencias.comercial.total}
-                  formatCurrency={formatCurrency}
-                  isTotal
-                />
+          {/* Rutas Logísticas con detalle de municipios y zonas */}
+          <div className="mb-4">
+            <h5 className="text-[11px] font-semibold text-slate-700 mb-2 flex items-center gap-1">
+              <Route size={12} />
+              Rutas Logísticas → Municipios → Zonas
+            </h5>
+            <div className="bg-white rounded border overflow-hidden">
+              <table className="w-full text-[10px]">
+                <thead className="bg-slate-100">
+                  <tr>
+                    <th className="text-left px-2 py-1.5 font-semibold">Ruta / Vehículo</th>
+                    <th className="text-center px-2 py-1.5 font-semibold">Frecuencia</th>
+                    <th className="text-left px-2 py-1.5 font-semibold">Municipios</th>
+                    <th className="text-left px-2 py-1.5 font-semibold">Zonas que Atienden</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {diagLogistico.rutas_logisticas.map((ruta) => (
+                    <tr key={ruta.ruta_id} className="border-t border-slate-100 hover:bg-slate-50">
+                      <td className="px-2 py-2 align-top">
+                        <div className="font-medium text-gray-800">{ruta.ruta_nombre}</div>
+                        <div className="text-[9px] text-gray-500">{ruta.vehiculo}</div>
+                        <div className="text-[9px] text-gray-400">{ruta.esquema}</div>
+                      </td>
+                      <td className="px-2 py-2 text-center align-top">
+                        <div className="text-gray-700">{ruta.frecuencia}</div>
+                        <div className="text-[9px] text-gray-500">{ruta.recorridos_mensuales.toFixed(1)}/mes</div>
+                      </td>
+                      <td className="px-2 py-2 align-top">
+                        <div className="space-y-1">
+                          {ruta.municipios.map((mun) => (
+                            <div key={mun.municipio_id} className="flex items-center gap-1">
+                              <span className="text-[9px] text-gray-400">{mun.orden}.</span>
+                              <span className="text-gray-700">{mun.municipio_nombre}</span>
+                              {mun.flete_base > 0 && (
+                                <span className="text-[9px] text-orange-600">
+                                  (${(mun.flete_base / 1000).toFixed(0)}K)
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-2 py-2 align-top">
+                        <div className="space-y-1">
+                          {ruta.municipios.map((mun) => (
+                            <div key={mun.municipio_id} className="flex items-center gap-1">
+                              {mun.cantidad_zonas === 0 ? (
+                                <span className="text-red-500 flex items-center gap-1">
+                                  <AlertTriangle size={10} />
+                                  Sin zona
+                                </span>
+                              ) : mun.cantidad_zonas === 1 ? (
+                                <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-[9px]">
+                                  {mun.zonas_que_lo_atienden[0]?.zona_nombre}
+                                </span>
+                              ) : (
+                                <div className="flex flex-wrap gap-1">
+                                  {mun.zonas_que_lo_atienden.map((z) => (
+                                    <span key={z.zona_id} className="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-[9px]">
+                                      {z.zona_nombre}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
 
-                {/* LOGÍSTICO */}
-                <tr className="bg-slate-100">
-                  <td colSpan={5} className="px-2 py-1 font-bold text-slate-700 border border-slate-300">
-                    <div className="flex items-center gap-1">
-                      <Truck size={10} />
-                      LOGÍSTICO
-                    </div>
-                  </td>
-                </tr>
-                <FilaComparativa
-                  label="Personal"
-                  detallado={comparacion.pyg_detallado.logistico.personal}
-                  zonas={comparacion.pyg_zonas.logistico.personal}
-                  diferencia={comparacion.diferencias.logistico.personal}
-                  formatCurrency={formatCurrency}
-                />
-                <FilaComparativa
-                  label="Gastos"
-                  detallado={comparacion.pyg_detallado.logistico.gastos}
-                  zonas={comparacion.pyg_zonas.logistico.gastos}
-                  diferencia={comparacion.diferencias.logistico.gastos}
-                  formatCurrency={formatCurrency}
-                />
-                {/* En Detallado: Flota + Lejanías. En Zonas: todo en Lejanías */}
-                <tr>
-                  <td className="px-2 py-1 border border-slate-300 pl-6 text-gray-700">
-                    Flota + Lejanías<br/>
-                    <span className="text-[9px] text-gray-400">(Detallado separa, Zonas agrupa)</span>
-                  </td>
-                  <td className="text-right px-2 py-1 border border-slate-300 bg-blue-50/50">
-                    <div>{formatCurrency(comparacion.pyg_detallado.logistico.flota)}</div>
-                    <div className="text-gray-400">+ {formatCurrency(comparacion.pyg_detallado.logistico.lejanias)}</div>
-                    <div className="border-t border-gray-300 mt-0.5 pt-0.5 font-medium">
-                      = {formatCurrency(comparacion.pyg_detallado.logistico.flota + comparacion.pyg_detallado.logistico.lejanias)}
-                    </div>
-                  </td>
-                  <td className="text-right px-2 py-1 border border-slate-300 bg-green-50/50 font-medium">
-                    {formatCurrency(comparacion.pyg_zonas.logistico.lejanias)}
-                  </td>
-                  <td className={`text-right px-2 py-1 border border-slate-300 ${
-                    Math.abs((comparacion.pyg_detallado.logistico.flota + comparacion.pyg_detallado.logistico.lejanias) - comparacion.pyg_zonas.logistico.lejanias) < 1000
-                      ? 'text-gray-500' : 'text-red-600 font-medium'
-                  }`}>
-                    {(() => {
-                      const diff = (comparacion.pyg_detallado.logistico.flota + comparacion.pyg_detallado.logistico.lejanias) - comparacion.pyg_zonas.logistico.lejanias;
-                      return diff !== 0 ? (diff > 0 ? '+' : '') + formatCurrency(diff) : '-';
-                    })()}
-                  </td>
-                  <td className="text-center px-2 py-1 border border-slate-300">
-                    {Math.abs((comparacion.pyg_detallado.logistico.flota + comparacion.pyg_detallado.logistico.lejanias) - comparacion.pyg_zonas.logistico.lejanias) < 1000 ? (
-                      <CheckCircle size={12} className="text-green-500 mx-auto" />
-                    ) : (
-                      <XCircle size={12} className="text-red-500 mx-auto" />
-                    )}
-                  </td>
-                </tr>
-                <FilaComparativa
-                  label="TOTAL LOGÍSTICO"
-                  detallado={comparacion.pyg_detallado.logistico.total}
-                  zonas={comparacion.pyg_zonas.logistico.total}
-                  diferencia={comparacion.diferencias.logistico.total}
-                  formatCurrency={formatCurrency}
-                  isTotal
-                />
-
-                {/* ADMINISTRATIVO */}
-                <tr className="bg-slate-100">
-                  <td colSpan={5} className="px-2 py-1 font-bold text-slate-700 border border-slate-300">
-                    <div className="flex items-center gap-1">
-                      <Building2 size={10} />
-                      ADMINISTRATIVO
-                    </div>
-                  </td>
-                </tr>
-                <FilaComparativa
-                  label="Personal"
-                  detallado={comparacion.pyg_detallado.administrativo.personal}
-                  zonas={comparacion.pyg_zonas.administrativo.personal}
-                  diferencia={comparacion.diferencias.administrativo.personal}
-                  formatCurrency={formatCurrency}
-                />
-                <FilaComparativa
-                  label="Gastos"
-                  detallado={comparacion.pyg_detallado.administrativo.gastos}
-                  zonas={comparacion.pyg_zonas.administrativo.gastos}
-                  diferencia={comparacion.diferencias.administrativo.gastos}
-                  formatCurrency={formatCurrency}
-                />
-                <FilaComparativa
-                  label="TOTAL ADMINISTRATIVO"
-                  detallado={comparacion.pyg_detallado.administrativo.total}
-                  zonas={comparacion.pyg_zonas.administrativo.total}
-                  diferencia={comparacion.diferencias.administrativo.total}
-                  formatCurrency={formatCurrency}
-                  isTotal
-                />
-
-                {/* TOTAL GENERAL */}
-                <tr className="bg-slate-300">
-                  <td className="px-2 py-2 font-bold text-slate-800 border border-slate-400">TOTAL GENERAL</td>
-                  <td className="text-right px-2 py-2 font-bold text-blue-800 border border-slate-400 bg-blue-100">
-                    {formatCurrency(comparacion.pyg_detallado.total)}
-                  </td>
-                  <td className="text-right px-2 py-2 font-bold text-green-800 border border-slate-400 bg-green-100">
-                    {formatCurrency(comparacion.pyg_zonas.total)}
-                  </td>
-                  <td className={`text-right px-2 py-2 font-bold border border-slate-400 ${
-                    Math.abs(comparacion.diferencias.total) < 1000 ? 'text-green-700 bg-green-50' : 'text-red-700 bg-red-50'
-                  }`}>
-                    {comparacion.diferencias.total > 0 ? '+' : ''}{formatCurrency(comparacion.diferencias.total)}
-                  </td>
-                  <td className="text-center px-2 py-2 border border-slate-400">
-                    {Math.abs(comparacion.diferencias.total) < 1000 ? (
-                      <CheckCircle size={14} className="text-green-600 mx-auto" />
-                    ) : (
-                      <XCircle size={14} className="text-red-600 mx-auto" />
-                    )}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+          {/* Distribución a Zonas */}
+          <div>
+            <h5 className="text-[11px] font-semibold text-slate-700 mb-2 flex items-center gap-1">
+              <MapPin size={12} />
+              Costo Logístico Asignado por Zona
+            </h5>
+            <div className="bg-white rounded border overflow-hidden">
+              <table className="w-full text-[10px]">
+                <thead className="bg-slate-100">
+                  <tr>
+                    <th className="text-left px-2 py-1.5 font-semibold">Zona</th>
+                    <th className="text-right px-2 py-1.5 font-semibold">Participación</th>
+                    <th className="text-right px-2 py-1.5 font-semibold">Costo Asignado</th>
+                    <th className="text-left px-2 py-1.5 font-semibold">Detalle por Municipio</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {diagLogistico.distribucion_a_zonas.map((zona) => (
+                    <tr key={zona.zona_id} className="border-t border-slate-100 hover:bg-slate-50">
+                      <td className="px-2 py-2 font-medium text-gray-800">
+                        {zona.zona_nombre}
+                      </td>
+                      <td className="px-2 py-2 text-right text-gray-600">
+                        {zona.participacion_ventas.toFixed(1)}%
+                      </td>
+                      <td className="px-2 py-2 text-right font-bold text-green-700">
+                        {formatCurrency(zona.costo_logistico_asignado)}
+                      </td>
+                      <td className="px-2 py-2">
+                        {zona.municipios_con_costo.length === 0 ? (
+                          <span className="text-gray-400 italic">Sin municipios asignados</span>
+                        ) : (
+                          <div className="flex flex-wrap gap-1">
+                            {zona.municipios_con_costo.slice(0, 5).map((m) => (
+                              <span
+                                key={m.municipio_id}
+                                className="px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded text-[9px]"
+                                title={`Costo: ${formatCurrency(m.costo_asignado)} (${(m.proporcion * 100).toFixed(0)}%)`}
+                              >
+                                {m.municipio_nombre}: {formatCurrency(m.costo_asignado)}
+                              </span>
+                            ))}
+                            {zona.municipios_con_costo.length > 5 && (
+                              <span className="text-[9px] text-gray-400">
+                                +{zona.municipios_con_costo.length - 5} más
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot className="bg-slate-100 border-t-2 border-slate-300">
+                  <tr>
+                    <td className="px-2 py-2 font-bold text-gray-800">TOTAL</td>
+                    <td className="px-2 py-2 text-right font-bold text-gray-800">100%</td>
+                    <td className="px-2 py-2 text-right font-bold text-green-800">
+                      {formatCurrency(diagLogistico.resumen.total_distribuido_a_zonas)}
+                    </td>
+                    <td></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
           </div>
 
           <div className="mt-3 text-[10px] text-slate-600">
-            Los valores deben coincidir entre P&G Detallado y P&G Zonas. Diferencias menores a $1,000 son tolerables por redondeo.
+            Los costos logísticos se distribuyen según los municipios que atiende cada ruta y la venta proyectada de cada zona en esos municipios.
           </div>
         </div>
         )}
