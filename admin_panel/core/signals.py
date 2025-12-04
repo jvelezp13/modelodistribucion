@@ -114,7 +114,8 @@ def calculate_hr_expenses(escenario):
                 if zona_obj:
                     nombre_suffix = f" - {zona_obj.nombre}"
                 else:
-                    nombre_suffix = ""
+                    # Para provisiones genéricas, incluir el tipo para diagnóstico
+                    nombre_suffix = f" ({tipo_asig_geo})"
             except Exception as e:
                 logger.error(f"ERROR procesando grupo en {tipo_personal}: {str(e)}", exc_info=True)
                 continue
