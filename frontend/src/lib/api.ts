@@ -347,6 +347,13 @@ class APIClient {
   }
 
   /**
+   * Obtiene la tasa de ICA desde el backend
+   */
+  async obtenerTasaICA(): Promise<TasaICAResponse> {
+    return this.request<TasaICAResponse>('/api/impuestos/ica');
+  }
+
+  /**
    * Obtiene el P&G desglosado por zonas para una marca
    */
   async obtenerPyGZonas(
@@ -427,6 +434,16 @@ export interface TasaRentaResponse {
   configurado: boolean;
   tasa: number;           // En decimal (0.33)
   tasa_porcentaje: number; // En porcentaje (33)
+  id?: number;
+  nombre?: string;
+  periodicidad?: string;
+  mensaje?: string;
+}
+
+export interface TasaICAResponse {
+  configurado: boolean;
+  tasa: number;           // En decimal (0.0041)
+  tasa_porcentaje: number; // En porcentaje (0.41)
   id?: number;
   nombre?: string;
   periodicidad?: string;

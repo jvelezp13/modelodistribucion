@@ -63,21 +63,27 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
   const [loadingLejanias, setLoadingLejanias] = useState(false);
   const [mesSeleccionado, setMesSeleccionado] = useState<string>(getMesActual());
   const [tasaImpuestoRenta, setTasaImpuestoRenta] = useState<number>(0.33); // Default 33%
+  const [tasaICA, setTasaICA] = useState<number>(0); // Default 0 (no aplica)
   const [provisionesExpandidas, setProvisionesExpandidas] = useState<Set<string>>(new Set());
 
-  // Cargar tasa de impuesto de renta desde el backend
+  // Cargar tasas de impuestos desde el backend
   useEffect(() => {
-    const fetchTasaRenta = async () => {
+    const fetchTasas = async () => {
       try {
-        const response = await apiClient.obtenerTasaRenta();
-        setTasaImpuestoRenta(response.tasa);
+        const [rentaResponse, icaResponse] = await Promise.all([
+          apiClient.obtenerTasaRenta(),
+          apiClient.obtenerTasaICA()
+        ]);
+        setTasaImpuestoRenta(rentaResponse.tasa);
+        setTasaICA(icaResponse.tasa);
       } catch (error) {
-        console.error('Error cargando tasa de renta, usando default 33%:', error);
+        console.error('Error cargando tasas de impuestos:', error);
         setTasaImpuestoRenta(0.33);
+        setTasaICA(0);
       }
     };
 
-    fetchTasaRenta();
+    fetchTasas();
   }, []);
 
   // Cargar datos de lejanías logísticas
@@ -319,11 +325,16 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
   // 7. UTILIDAD ANTES DE IMPUESTOS
   const utilidadAntesImpuestos = utilidadOperacional + totalOtrosIngresos;
 
-  // 8. IMPUESTOS (tasa desde backend, default 33%)
-  const impuestoRenta = utilidadAntesImpuestos > 0 ? utilidadAntesImpuestos * tasaImpuestoRenta : 0;
+  // 8. IMPUESTOS
+  // ICA se calcula sobre ventas
+  const impuestoICA = ingresosPorVentas * tasaICA;
+  // Renta se calcula sobre utilidad después de ICA
+  const utilidadDespuesICA = utilidadAntesImpuestos - impuestoICA;
+  const impuestoRenta = utilidadDespuesICA > 0 ? utilidadDespuesICA * tasaImpuestoRenta : 0;
+  const totalImpuestos = impuestoICA + impuestoRenta;
 
   // 9. UTILIDAD NETA
-  const utilidadNeta = utilidadAntesImpuestos - impuestoRenta;
+  const utilidadNeta = utilidadAntesImpuestos - totalImpuestos;
 
   // MÁRGENES
   const margenBrutoPorcentaje = ingresosPorVentas > 0 ? (margenBruto / ingresosPorVentas) * 100 : 0;
@@ -1027,11 +1038,14 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
       )}
 
       {/* SECCIÓN: IMPUESTOS */}
-      <SeccionHeader titulo="Impuestos" seccion="impuestos" valor={impuestoRenta} bgColor="bg-gray-700" />
+      <SeccionHeader titulo="Impuestos" seccion="impuestos" valor={totalImpuestos} bgColor="bg-gray-700" />
       {seccionesAbiertas.impuestos && (
         <div>
+          {tasaICA > 0 && (
+            <LineaItem titulo={`ICA (${(tasaICA * 100).toFixed(2)}% sobre ventas)`} valor={impuestoICA} indent={1} negativo />
+          )}
           <LineaItem titulo={`Impuesto de Renta (${(tasaImpuestoRenta * 100).toFixed(0)}%)`} valor={impuestoRenta} indent={1} negativo />
-          <LineaItem titulo="Total Impuestos" valor={impuestoRenta} bold />
+          <LineaItem titulo="Total Impuestos" valor={totalImpuestos} bold />
         </div>
       )}
 

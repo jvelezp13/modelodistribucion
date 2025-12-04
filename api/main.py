@@ -1049,6 +1049,50 @@ def obtener_tasa_renta() -> Dict[str, Any]:
         }
 
 
+@app.get("/api/impuestos/ica")
+def obtener_tasa_ica() -> Dict[str, Any]:
+    """
+    Obtiene la tasa de ICA configurada.
+
+    Returns:
+        Tasa de ICA en formato decimal (0.0041 para 0.41%)
+    """
+    try:
+        from core.models import Impuesto
+
+        impuesto_ica = Impuesto.objects.filter(
+            tipo='ica',
+            aplicacion='sobre_ventas',
+            activo=True
+        ).first()
+
+        if not impuesto_ica:
+            return {
+                'configurado': False,
+                'tasa': 0,
+                'tasa_porcentaje': 0,
+                'mensaje': 'ICA no configurado'
+            }
+
+        return {
+            'configurado': True,
+            'id': impuesto_ica.id,
+            'nombre': impuesto_ica.nombre,
+            'tasa': float(impuesto_ica.porcentaje) / 100,  # Para cálculos (0.0041)
+            'tasa_porcentaje': float(impuesto_ica.porcentaje),  # Para display (0.41)
+            'periodicidad': impuesto_ica.periodicidad
+        }
+
+    except Exception as e:
+        logger.warning(f"Error obteniendo tasa de ICA: {e}")
+        return {
+            'configurado': False,
+            'tasa': 0,
+            'tasa_porcentaje': 0,
+            'mensaje': f'Error consultando ICA'
+        }
+
+
 # =============================================================================
 # P&G POR ZONA Y MUNICIPIO - Endpoints para desglose geográfico
 # =============================================================================
