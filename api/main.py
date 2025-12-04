@@ -1861,180 +1861,97 @@ def diagnostico_comparar_pyg(
 ) -> Dict[str, Any]:
     """
     Diagnóstico completo que compara P&G Detallado vs P&G Zonas.
-    Calcula ambos usando la misma lógica y muestra diferencias.
+    Usa el simulador para obtener los valores exactos del P&G Detallado.
     """
     try:
-        from core.models import (
-            Escenario, Marca, Zona, Vehiculo,
-            PersonalComercial, PersonalLogistico, PersonalAdministrativo,
-            GastoComercial, GastoLogistico, GastoAdministrativo
-        )
+        from core.models import Escenario, Marca, Zona
         from core.calculator_lejanias import CalculadoraLejanias
+        from core.simulator import Simulador
+        from utils.loaders_db import DataLoaderDB
         from api.pyg_service import calcular_pyg_zona
         from decimal import Decimal
 
         escenario = Escenario.objects.get(pk=escenario_id)
-        marca = Marca.objects.get(marca_id=marca_id)
+        marca_obj = Marca.objects.get(marca_id=marca_id)
 
         # =====================================================================
-        # P&G DETALLADO - Calcular como lo hace el frontend PyGDetallado.tsx
+        # P&G DETALLADO - Usar el SIMULADOR para obtener valores exactos
+        # Esto garantiza que los valores coincidan con lo que muestra el frontend
         # =====================================================================
+        loader = DataLoaderDB(escenario_id=escenario_id)
+        simulador = Simulador(loader=loader)
+        simulador.cargar_marcas([marca_id])
+        resultado = simulador.simular()
 
-        # --- COMERCIAL ---
+        # Encontrar la marca en los resultados
+        marca_sim = next((m for m in resultado.marcas if m.marca_id == marca_id), None)
+        if not marca_sim:
+            raise HTTPException(status_code=404, detail=f"Marca {marca_id} no encontrada en simulación")
+
+        # Agrupar rubros por categoría y tipo (igual que PyGDetallado.tsx)
+        todos_rubros = marca_sim.rubros_individuales + marca_sim.rubros_compartidos_asignados
+
         personal_comercial = Decimal('0')
-        personal_comercial_items = []
-        for p in PersonalComercial.objects.filter(escenario=escenario, marca=marca):
-            costo = Decimal(str(p.calcular_costo_mensual()))
-            personal_comercial += costo
-            personal_comercial_items.append({
-                'nombre': p.nombre or p.tipo,
-                'cantidad': p.cantidad,
-                'costo': float(costo)
-            })
-
         gastos_comercial = Decimal('0')
-        gastos_comercial_items = []
-        for g in GastoComercial.objects.filter(escenario=escenario, marca=marca):
-            # Excluir lejanías (se calculan aparte)
-            if g.nombre.startswith('Combustible Lejanía') or g.nombre.startswith('Viáticos Pernocta'):
-                continue
-            gastos_comercial += g.valor_mensual
-            gastos_comercial_items.append({
-                'nombre': g.nombre,
-                'valor': float(g.valor_mensual)
-            })
+        personal_logistico = Decimal('0')
+        gastos_logistico = Decimal('0')
+        flota_vehiculos = Decimal('0')
+        personal_admin = Decimal('0')
+        gastos_admin = Decimal('0')
 
-        # Lejanías comerciales
-        calc = CalculadoraLejanias(escenario)
-        lejanias_comercial = Decimal('0')
-        zonas = Zona.objects.filter(escenario=escenario, marca=marca, activo=True)
-        for zona in zonas:
-            lej = calc.calcular_lejania_comercial_zona(zona)
-            lejanias_comercial += lej['total_mensual']
+        for rubro in todos_rubros:
+            valor = Decimal(str(rubro.valor_total))
+            if rubro.categoria == 'comercial':
+                if rubro.tipo == 'personal':
+                    personal_comercial += valor
+                else:
+                    gastos_comercial += valor
+            elif rubro.categoria == 'logistico':
+                if rubro.tipo == 'vehiculo':
+                    flota_vehiculos += valor
+                elif rubro.tipo == 'personal':
+                    personal_logistico += valor
+                else:
+                    gastos_logistico += valor
+            elif rubro.categoria == 'administrativo':
+                if rubro.tipo == 'personal':
+                    personal_admin += valor
+                else:
+                    gastos_admin += valor
+
+        # Lejanías (del simulador o calcular directamente)
+        lejanias_comercial = Decimal(str(marca_sim.lejania_comercial or 0))
+        lejanias_logistico = Decimal(str(marca_sim.lejania_logistica or 0))
+
+        # Si no están en el simulador, calcular directamente
+        if lejanias_comercial == 0 or lejanias_logistico == 0:
+            calc = CalculadoraLejanias(escenario)
+            zonas = Zona.objects.filter(escenario=escenario, marca=marca_obj, activo=True)
+
+            if lejanias_comercial == 0:
+                for zona in zonas:
+                    lej = calc.calcular_lejania_comercial_zona(zona)
+                    lejanias_comercial += lej['total_mensual']
+
+            if lejanias_logistico == 0:
+                lejanias_log = calc.calcular_lejanias_logisticas_marca(marca_obj)
+                lejanias_logistico = (
+                    lejanias_log['total_combustible_mensual'] +
+                    lejanias_log['total_peaje_mensual'] +
+                    lejanias_log['total_pernocta_mensual'] +
+                    lejanias_log['total_flete_base_mensual']
+                )
 
         total_comercial = personal_comercial + gastos_comercial + lejanias_comercial
-
-        # --- LOGÍSTICO ---
-        personal_logistico = Decimal('0')
-        personal_logistico_items = []
-        for p in PersonalLogistico.objects.filter(escenario=escenario, marca=marca):
-            costo = Decimal(str(p.calcular_costo_mensual()))
-            personal_logistico += costo
-            personal_logistico_items.append({
-                'nombre': p.nombre or p.tipo,
-                'cantidad': p.cantidad,
-                'costo': float(costo)
-            })
-
-        # Flota de vehículos (desde tabla Vehiculo)
-        flota_vehiculos = Decimal('0')
-        flota_items = []
-        for v in Vehiculo.objects.filter(escenario=escenario, marca=marca):
-            costo_v = Decimal('0')
-            if v.esquema == 'renting':
-                costo_v = v.canon_renting * v.cantidad
-            elif v.esquema == 'tradicional':
-                if v.vida_util_anios > 0:
-                    dep = (v.costo_compra - v.valor_residual) / (v.vida_util_anios * 12)
-                    costo_v = dep * v.cantidad
-                costo_v += (v.costo_mantenimiento_mensual + v.costo_seguro_mensual) * v.cantidad
-            # Costos comunes a todos
-            if v.esquema in ['renting', 'tradicional']:
-                costo_v += (v.costo_lavado_mensual + v.costo_parqueadero_mensual) * v.cantidad
-            costo_v += (v.costo_monitoreo_mensual + v.costo_seguro_mercancia_mensual) * v.cantidad
-            flota_vehiculos += costo_v
-            flota_items.append({
-                'nombre': v.nombre or v.tipo_vehiculo,
-                'esquema': v.esquema,
-                'cantidad': v.cantidad,
-                'costo': float(costo_v)
-            })
-
-        # Flete base de rutas (terceros)
-        lejanias_log = calc.calcular_lejanias_logisticas_marca(marca)
-        flete_base = lejanias_log['total_flete_base_mensual']
-        flota_total = flota_vehiculos + flete_base
-
-        # Gastos logísticos (excluyendo rutas y flota)
-        gastos_logistico = Decimal('0')
-        gastos_logistico_items = []
-        for g in GastoLogistico.objects.filter(escenario=escenario, marca=marca):
-            nombre = g.nombre or ''
-            # Excluir lejanías y flota
-            if (nombre.startswith('Combustible - ') or nombre.startswith('Peajes - ') or
-                nombre.startswith('Viáticos Ruta - ') or nombre.startswith('Flete Base Tercero - ')):
-                continue
-            if g.tipo in ['canon_renting', 'depreciacion_vehiculo', 'mantenimiento_vehiculos',
-                         'lavado_vehiculos', 'parqueadero_vehiculos', 'monitoreo_satelital']:
-                continue
-            if nombre in ['Canon Renting Flota', 'Depreciación Flota Propia', 'Mantenimiento Flota Propia',
-                         'Seguros Flota Propia', 'Aseo y Limpieza Vehículos', 'Parqueaderos',
-                         'Monitoreo Satelital (GPS)', 'Seguro de Mercancía']:
-                continue
-            gastos_logistico += g.valor_mensual
-            gastos_logistico_items.append({
-                'nombre': nombre,
-                'valor': float(g.valor_mensual)
-            })
-
-        # Lejanías logísticas (sin flete)
-        lejanias_logistico = (
-            lejanias_log['total_combustible_mensual'] +
-            lejanias_log['total_peaje_mensual'] +
-            lejanias_log['total_pernocta_mensual']
-        )
-
+        flota_total = flota_vehiculos  # Flete base ya incluido en lejanías
         total_logistico = flota_total + personal_logistico + gastos_logistico + lejanias_logistico
-
-        # --- ADMINISTRATIVO ---
-        # Calcular EXACTAMENTE como el Simulador (core/simulator.py):
-        # 1. Personal/Gastos de la marca (marca=marca, sin filtrar asignacion)
-        #    - Los 'individual' van directo
-        #    - Los 'compartido' van a rubros_compartidos y se prorratean
-        # 2. Personal/Gastos compartidos globales (marca=null, asignacion='compartido')
-        #    - Se prorratean entre todas las marcas activas
-        from core.models import Marca as MarcaModel
-        marcas_activas = MarcaModel.objects.filter(activa=True).count() or 1
-
-        # Personal de la marca (todos los que tienen marca=marca)
-        personal_admin_marca = Decimal('0')
-        for p in PersonalAdministrativo.objects.filter(escenario=escenario, marca=marca):
-            costo = Decimal(str(p.calcular_costo_mensual()))
-            if p.asignacion == 'individual':
-                # Individual: 100% a esta marca
-                personal_admin_marca += costo
-            else:
-                # Compartido con marca: se prorratean entre marcas según criterio
-                # El simulador los agrega a rubros_compartidos y luego prorratean
-                # Por simplicidad aquí dividimos equitativamente
-                personal_admin_marca += costo / marcas_activas
-
-        # Personal compartido global (sin marca) - prorratear entre marcas
-        for p in PersonalAdministrativo.objects.filter(
-            escenario=escenario, marca__isnull=True, asignacion='compartido'
-        ):
-            personal_admin_marca += Decimal(str(p.calcular_costo_mensual())) / marcas_activas
-
-        personal_admin = personal_admin_marca
-
-        # Gastos de la marca (todos los que tienen marca=marca)
-        gastos_admin_marca = Decimal('0')
-        for g in GastoAdministrativo.objects.filter(escenario=escenario, marca=marca):
-            if g.asignacion == 'individual':
-                gastos_admin_marca += g.valor_mensual
-            else:
-                # Compartido con marca: prorratear
-                gastos_admin_marca += g.valor_mensual / marcas_activas
-
-        # Gastos compartidos globales (sin marca) - prorratear entre marcas
-        for g in GastoAdministrativo.objects.filter(
-            escenario=escenario, marca__isnull=True, asignacion='compartido'
-        ):
-            gastos_admin_marca += g.valor_mensual / marcas_activas
-
-        gastos_admin = gastos_admin_marca
-
         total_admin = personal_admin + gastos_admin
+
+        # Para el desglose de flota, usar la calculadora
+        calc = CalculadoraLejanias(escenario)
+        lejanias_log = calc.calcular_lejanias_logisticas_marca(marca_obj)
+        flete_base = lejanias_log['total_flete_base_mensual']
+        zonas = Zona.objects.filter(escenario=escenario, marca=marca_obj, activo=True)
 
         # =====================================================================
         # P&G ZONAS - Calcular sumando todas las zonas
@@ -2147,14 +2064,14 @@ def diagnostico_comparar_pyg(
 
         return {
             'escenario': escenario.nombre,
-            'marca': marca.nombre,
+            'marca': marca_obj.nombre,
             'suma_participaciones': suma_participaciones,
             'pyg_detallado': detallado,
             'pyg_zonas': zonas_sum,
             'diferencias': diferencias,
             'alertas': alertas,
             'desglose': {
-                'flota_items': flota_items,
+                'flota_total': float(flota_vehiculos),
                 'flete_base': float(flete_base),
                 'lejanias_log_desglose': {
                     'combustible': float(lejanias_log['total_combustible_mensual']),
