@@ -1422,6 +1422,13 @@ class ConfiguracionDescuentos(models.Model):
         help_text="Porcentaje de descuento por pronto pago (0-100%)"
     )
 
+    # CESANTÍA COMERCIAL (Art. 1324 Código de Comercio)
+    aplica_cesantia_comercial = models.BooleanField(
+        default=False,
+        verbose_name="¿Aplica Cesantía Comercial?",
+        help_text="Provisión mensual de 1/12 de los ingresos del agente (Margen Bruto + Otros Ingresos)"
+    )
+
     activa = models.BooleanField(default=True, verbose_name="Activa")
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_modificacion = models.DateTimeField(auto_now=True)

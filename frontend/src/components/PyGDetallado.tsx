@@ -316,7 +316,7 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
   // 5. UTILIDAD OPERACIONAL (ya con ICA descontado)
   const utilidadOperacional = margenBruto - totalCostosOperativos;
 
-  // 6. OTROS INGRESOS (Rebate y Descuento Financiero)
+  // 6. OTROS INGRESOS (Rebate, Descuento Financiero y Cesantía Comercial)
   const porcentajeRebate = config?.porcentaje_rebate || 0;
   const ingresoRebate = ingresosPorVentas * (porcentajeRebate / 100);
 
@@ -325,7 +325,13 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
     : 0;
   const ingresoDescuentoFinanciero = ingresosPorVentas * (porcentajeDescFinanciero / 100);
 
-  const totalOtrosIngresos = ingresoRebate + ingresoDescuentoFinanciero;
+  // Cesantía Comercial: 1/12 de los ingresos del agente (Margen Bruto + Rebate + Desc. Financiero)
+  // Se calcula solo si aplica_cesantia_comercial está activo
+  const aplicaCesantiaComercial = config?.aplica_cesantia_comercial || false;
+  const baseParaCesantia = margenBruto + ingresoRebate + ingresoDescuentoFinanciero;
+  const ingresoCesantiaComercial = aplicaCesantiaComercial ? baseParaCesantia / 12 : 0;
+
+  const totalOtrosIngresos = ingresoRebate + ingresoDescuentoFinanciero + ingresoCesantiaComercial;
 
   // 7. UTILIDAD ANTES DE IMPUESTOS
   const utilidadAntesImpuestos = utilidadOperacional + totalOtrosIngresos;
@@ -1010,7 +1016,7 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
         </div>
       </div>
 
-      {/* SECCIÓN: OTROS INGRESOS (Rebate y Descuento Financiero) */}
+      {/* SECCIÓN: OTROS INGRESOS (Rebate, Descuento Financiero y Cesantía Comercial) */}
       {totalOtrosIngresos > 0 && (
         <>
           <SeccionHeader titulo="Otros Ingresos" seccion="otrosIngresos" valor={totalOtrosIngresos} bgColor="bg-teal-700" />
@@ -1027,6 +1033,13 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
                 <LineaItem
                   titulo={`Descuento Financiero (${porcentajeDescFinanciero.toFixed(2)}% s/ ventas)`}
                   valor={ingresoDescuentoFinanciero}
+                  indent={1}
+                />
+              )}
+              {ingresoCesantiaComercial > 0 && (
+                <LineaItem
+                  titulo="Cesantía Comercial (1/12 ingresos agente)"
+                  valor={ingresoCesantiaComercial}
                   indent={1}
                 />
               )}

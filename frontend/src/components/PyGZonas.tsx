@@ -100,10 +100,11 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
     return margenBruto - zona.total_mensual;
   };
 
-  // Calcular otros ingresos (rebate + descuento financiero)
+  // Calcular otros ingresos (rebate + descuento financiero + cesantía comercial)
   const calcularOtrosIngresos = (zona: PyGZona): number => {
     if (!data?.configuracion_descuentos) return 0;
     const ventas = calcularVentasZona(zona);
+    const margenBruto = calcularMargenBrutoZona(zona);
     const config = data.configuracion_descuentos;
 
     const rebate = ventas * (config.porcentaje_rebate / 100);
@@ -111,7 +112,27 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
       ? ventas * (config.porcentaje_descuento_financiero / 100)
       : 0;
 
-    return rebate + descFinanciero;
+    // Cesantía Comercial: 1/12 de los ingresos del agente (Margen Bruto + Rebate + Desc. Financiero)
+    const cesantiaComercial = config.aplica_cesantia_comercial
+      ? (margenBruto + rebate + descFinanciero) / 12
+      : 0;
+
+    return rebate + descFinanciero + cesantiaComercial;
+  };
+
+  // Calcular cesantía comercial de una zona (para mostrar en detalle)
+  const calcularCesantiaComercial = (zona: PyGZona): number => {
+    if (!data?.configuracion_descuentos?.aplica_cesantia_comercial) return 0;
+    const ventas = calcularVentasZona(zona);
+    const margenBruto = calcularMargenBrutoZona(zona);
+    const config = data.configuracion_descuentos;
+
+    const rebate = ventas * (config.porcentaje_rebate / 100);
+    const descFinanciero = config.aplica_descuento_financiero
+      ? ventas * (config.porcentaje_descuento_financiero / 100)
+      : 0;
+
+    return (margenBruto + rebate + descFinanciero) / 12;
   };
 
   // Calcular utilidad antes de impuestos
@@ -365,6 +386,7 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
                   utilidadNeta={calcularUtilidadNeta(zona)}
                   margenNeto={calcularMargenNeto(zona)}
                   otrosIngresos={calcularOtrosIngresos(zona)}
+                  cesantiaComercial={calcularCesantiaComercial(zona)}
                   tasaImpuesto={data.tasa_impuesto_renta}
                   tasaICA={data.tasa_ica || 0}
                   ica={calcularICA(zona)}
@@ -457,6 +479,7 @@ interface ZonaRowProps {
   utilidadNeta: number;
   margenNeto: number;
   otrosIngresos: number;
+  cesantiaComercial: number;
   tasaImpuesto: number;
   tasaICA: number;
   ica: number;
@@ -464,7 +487,7 @@ interface ZonaRowProps {
 
 function ZonaRow({
   zona, isExpanded, onToggle, onVerMunicipios, formatCurrency, formatPercent, isEven,
-  ventasZona, margenBruto, utilidadOperacional, costosTotalConICA, utilidadNeta, margenNeto, otrosIngresos, tasaImpuesto, tasaICA, ica
+  ventasZona, margenBruto, utilidadOperacional, costosTotalConICA, utilidadNeta, margenNeto, otrosIngresos, cesantiaComercial, tasaImpuesto, tasaICA, ica
 }: ZonaRowProps) {
   const isRentable = utilidadNeta >= 0;
 
@@ -546,9 +569,15 @@ function ZonaRow({
                 </div>
                 <div className="space-y-1">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">(+) Otros Ingresos (Rebate, Desc. Fin.):</span>
+                    <span className="text-gray-600">(+) Otros Ingresos{cesantiaComercial > 0 ? ' (Rebate, Desc. Fin., Cesantía)' : ' (Rebate, Desc. Fin.)'}:</span>
                     <span className="font-medium text-teal-600">{formatCurrency(otrosIngresos)}</span>
                   </div>
+                  {cesantiaComercial > 0 && (
+                    <div className="flex justify-between pl-4 text-[10px]">
+                      <span className="text-gray-500">└ Cesantía Comercial (1/12):</span>
+                      <span className="text-teal-500">{formatCurrency(cesantiaComercial)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <span className="text-gray-600">Utilidad antes de Impuestos:</span>
                     <span className="font-medium">{formatCurrency(utilidadOperacional + otrosIngresos)}</span>

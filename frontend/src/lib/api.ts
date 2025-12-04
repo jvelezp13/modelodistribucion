@@ -72,6 +72,7 @@ export interface ConfiguracionDescuentos {
   porcentaje_rebate: number;
   aplica_descuento_financiero: boolean;
   porcentaje_descuento_financiero: number;
+  aplica_cesantia_comercial: boolean;  // Art. 1324 C.Co. - 1/12 de ingresos del agente
 }
 
 export interface Marca {
@@ -477,6 +478,7 @@ export interface ConfigDescuentosZonas {
   porcentaje_rebate: number;
   aplica_descuento_financiero: boolean;
   porcentaje_descuento_financiero: number;
+  aplica_cesantia_comercial: boolean;
 }
 
 export interface PyGZonasResponse {

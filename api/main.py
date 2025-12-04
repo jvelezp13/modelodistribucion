@@ -132,6 +132,7 @@ def ejecutar_simulacion(
                     'porcentaje_rebate': 0,
                     'aplica_descuento_financiero': False,
                     'porcentaje_descuento_financiero': 0,
+                    'aplica_cesantia_comercial': False,
                 }
 
         logger.info(f"Simulación completada exitosamente")
@@ -222,6 +223,7 @@ def obtener_configuracion_descuentos_por_marca(
                     'porcentaje_rebate': float(config.porcentaje_rebate),
                     'aplica_descuento_financiero': config.aplica_descuento_financiero,
                     'porcentaje_descuento_financiero': float(config.porcentaje_descuento_financiero),
+                    'aplica_cesantia_comercial': config.aplica_cesantia_comercial,
                 }
 
             except (Marca.DoesNotExist, ConfiguracionDescuentos.DoesNotExist):
@@ -232,6 +234,7 @@ def obtener_configuracion_descuentos_por_marca(
                     'porcentaje_rebate': 0,
                     'aplica_descuento_financiero': False,
                     'porcentaje_descuento_financiero': 0,
+                    'aplica_cesantia_comercial': False,
                 }
 
         return resultado
@@ -1234,6 +1237,7 @@ def obtener_pyg_zonas(
                 'porcentaje_rebate': float(config.porcentaje_rebate),
                 'aplica_descuento_financiero': config.aplica_descuento_financiero,
                 'porcentaje_descuento_financiero': float(config.porcentaje_descuento_financiero),
+                'aplica_cesantia_comercial': config.aplica_cesantia_comercial,
             }
         except ConfiguracionDescuentos.DoesNotExist:
             config_descuentos = {
@@ -1242,6 +1246,7 @@ def obtener_pyg_zonas(
                 'porcentaje_rebate': 0,
                 'aplica_descuento_financiero': False,
                 'porcentaje_descuento_financiero': 0,
+                'aplica_cesantia_comercial': False,
             }
 
         # Obtener tasa de impuesto de renta

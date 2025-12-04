@@ -905,11 +905,12 @@ class ConfiguracionDescuentosAdmin(admin.ModelAdmin):
         'marca',
         'porcentaje_rebate_display',
         'descuento_financiero_display',
+        'cesantia_comercial_display',
         'total_tramos_display',
         'activa',
         'fecha_modificacion'
     )
-    list_filter = ('activa', 'aplica_descuento_financiero')
+    list_filter = ('activa', 'aplica_descuento_financiero', 'aplica_cesantia_comercial')
     search_fields = ('marca__nombre',)
     readonly_fields = ('fecha_creacion', 'fecha_modificacion', 'total_tramos_porcentaje')
     inlines = [TramoDescuentoFacturaInline]
@@ -930,6 +931,10 @@ class ConfiguracionDescuentosAdmin(admin.ModelAdmin):
             'fields': ('aplica_descuento_financiero', 'porcentaje_descuento_financiero'),
             'description': 'Descuento por pronto pago'
         }),
+        ('Cesantía Comercial', {
+            'fields': ('aplica_cesantia_comercial',),
+            'description': 'Art. 1324 C.Co. - Provisión mensual de 1/12 (8.33%) sobre los ingresos del agente (Margen Bruto + Rebate + Desc. Financiero)'
+        }),
         ('Metadata', {
             'fields': ('fecha_creacion', 'fecha_modificacion'),
             'classes': ('collapse',)
@@ -946,6 +951,12 @@ class ConfiguracionDescuentosAdmin(admin.ModelAdmin):
             return f"SÍ - {obj.porcentaje_descuento_financiero:.2f}%"
         return "NO"
     descuento_financiero_display.short_description = 'Desc. Financiero'
+
+    def cesantia_comercial_display(self, obj):
+        if obj.aplica_cesantia_comercial:
+            return "SÍ (1/12)"
+        return "NO"
+    cesantia_comercial_display.short_description = 'Cesantía Com.'
 
     def total_tramos_display(self, obj):
         from django.utils.html import format_html
