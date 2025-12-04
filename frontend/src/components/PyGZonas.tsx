@@ -124,11 +124,15 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
     return (calcularUtilidadNeta(zona) / ventas) * 100;
   };
 
-  // Calcular totales
+  // Calcular totales con desglose detallado para diagnóstico
   const calcularTotales = () => {
     if (!data?.zonas) return {
       comercial: 0, logistico: 0, administrativo: 0, costoTotal: 0,
-      ventas: 0, margenBruto: 0, utilidadOperacional: 0, utilidadNeta: 0
+      ventas: 0, margenBruto: 0, utilidadOperacional: 0, utilidadNeta: 0,
+      // Subtotales para diagnóstico
+      comercialPersonal: 0, comercialGastos: 0, comercialLejanias: 0,
+      logisticoPersonal: 0, logisticoGastos: 0, logisticoLejanias: 0,
+      administrativoPersonal: 0, administrativoGastos: 0
     };
 
     return data.zonas.reduce((acc, zona) => ({
@@ -139,10 +143,23 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
       ventas: acc.ventas + calcularVentasZona(zona),
       margenBruto: acc.margenBruto + calcularMargenBrutoZona(zona),
       utilidadOperacional: acc.utilidadOperacional + calcularUtilidadOperacional(zona),
-      utilidadNeta: acc.utilidadNeta + calcularUtilidadNeta(zona)
+      utilidadNeta: acc.utilidadNeta + calcularUtilidadNeta(zona),
+      // Subtotales para diagnóstico
+      comercialPersonal: acc.comercialPersonal + zona.comercial.personal,
+      comercialGastos: acc.comercialGastos + zona.comercial.gastos,
+      comercialLejanias: acc.comercialLejanias + (zona.comercial.lejanias || 0),
+      logisticoPersonal: acc.logisticoPersonal + zona.logistico.personal,
+      logisticoGastos: acc.logisticoGastos + zona.logistico.gastos,
+      logisticoLejanias: acc.logisticoLejanias + (zona.logistico.lejanias || 0),
+      administrativoPersonal: acc.administrativoPersonal + zona.administrativo.personal,
+      administrativoGastos: acc.administrativoGastos + zona.administrativo.gastos
     }), {
       comercial: 0, logistico: 0, administrativo: 0, costoTotal: 0,
-      ventas: 0, margenBruto: 0, utilidadOperacional: 0, utilidadNeta: 0
+      ventas: 0, margenBruto: 0, utilidadOperacional: 0, utilidadNeta: 0,
+      // Subtotales para diagnóstico
+      comercialPersonal: 0, comercialGastos: 0, comercialLejanias: 0,
+      logisticoPersonal: 0, logisticoGastos: 0, logisticoLejanias: 0,
+      administrativoPersonal: 0, administrativoGastos: 0
     });
   };
 
@@ -274,6 +291,92 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
               <span>Total Costos</span>
             </div>
             <div className="text-sm font-bold text-gray-900">{formatCurrency(totales.costoTotal)}</div>
+          </div>
+        </div>
+
+        {/* Panel de Diagnóstico - Subtotales detallados para comparar con P&G Detallado */}
+        <div className="p-4 bg-amber-50 border-b border-amber-200">
+          <h4 className="text-xs font-semibold text-amber-800 mb-3 flex items-center gap-2">
+            <span className="px-2 py-0.5 bg-amber-200 rounded text-[10px]">DIAGNÓSTICO</span>
+            Subtotales para validación vs P&G Detallado
+          </h4>
+          <div className="grid grid-cols-3 gap-4 text-xs">
+            {/* Comercial */}
+            <div className="bg-white rounded border border-amber-200 p-3">
+              <div className="font-semibold text-gray-700 mb-2 flex items-center gap-1">
+                <Users size={12} />
+                COSTOS COMERCIALES
+              </div>
+              <div className="space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Personal Comercial:</span>
+                  <span className="font-medium">{formatCurrency(totales.comercialPersonal)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Gastos Comerciales:</span>
+                  <span className="font-medium">{formatCurrency(totales.comercialGastos)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Lejanías Comerciales:</span>
+                  <span className="font-medium text-orange-600">{formatCurrency(totales.comercialLejanias)}</span>
+                </div>
+                <div className="flex justify-between border-t border-gray-200 pt-1 mt-1">
+                  <span className="font-semibold text-gray-700">Total Comercial:</span>
+                  <span className="font-bold text-gray-900">{formatCurrency(totales.comercial)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Logístico */}
+            <div className="bg-white rounded border border-amber-200 p-3">
+              <div className="font-semibold text-gray-700 mb-2 flex items-center gap-1">
+                <Truck size={12} />
+                COSTOS LOGÍSTICOS
+              </div>
+              <div className="space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Personal Logístico:</span>
+                  <span className="font-medium">{formatCurrency(totales.logisticoPersonal)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Gastos Logísticos:</span>
+                  <span className="font-medium">{formatCurrency(totales.logisticoGastos)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Lejanías Logísticas:</span>
+                  <span className="font-medium text-orange-600">{formatCurrency(totales.logisticoLejanias)}</span>
+                </div>
+                <div className="flex justify-between border-t border-gray-200 pt-1 mt-1">
+                  <span className="font-semibold text-gray-700">Total Logístico:</span>
+                  <span className="font-bold text-gray-900">{formatCurrency(totales.logistico)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Administrativo */}
+            <div className="bg-white rounded border border-amber-200 p-3">
+              <div className="font-semibold text-gray-700 mb-2 flex items-center gap-1">
+                <Building2 size={12} />
+                COSTOS ADMINISTRATIVOS
+              </div>
+              <div className="space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Personal Admin:</span>
+                  <span className="font-medium">{formatCurrency(totales.administrativoPersonal)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Gastos Admin:</span>
+                  <span className="font-medium">{formatCurrency(totales.administrativoGastos)}</span>
+                </div>
+                <div className="flex justify-between border-t border-gray-200 pt-1 mt-1">
+                  <span className="font-semibold text-gray-700">Total Admin:</span>
+                  <span className="font-bold text-gray-900">{formatCurrency(totales.administrativo)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="mt-3 text-[10px] text-amber-700">
+            Compara estos valores con el P&G Detallado para identificar diferencias.
           </div>
         </div>
 
