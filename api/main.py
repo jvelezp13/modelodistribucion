@@ -1881,7 +1881,7 @@ def diagnostico_comparar_pyg(
         loader = DataLoaderDB(escenario_id=escenario_id)
         simulator = Simulator(loader=loader)
         simulator.cargar_marcas([marca_id])
-        resultado = simulator.simular()
+        resultado = simulator.ejecutar_simulacion()
 
         # Encontrar la marca en los resultados
         marca_sim = next((m for m in resultado.marcas if m.marca_id == marca_id), None)
