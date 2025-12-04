@@ -13,7 +13,6 @@ Para:
 from decimal import Decimal
 from typing import Dict, List, Optional
 import logging
-from django.db import models
 
 logger = logging.getLogger(__name__)
 
@@ -831,6 +830,7 @@ class CalculadoraLejanias:
             }
         """
         from core.models import Vehiculo, RutaLogistica, ZonaMunicipio, Zona
+        from django.db.models import Q
 
         zonas = Zona.objects.filter(
             marca=marca,
@@ -854,8 +854,8 @@ class CalculadoraLejanias:
             activo=True
         ).filter(
             # Vehículos individuales de la marca o compartidos
-            models.Q(marca=marca, asignacion='individual') |
-            models.Q(asignacion='compartido')
+            Q(marca=marca, asignacion='individual') |
+            Q(asignacion='compartido')
         )
 
         for vehiculo in vehiculos:
