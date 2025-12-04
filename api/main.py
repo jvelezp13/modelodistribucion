@@ -1853,6 +1853,75 @@ def diagnostico_personal_detallado(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/diagnostico/lejanias-logisticas")
+def diagnostico_lejanias_logisticas(
+    escenario_id: int,
+    marca_id: str
+) -> Dict[str, Any]:
+    """
+    Diagnóstico detallado del cálculo de lejanías logísticas.
+    Muestra los valores calculados vs los que se usan en P&G Zonas.
+    """
+    try:
+        from core.models import Escenario, Marca, Zona, GastoLogistico
+        from core.calculator_lejanias import CalculadoraLejanias
+        from decimal import Decimal
+
+        escenario = Escenario.objects.get(pk=escenario_id)
+        marca = Marca.objects.get(marca_id=marca_id)
+
+        # Calcular lejanías usando CalculadoraLejanias
+        calc = CalculadoraLejanias(escenario)
+        lejanias_marca = calc.calcular_lejanias_logisticas_marca(marca)
+
+        # Obtener gastos logísticos de la DB
+        gastos_db = GastoLogistico.objects.filter(escenario=escenario, marca=marca)
+        gastos_lista = []
+        for g in gastos_db:
+            gastos_lista.append({
+                'nombre': g.nombre,
+                'tipo': g.tipo,
+                'valor_mensual': float(g.valor_mensual),
+            })
+
+        # Calcular totales de zonas
+        zonas = Zona.objects.filter(escenario=escenario, marca=marca, activo=True)
+        suma_participaciones = sum(float(z.participacion_ventas or 0) for z in zonas)
+
+        # Lo que debería mostrar P&G Zonas en lejanías (sin flete_base)
+        lejanias_sin_flete = (
+            float(lejanias_marca['total_combustible_mensual']) +
+            float(lejanias_marca['total_peaje_mensual']) +
+            float(lejanias_marca['total_pernocta_mensual'])
+        )
+
+        return {
+            'marca': marca.nombre,
+            'escenario': escenario.nombre,
+            'suma_participaciones_zonas': suma_participaciones,
+            'lejanias_calculadas': {
+                'total_flete_base': float(lejanias_marca['total_flete_base_mensual']),
+                'total_combustible': float(lejanias_marca['total_combustible_mensual']),
+                'total_peaje': float(lejanias_marca['total_peaje_mensual']),
+                'total_pernocta': float(lejanias_marca['total_pernocta_mensual']),
+                'total_completo': float(lejanias_marca['total_mensual']),
+                'total_sin_flete': lejanias_sin_flete,
+            },
+            'pyg_zonas_deberia_mostrar': {
+                'lejanias_logisticas': lejanias_sin_flete * (suma_participaciones / 100),
+                'nota': 'Este valor es lejanias_sin_flete × suma_participaciones'
+            },
+            'gastos_en_db': {
+                'total': len(gastos_lista),
+                'items': sorted(gastos_lista, key=lambda x: -x['valor_mensual'])[:20]
+            }
+        }
+
+    except Exception as e:
+        logger.error(f"Error en diagnóstico lejanías: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
