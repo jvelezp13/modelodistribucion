@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { apiClient, DetalleLejaniasLogistica, DetalleRutaLogistica, DiagnosticoLogisticoResponse } from '@/lib/api';
-import { ChevronDown, ChevronRight, MapPin, Truck, DollarSign, Fuel, Route, ArrowRight, Building2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, MapPin, Truck, DollarSign, Fuel, Route, ArrowRight, Building2, AlertTriangle } from 'lucide-react';
 
 interface LejaniasLogisticaProps {
   escenarioId: number;
@@ -494,6 +494,82 @@ export default function LejaniasLogistica({ escenarioId, marcaId }: LejaniasLogi
           </div>
 
           <div className="p-4">
+            {/* Tabla Rutas → Municipios → Zonas */}
+            <div className="mb-6">
+              <h4 className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                <Route size={14} />
+                Rutas Logísticas → Municipios → Zonas
+              </h4>
+              <div className="bg-white rounded border overflow-hidden">
+                <table className="w-full text-xs">
+                  <thead className="bg-slate-100">
+                    <tr>
+                      <th className="text-left px-3 py-2 font-semibold">Ruta / Vehículo</th>
+                      <th className="text-center px-3 py-2 font-semibold">Frecuencia</th>
+                      <th className="text-left px-3 py-2 font-semibold">Municipios</th>
+                      <th className="text-left px-3 py-2 font-semibold">Zonas que Atienden</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {distribucion.rutas_logisticas.map((ruta) => (
+                      <tr key={ruta.ruta_id} className="border-t border-slate-100 hover:bg-slate-50">
+                        <td className="px-3 py-2 align-top">
+                          <div className="font-medium text-gray-800">{ruta.ruta_nombre}</div>
+                          <div className="text-[10px] text-gray-500">{ruta.vehiculo}</div>
+                          <div className="text-[10px] text-gray-400">{ruta.esquema}</div>
+                        </td>
+                        <td className="px-3 py-2 text-center align-top">
+                          <div className="text-gray-700">{ruta.frecuencia}</div>
+                          <div className="text-[10px] text-gray-500">{ruta.recorridos_mensuales.toFixed(1)}/mes</div>
+                        </td>
+                        <td className="px-3 py-2 align-top">
+                          <div className="space-y-1">
+                            {ruta.municipios.map((mun) => (
+                              <div key={mun.municipio_id} className="flex items-center gap-1">
+                                <span className="text-[10px] text-gray-400">{mun.orden}.</span>
+                                <span className="text-gray-700">{mun.municipio_nombre}</span>
+                                {mun.flete_base > 0 && (
+                                  <span className="text-[10px] text-orange-600">
+                                    (${(mun.flete_base / 1000).toFixed(0)}K)
+                                  </span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 align-top">
+                          <div className="space-y-1">
+                            {ruta.municipios.map((mun) => (
+                              <div key={mun.municipio_id} className="flex items-center gap-1">
+                                {mun.cantidad_zonas === 0 ? (
+                                  <span className="text-red-500 flex items-center gap-1 font-medium">
+                                    <AlertTriangle size={12} />
+                                    Sin zona asignada
+                                  </span>
+                                ) : mun.cantidad_zonas === 1 ? (
+                                  <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-[10px]">
+                                    {mun.zonas_que_lo_atienden[0]?.zona_nombre}
+                                  </span>
+                                ) : (
+                                  <div className="flex flex-wrap gap-1">
+                                    {mun.zonas_que_lo_atienden.map((z) => (
+                                      <span key={z.zona_id} className="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px]">
+                                        {z.zona_nombre}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
             {/* Explicación */}
             <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded text-xs text-green-800">
               <strong>¿Cómo se distribuyen los costos?</strong>
@@ -504,7 +580,11 @@ export default function LejaniasLogistica({ escenarioId, marcaId }: LejaniasLogi
               </ul>
             </div>
 
-            {/* Tabla de distribución */}
+            {/* Tabla de distribución por zona */}
+            <h4 className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
+              <Building2 size={14} />
+              Costos Asignados por Zona
+            </h4>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-gray-100">
