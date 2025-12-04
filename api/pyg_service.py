@@ -91,13 +91,17 @@ def _es_gasto_lejania_logistica(gasto) -> bool:
 
     Estos gastos son creados por signals cuando se configura una ruta,
     pero su valor ya está incluido en el cálculo de lejanías del simulador.
+
+    NOTA: "Flete Base Tercero" NO se excluye aquí porque NO está incluido
+    en el cálculo de lejanías (se excluyó para evitar doble conteo).
+    El flete base se incluye en gastos logísticos.
     """
     nombre = gasto.nombre or ''
     return (
         nombre.startswith('Combustible - ') or
         nombre.startswith('Peajes - ') or
-        nombre.startswith('Viáticos Ruta - ') or
-        nombre.startswith('Flete Base Tercero - ')
+        nombre.startswith('Viáticos Ruta - ')
+        # Flete Base Tercero NO se excluye - va en gastos, no en lejanías
     )
 
 
@@ -234,7 +238,9 @@ def _distribuir_costos_a_zona(
         elif asignacion_geo == 'compartido':
             personal_total += costo / zonas_count
 
-    # Gastos - filtrar lejanías y flota que ya están calculados aparte
+    # Gastos - filtrar solo lejanías (ya calculadas en el simulador)
+    # NOTA: Los gastos de flota de vehículos SÍ se incluyen aquí porque
+    # P&G Zonas no tiene separación de "Flota" - todo va en "gastos"
     gastos_qs = modelo_gasto.objects.filter(
         escenario=escenario,
         marca=marca
@@ -242,9 +248,6 @@ def _distribuir_costos_a_zona(
     for g in gastos_qs:
         # Excluir gastos de lejanías que ya están en el cálculo del simulador
         if modelo_gasto == GastoLogistico and _es_gasto_lejania_logistica(g):
-            continue
-        # Excluir gastos de flota de vehículos (ya están en Flota de Vehículos)
-        if modelo_gasto == GastoLogistico and _es_gasto_flota_vehiculos(g):
             continue
         if modelo_gasto == GastoComercial and _es_gasto_lejania_comercial(g):
             continue

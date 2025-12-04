@@ -1775,11 +1775,11 @@ def diagnostico_personal_detallado(
             return nombre.startswith('Combustible Lejanía') or nombre.startswith('Viáticos Pernocta')
 
         def es_lejania_logistica(nombre):
+            # Flete Base Tercero NO se excluye - va en gastos, no en lejanías
             return (
                 nombre.startswith('Combustible - ') or
                 nombre.startswith('Peajes - ') or
-                nombre.startswith('Viáticos Ruta - ') or
-                nombre.startswith('Flete Base Tercero - ')
+                nombre.startswith('Viáticos Ruta - ')
             )
 
         def es_flota_vehiculos(gasto):
