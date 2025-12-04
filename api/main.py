@@ -1669,8 +1669,8 @@ def diagnostico_personal_detallado(
                 costo = Decimal(str(p.calcular_costo_mensual()))
                 asignacion = getattr(p, 'tipo_asignacion_geo', 'proporcional')
                 zona_asignada = getattr(p, 'zona', None)
-                cargo = getattr(p, 'cargo', None)
-                cargo_nombre = cargo.nombre if cargo else 'Sin cargo'
+                # Usar nombre del registro o tipo como fallback
+                nombre_personal = getattr(p, 'nombre', '') or getattr(p, 'tipo', 'Sin nombre')
 
                 # Calcular cuánto se distribuye realmente
                 distribuido = Decimal('0')
@@ -1697,10 +1697,15 @@ def diagnostico_personal_detallado(
 
                 total_distribuido += distribuido
 
+                # Obtener desglose del cálculo para diagnóstico
+                salario_base = float(getattr(p, 'salario_base', 0) or 0)
+                cantidad = p.cantidad or 1
+
                 items.append({
-                    'nombre': f"{cargo_nombre} ({p.cantidad})" if p.cantidad > 1 else cargo_nombre,
-                    'cantidad': p.cantidad,
-                    'costo_unitario': float(costo / p.cantidad) if p.cantidad else 0,
+                    'nombre': f"{nombre_personal} ({p.cantidad})" if p.cantidad and p.cantidad > 1 else nombre_personal,
+                    'cantidad': cantidad,
+                    'salario_base': salario_base,
+                    'costo_unitario': float(costo / cantidad) if cantidad else 0,
                     'costo_total': float(costo),
                     'asignacion': asignacion,
                     'zona_asignada': zona_asignada.nombre if zona_asignada else None,

@@ -488,6 +488,7 @@ export interface ZonaBasica {
 export interface PersonalItem {
   nombre: string;
   cantidad: number;
+  salario_base: number;
   costo_unitario: number;
   costo_total: number;
   asignacion: 'directo' | 'proporcional' | 'compartido';

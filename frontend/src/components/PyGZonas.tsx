@@ -375,12 +375,15 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
               {expandedCategoria === 'comercial' && diagnostico && (
                 <div className="mt-3 pt-3 border-t border-amber-200">
                   <div className="text-[10px] font-medium text-gray-600 mb-2">Detalle Personal ({diagnostico.comercial.personal.items.length}):</div>
-                  <div className="space-y-1 max-h-48 overflow-y-auto">
+                  <div className="space-y-1 max-h-60 overflow-y-auto">
                     {diagnostico.comercial.personal.items.map((item, idx) => (
                       <div key={idx} className={`text-[10px] p-1.5 rounded ${item.perdido > 0 ? 'bg-red-50' : 'bg-gray-50'}`}>
                         <div className="flex justify-between">
                           <span className="font-medium text-gray-700">{item.nombre}</span>
                           <span className="font-medium">{formatCurrency(item.costo_total)}</span>
+                        </div>
+                        <div className="flex justify-between text-gray-400 text-[9px]">
+                          <span>Base: {formatCurrency(item.salario_base)} | Unit: {formatCurrency(item.costo_unitario)}</span>
                         </div>
                         <div className="flex justify-between text-gray-500">
                           <span>{item.asignacion} → {item.zona_destino}</span>
@@ -452,12 +455,15 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
               {expandedCategoria === 'logistico' && diagnostico && (
                 <div className="mt-3 pt-3 border-t border-amber-200">
                   <div className="text-[10px] font-medium text-gray-600 mb-2">Detalle Personal ({diagnostico.logistico.personal.items.length}):</div>
-                  <div className="space-y-1 max-h-48 overflow-y-auto">
+                  <div className="space-y-1 max-h-60 overflow-y-auto">
                     {diagnostico.logistico.personal.items.map((item, idx) => (
                       <div key={idx} className={`text-[10px] p-1.5 rounded ${item.perdido > 0 ? 'bg-red-50' : 'bg-gray-50'}`}>
                         <div className="flex justify-between">
                           <span className="font-medium text-gray-700">{item.nombre}</span>
                           <span className="font-medium">{formatCurrency(item.costo_total)}</span>
+                        </div>
+                        <div className="flex justify-between text-gray-400 text-[9px]">
+                          <span>Base: {formatCurrency(item.salario_base)} | Unit: {formatCurrency(item.costo_unitario)}</span>
                         </div>
                         <div className="flex justify-between text-gray-500">
                           <span>{item.asignacion} → {item.zona_destino}</span>
@@ -525,12 +531,15 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
               {expandedCategoria === 'administrativo' && diagnostico && (
                 <div className="mt-3 pt-3 border-t border-amber-200">
                   <div className="text-[10px] font-medium text-gray-600 mb-2">Detalle Personal ({diagnostico.administrativo.personal.items.length}):</div>
-                  <div className="space-y-1 max-h-48 overflow-y-auto">
+                  <div className="space-y-1 max-h-60 overflow-y-auto">
                     {diagnostico.administrativo.personal.items.map((item, idx) => (
                       <div key={idx} className={`text-[10px] p-1.5 rounded ${item.perdido > 0 ? 'bg-red-50' : 'bg-gray-50'}`}>
                         <div className="flex justify-between">
                           <span className="font-medium text-gray-700">{item.nombre}</span>
                           <span className="font-medium">{formatCurrency(item.costo_total)}</span>
+                        </div>
+                        <div className="flex justify-between text-gray-400 text-[9px]">
+                          <span>Base: {formatCurrency(item.salario_base)} | Unit: {formatCurrency(item.costo_unitario)}</span>
                         </div>
                         <div className="flex justify-between text-gray-500">
                           <span>{item.asignacion} → {item.zona_destino}</span>
