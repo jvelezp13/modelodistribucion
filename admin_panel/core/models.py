@@ -5,6 +5,23 @@ from decimal import Decimal
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 
+# Import de la calculadora de prestaciones compartida
+# Usamos import diferido para evitar dependencia circular
+def _calcular_costo_nomina_compartido(salario_base, factores, subsidio_transporte=0, auxilio_adicional=0, cantidad=1):
+    """
+    Wrapper para calcular costo de nómina usando la función compartida.
+    Import diferido para evitar dependencia circular.
+    """
+    from core.calculadora_prestaciones import calcular_costo_nomina, crear_factores_desde_modelo_django
+    factores_obj = crear_factores_desde_modelo_django(factores)
+    return calcular_costo_nomina(
+        salario_base=salario_base,
+        factores=factores_obj,
+        subsidio_transporte=subsidio_transporte,
+        auxilio_adicional=auxilio_adicional,
+        cantidad=cantidad,
+    )
+
 
 # Choices globales para índices de incremento
 INDICE_INCREMENTO_CHOICES = [
@@ -200,6 +217,9 @@ class PersonalComercial(models.Model):
         """
         Calcula el costo mensual total para este registro de personal.
 
+        Usa la función compartida `calculadora_prestaciones.calcular_costo_nomina`
+        para garantizar consistencia con el simulador.
+
         Según normativa laboral colombiana:
         - Seguridad social y parafiscales: base = solo salario
         - Cesantías, intereses cesantías y prima: base = salario + subsidio transporte
@@ -222,33 +242,15 @@ class PersonalComercial(models.Model):
                 except ParametrosMacro.DoesNotExist:
                     pass
 
-            # Calcular prestaciones correctamente según base legal
-            # Factor sobre solo salario (seguridad social, parafiscales, vacaciones)
-            factor_solo_salario = (
-                factor.salud + factor.pension + factor.arl +
-                factor.caja_compensacion + factor.icbf + factor.sena +
-                factor.vacaciones
-            ) / Decimal('100')
-
-            # Factor sobre salario + subsidio (cesantías, intereses, prima)
-            factor_con_subsidio = (
-                factor.cesantias + factor.intereses_cesantias + factor.prima
-            ) / Decimal('100')
-
-            # Costo unitario = salario + prestaciones sobre salario + prestaciones sobre (salario+subsidio) + subsidio
-            prestaciones_salario = self.salario_base * factor_solo_salario
-            prestaciones_con_subsidio = (self.salario_base + subsidio_transporte) * factor_con_subsidio
-
-            costo_unitario = (
-                self.salario_base +
-                prestaciones_salario +
-                prestaciones_con_subsidio +
-                subsidio_transporte +
-                (self.auxilio_adicional or Decimal('0'))
+            # Usar función compartida
+            resultado = _calcular_costo_nomina_compartido(
+                salario_base=self.salario_base,
+                factores=factor,
+                subsidio_transporte=subsidio_transporte,
+                auxilio_adicional=self.auxilio_adicional or Decimal('0'),
+                cantidad=self.cantidad,
             )
-
-            # Multiplicar por cantidad
-            return costo_unitario * self.cantidad
+            return resultado.costo_total
 
         except FactorPrestacional.DoesNotExist:
             # Si no existe factor, retornar solo salario base * cantidad
@@ -359,10 +361,8 @@ class PersonalLogistico(models.Model):
         """
         Calcula el costo mensual total para este registro de personal.
 
-        Según normativa laboral colombiana:
-        - Seguridad social y parafiscales: base = solo salario
-        - Cesantías, intereses cesantías y prima: base = salario + subsidio transporte
-        - Vacaciones: base = solo salario
+        Usa la función compartida `calculadora_prestaciones.calcular_costo_nomina`
+        para garantizar consistencia con el simulador.
         """
         if not self.salario_base or not self.cantidad:
             return 0
@@ -381,32 +381,15 @@ class PersonalLogistico(models.Model):
                 except ParametrosMacro.DoesNotExist:
                     pass
 
-            # Calcular prestaciones correctamente según base legal
-            # Factor sobre solo salario (seguridad social, parafiscales, vacaciones)
-            factor_solo_salario = (
-                factor.salud + factor.pension + factor.arl +
-                factor.caja_compensacion + factor.icbf + factor.sena +
-                factor.vacaciones
-            ) / Decimal('100')
-
-            # Factor sobre salario + subsidio (cesantías, intereses, prima)
-            factor_con_subsidio = (
-                factor.cesantias + factor.intereses_cesantias + factor.prima
-            ) / Decimal('100')
-
-            # Costo unitario = salario + prestaciones sobre salario + prestaciones sobre (salario+subsidio) + subsidio
-            prestaciones_salario = self.salario_base * factor_solo_salario
-            prestaciones_con_subsidio = (self.salario_base + subsidio_transporte) * factor_con_subsidio
-
-            costo_unitario = (
-                self.salario_base +
-                prestaciones_salario +
-                prestaciones_con_subsidio +
-                subsidio_transporte
+            # Usar función compartida
+            resultado = _calcular_costo_nomina_compartido(
+                salario_base=self.salario_base,
+                factores=factor,
+                subsidio_transporte=subsidio_transporte,
+                auxilio_adicional=Decimal('0'),
+                cantidad=self.cantidad,
             )
-
-            # Multiplicar por cantidad
-            return costo_unitario * self.cantidad
+            return resultado.costo_total
 
         except FactorPrestacional.DoesNotExist:
             # Si no existe factor, retornar solo salario base * cantidad
@@ -992,10 +975,8 @@ class PersonalAdministrativo(models.Model):
         """
         Calcula el costo mensual total para este registro de personal.
 
-        Según normativa laboral colombiana:
-        - Seguridad social y parafiscales: base = solo salario
-        - Cesantías, intereses cesantías y prima: base = salario + subsidio transporte
-        - Vacaciones: base = solo salario
+        Usa la función compartida `calculadora_prestaciones.calcular_costo_nomina`
+        para garantizar consistencia con el simulador.
         """
         if not self.cantidad:
             return 0
@@ -1024,32 +1005,15 @@ class PersonalAdministrativo(models.Model):
                 except ParametrosMacro.DoesNotExist:
                     pass
 
-            # Calcular prestaciones correctamente según base legal
-            # Factor sobre solo salario (seguridad social, parafiscales, vacaciones)
-            factor_solo_salario = (
-                factor.salud + factor.pension + factor.arl +
-                factor.caja_compensacion + factor.icbf + factor.sena +
-                factor.vacaciones
-            ) / Decimal('100')
-
-            # Factor sobre salario + subsidio (cesantías, intereses, prima)
-            factor_con_subsidio = (
-                factor.cesantias + factor.intereses_cesantias + factor.prima
-            ) / Decimal('100')
-
-            # Costo unitario = salario + prestaciones sobre salario + prestaciones sobre (salario+subsidio) + subsidio
-            prestaciones_salario = self.salario_base * factor_solo_salario
-            prestaciones_con_subsidio = (self.salario_base + subsidio_transporte) * factor_con_subsidio
-
-            costo_unitario = (
-                self.salario_base +
-                prestaciones_salario +
-                prestaciones_con_subsidio +
-                subsidio_transporte
+            # Usar función compartida
+            resultado = _calcular_costo_nomina_compartido(
+                salario_base=self.salario_base,
+                factores=factor,
+                subsidio_transporte=subsidio_transporte,
+                auxilio_adicional=Decimal('0'),
+                cantidad=self.cantidad,
             )
-
-            # Multiplicar por cantidad
-            return costo_unitario * self.cantidad
+            return resultado.costo_total
 
         except FactorPrestacional.DoesNotExist:
             # Si no existe factor, retornar solo salario base * cantidad
