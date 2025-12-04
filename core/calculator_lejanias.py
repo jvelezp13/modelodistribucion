@@ -568,3 +568,244 @@ class CalculadoraLejanias:
         """
         logger.warning("calcular_lejania_logistica_zona está deprecado. Usar calcular_lejania_logistica_ruta()")
         return self._resultado_vacio_logistica()
+
+    # =========================================================================
+    # DISTRIBUCIÓN DE COSTOS LOGÍSTICOS A ZONAS COMERCIALES
+    # =========================================================================
+
+    def calcular_costos_logisticos_por_municipio(self, marca) -> Dict[int, Dict]:
+        """
+        Calcula el costo logístico total por municipio (flete + lejanías).
+
+        Suma los costos de TODAS las rutas que visitan cada municipio.
+
+        Returns:
+            Dict con municipio_id como key y:
+            {
+                'municipio_nombre': str,
+                'flete_total': Decimal,
+                'combustible_total': Decimal,
+                'peaje_total': Decimal,
+                'pernocta_total': Decimal,
+                'costo_total': Decimal,
+                'rutas': [lista de rutas que lo visitan]
+            }
+        """
+        from core.models import RutaLogistica, RutaMunicipio, MatrizDesplazamiento
+
+        costos_por_municipio = {}
+
+        # Obtener todas las rutas de la marca
+        rutas = RutaLogistica.objects.filter(
+            marca=marca,
+            escenario=self.escenario,
+            activo=True
+        ).prefetch_related('municipios__municipio').select_related('vehiculo')
+
+        if not self.config:
+            return costos_por_municipio
+
+        bodega = self.config.municipio_bodega
+        if not bodega:
+            return costos_por_municipio
+
+        for ruta in rutas:
+            vehiculo = ruta.vehiculo
+            if not vehiculo:
+                continue
+
+            # Configuración del vehículo
+            consumo_km_galon = vehiculo.consumo_galon_km or Decimal('30')
+            if vehiculo.tipo_combustible == 'gasolina':
+                precio_galon = self.config.precio_galon_gasolina
+            else:
+                precio_galon = self.config.precio_galon_acpm
+
+            recorridos_mensuales = ruta.recorridos_mensuales()
+            umbral = self.config.umbral_lejania_logistica_km
+
+            # Obtener municipios ordenados
+            municipios_ruta = list(ruta.municipios.all().order_by('orden_visita'))
+            if not municipios_ruta:
+                continue
+
+            # Calcular el circuito completo para obtener distancia total
+            puntos_circuito = [bodega] + [rm.municipio for rm in municipios_ruta] + [bodega]
+
+            # Calcular distancia y peaje total del circuito
+            distancia_total_circuito = Decimal('0')
+            peaje_total_circuito = Decimal('0')
+
+            for i in range(len(puntos_circuito) - 1):
+                origen = puntos_circuito[i]
+                destino = puntos_circuito[i + 1]
+                try:
+                    matriz = MatrizDesplazamiento.objects.get(
+                        origen_id=origen.id,
+                        destino_id=destino.id
+                    )
+                    distancia_total_circuito += matriz.distancia_km
+                    peaje_total_circuito += matriz.peaje_ida or Decimal('0')
+                except MatrizDesplazamiento.DoesNotExist:
+                    pass
+
+            # Calcular combustible del circuito
+            distancia_efectiva = max(Decimal('0'), distancia_total_circuito - umbral)
+            if distancia_efectiva > 0:
+                galones_por_circuito = distancia_efectiva / consumo_km_galon
+                combustible_circuito = galones_por_circuito * precio_galon * recorridos_mensuales
+            else:
+                combustible_circuito = Decimal('0')
+
+            peaje_circuito = peaje_total_circuito * recorridos_mensuales
+
+            # Calcular pernocta del circuito
+            pernocta_circuito = Decimal('0')
+            if ruta.requiere_pernocta and ruta.noches_pernocta > 0:
+                gasto_conductor = (
+                    self.config.desayuno_conductor +
+                    self.config.almuerzo_conductor +
+                    self.config.cena_conductor +
+                    self.config.alojamiento_conductor
+                )
+                gasto_auxiliar = (
+                    self.config.desayuno_auxiliar +
+                    self.config.almuerzo_auxiliar +
+                    self.config.cena_auxiliar +
+                    self.config.alojamiento_auxiliar
+                )
+                parqueadero = self.config.parqueadero_logistica
+                pernocta_circuito = (gasto_conductor + gasto_auxiliar + parqueadero) * ruta.noches_pernocta * recorridos_mensuales
+
+            # Distribuir costos del circuito entre los municipios de la ruta
+            # Usamos el flete_base como peso para distribuir
+            total_flete_ruta = sum(rm.flete_base or Decimal('0') for rm in municipios_ruta)
+
+            for ruta_mun in municipios_ruta:
+                mun_id = ruta_mun.municipio.id
+                flete_municipio = (ruta_mun.flete_base or Decimal('0')) * recorridos_mensuales
+
+                # Proporción de este municipio en la ruta (por flete)
+                if total_flete_ruta > 0:
+                    proporcion = (ruta_mun.flete_base or Decimal('0')) / total_flete_ruta
+                else:
+                    # Si no hay fletes, distribuir equitativamente
+                    proporcion = Decimal('1') / len(municipios_ruta)
+
+                # Distribuir costos del circuito proporcionalmente
+                combustible_municipio = combustible_circuito * proporcion
+                peaje_municipio = peaje_circuito * proporcion
+                pernocta_municipio = pernocta_circuito * proporcion
+
+                costo_total_municipio = flete_municipio + combustible_municipio + peaje_municipio + pernocta_municipio
+
+                # Acumular en el diccionario
+                if mun_id not in costos_por_municipio:
+                    costos_por_municipio[mun_id] = {
+                        'municipio_nombre': ruta_mun.municipio.nombre,
+                        'flete_total': Decimal('0'),
+                        'combustible_total': Decimal('0'),
+                        'peaje_total': Decimal('0'),
+                        'pernocta_total': Decimal('0'),
+                        'costo_total': Decimal('0'),
+                        'rutas': []
+                    }
+
+                costos_por_municipio[mun_id]['flete_total'] += flete_municipio
+                costos_por_municipio[mun_id]['combustible_total'] += combustible_municipio
+                costos_por_municipio[mun_id]['peaje_total'] += peaje_municipio
+                costos_por_municipio[mun_id]['pernocta_total'] += pernocta_municipio
+                costos_por_municipio[mun_id]['costo_total'] += costo_total_municipio
+                costos_por_municipio[mun_id]['rutas'].append({
+                    'ruta_id': ruta.id,
+                    'ruta_nombre': ruta.nombre,
+                    'flete': float(flete_municipio),
+                    'combustible': float(combustible_municipio),
+                    'peaje': float(peaje_municipio),
+                    'pernocta': float(pernocta_municipio),
+                })
+
+        return costos_por_municipio
+
+    def distribuir_costos_logisticos_a_zonas(self, marca) -> Dict[int, Dict]:
+        """
+        Distribuye los costos logísticos a las zonas comerciales según:
+        1. Qué municipios atiende cada zona
+        2. La venta proyectada de cada zona en ese municipio
+
+        Returns:
+            Dict con zona_id como key y:
+            {
+                'zona_nombre': str,
+                'costo_logistico_total': Decimal,
+                'detalle_municipios': [...]
+            }
+        """
+        from core.models import ZonaMunicipio, Zona
+
+        # Paso 1: Calcular costo por municipio
+        costos_por_municipio = self.calcular_costos_logisticos_por_municipio(marca)
+
+        # Paso 2: Obtener todas las zonas de la marca y sus municipios
+        zonas = Zona.objects.filter(
+            marca=marca,
+            escenario=self.escenario,
+            activo=True
+        )
+
+        costos_por_zona = {}
+
+        # Inicializar todas las zonas
+        for zona in zonas:
+            costos_por_zona[zona.id] = {
+                'zona_nombre': zona.nombre,
+                'costo_logistico_total': Decimal('0'),
+                'detalle_municipios': []
+            }
+
+        # Paso 3: Para cada municipio con costo logístico
+        for mun_id, costo_mun in costos_por_municipio.items():
+            # Encontrar todas las zonas que atienden este municipio
+            zonas_municipio = ZonaMunicipio.objects.filter(
+                municipio_id=mun_id,
+                zona__marca=marca,
+                zona__escenario=self.escenario,
+                zona__activo=True
+            ).select_related('zona')
+
+            if not zonas_municipio.exists():
+                # Ninguna zona atiende este municipio, el costo no se asigna
+                logger.warning(f"Municipio {costo_mun['municipio_nombre']} (id={mun_id}) tiene costo logístico pero ninguna zona lo atiende")
+                continue
+
+            # Calcular venta total de todas las zonas en este municipio
+            venta_total_municipio = sum(
+                zm.venta_proyectada or Decimal('0')
+                for zm in zonas_municipio
+            )
+
+            # Distribuir el costo entre las zonas
+            for zona_mun in zonas_municipio:
+                zona_id = zona_mun.zona.id
+
+                if venta_total_municipio > 0:
+                    # Proporcional a la venta proyectada
+                    proporcion = (zona_mun.venta_proyectada or Decimal('0')) / venta_total_municipio
+                else:
+                    # Si no hay ventas, distribuir equitativamente
+                    proporcion = Decimal('1') / zonas_municipio.count()
+
+                costo_zona_municipio = costo_mun['costo_total'] * proporcion
+
+                costos_por_zona[zona_id]['costo_logistico_total'] += costo_zona_municipio
+                costos_por_zona[zona_id]['detalle_municipios'].append({
+                    'municipio_id': mun_id,
+                    'municipio_nombre': costo_mun['municipio_nombre'],
+                    'costo_total_municipio': float(costo_mun['costo_total']),
+                    'venta_zona': float(zona_mun.venta_proyectada or 0),
+                    'venta_total': float(venta_total_municipio),
+                    'proporcion': float(proporcion),
+                    'costo_asignado': float(costo_zona_municipio),
+                })
+
+        return costos_por_zona

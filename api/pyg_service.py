@@ -377,8 +377,10 @@ def calcular_pyg_todas_zonas(escenario, marca) -> List[Dict]:
     """
     Calcula P&G para todas las zonas de una marca.
 
-    Ejecuta el simulador UNA sola vez para obtener los totales correctos
-    (con el mismo prorrateo que P&G Detallado), luego los distribuye entre zonas.
+    Distribución de costos:
+    - Comercial: personal y gastos proporcionales por participación, lejanías directas por zona
+    - Logístico: distribuido según municipios atendidos y venta proyectada
+    - Administrativo: equitativo entre zonas
     """
     from core.models import Zona
     from core.simulator import Simulator
@@ -451,28 +453,19 @@ def calcular_pyg_todas_zonas(escenario, marca) -> List[Dict]:
                 else:
                     totales_marca['admin_gastos'] += valor
 
-    # Lejanías del simulador o calcular
-    lejanias_comercial_total = Decimal(str(marca_sim.lejania_comercial or 0)) if marca_sim else Decimal('0')
-    lejanias_logistico_total = Decimal(str(marca_sim.lejania_logistica or 0)) if marca_sim else Decimal('0')
+    # Calculadora de lejanías
+    calc = CalculadoraLejanias(escenario)
 
-    # Si no hay lejanías en el simulador, calcular
-    if lejanias_comercial_total == 0 or lejanias_logistico_total == 0:
-        calc = CalculadoraLejanias(escenario)
-        if lejanias_logistico_total == 0:
-            lejanias_log = calc.calcular_lejanias_logisticas_marca(marca)
-            lejanias_logistico_total = (
-                lejanias_log['total_combustible_mensual'] +
-                lejanias_log['total_peaje_mensual'] +
-                lejanias_log['total_pernocta_mensual']
-            )
+    # NUEVO: Distribuir costos logísticos a zonas según municipios atendidos
+    # Esto incluye: flete + combustible + peajes + pernocta de rutas
+    costos_logisticos_por_zona = calc.distribuir_costos_logisticos_a_zonas(marca)
 
-    # Calcular P&G por zona distribuyendo los totales
+    # Calcular P&G por zona
     resultados = []
     for zona in zonas:
         participacion = (zona.participacion_ventas or Decimal('0')) / 100
 
-        # Lejanía comercial es específica por zona
-        calc = CalculadoraLejanias(escenario)
+        # Lejanía comercial es específica por zona (vendedor)
         lej_comercial_zona = calc.calcular_lejania_comercial_zona(zona)['total_mensual']
 
         # Comercial: personal y gastos proporcionales, lejanía directa
@@ -483,13 +476,21 @@ def calcular_pyg_todas_zonas(escenario, marca) -> List[Dict]:
             'total': (totales_marca['comercial_personal'] + totales_marca['comercial_gastos']) * participacion + lej_comercial_zona
         }
 
-        # Logístico: todo proporcional excepto lejanías que ya incluyen flota
+        # Logístico: personal y gastos proporcionales, lejanías según municipios atendidos
+        # Los costos de rutas (flete, combustible, peaje, pernocta) se distribuyen según municipios
+        costo_logistico_zona = Decimal('0')
+        if zona.id in costos_logisticos_por_zona:
+            costo_logistico_zona = costos_logisticos_por_zona[zona.id]['costo_logistico_total']
+
+        # Flota de vehículos: distribuir proporcionalmente por ahora
+        # (podría refinarse más adelante según qué vehículos atienden qué zonas)
+        flota_zona = totales_marca['logistico_flota'] * participacion
+
         logistico = {
             'personal': totales_marca['logistico_personal'] * participacion,
             'gastos': totales_marca['logistico_gastos'] * participacion,
-            'lejanias': (totales_marca['logistico_flota'] + lejanias_logistico_total) * participacion,
-            'total': (totales_marca['logistico_personal'] + totales_marca['logistico_gastos'] +
-                     totales_marca['logistico_flota'] + lejanias_logistico_total) * participacion
+            'lejanias': costo_logistico_zona + flota_zona,
+            'total': (totales_marca['logistico_personal'] + totales_marca['logistico_gastos']) * participacion + costo_logistico_zona + flota_zona
         }
 
         # Administrativo: equitativo entre zonas
