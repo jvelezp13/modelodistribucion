@@ -86,22 +86,25 @@ def calcular_pyg_zona(escenario, zona) -> Dict:
 
 def _es_gasto_lejania_logistica(gasto) -> bool:
     """
-    Identifica gastos que son parte de lejanías logísticas y NO deben sumarse
-    porque ya están calculados en el simulador como parte de RutaLogistica.
+    Identifica gastos que son parte de rutas logísticas y NO deben sumarse
+    porque ya están calculados dinámicamente por CalculadoraLejanias.
 
     Estos gastos son creados por signals cuando se configura una ruta,
-    pero su valor ya está incluido en el cálculo de lejanías del simulador.
+    pero pueden estar desincronizados con el cálculo real.
+    Por eso excluimos TODOS los gastos de rutas y usamos el cálculo dinámico.
 
-    NOTA: "Flete Base Tercero" NO se excluye aquí porque NO está incluido
-    en el cálculo de lejanías (se excluyó para evitar doble conteo).
-    El flete base se incluye en gastos logísticos.
+    Se excluyen:
+    - Combustible de rutas
+    - Peajes de rutas
+    - Viáticos/Pernocta de rutas
+    - Flete Base Tercero (ya incluido en el cálculo de lejanías totales)
     """
     nombre = gasto.nombre or ''
     return (
         nombre.startswith('Combustible - ') or
         nombre.startswith('Peajes - ') or
-        nombre.startswith('Viáticos Ruta - ')
-        # Flete Base Tercero NO se excluye - va en gastos, no en lejanías
+        nombre.startswith('Viáticos Ruta - ') or
+        nombre.startswith('Flete Base Tercero - ')
     )
 
 
@@ -185,15 +188,12 @@ def _calcular_lejanias_zona(escenario, zona, participacion: Decimal) -> Dict:
         # Las rutas logísticas no están asociadas a zonas, sino a la marca completa
         logistica_marca = calc.calcular_lejanias_logisticas_marca(zona.marca)
 
-        # IMPORTANTE: Excluir flete_base de lejanías porque ya está en Flota de Vehículos
-        # Lejanías = combustible + peajes + pernocta (costos variables de ruta)
-        # Flete base = costo fijo por operación del vehículo/tercero
-        lejanias_sin_flete = (
-            logistica_marca['total_combustible_mensual'] +
-            logistica_marca['total_peaje_mensual'] +
-            logistica_marca['total_pernocta_mensual']
-        )
-        logistica_total = lejanias_sin_flete * participacion
+        # Incluir TODO el cálculo de lejanías logísticas (flete + combustible + peajes + pernocta)
+        # Esto garantiza consistencia con P&G Detallado que suma:
+        # - Flota de Vehículos (incluye flete_base)
+        # - Lejanías Logísticas (combustible + peajes + pernocta)
+        # En P&G Zonas mostramos todo junto en "lejanías" para simplificar
+        logistica_total = logistica_marca['total_mensual'] * participacion
 
         return {
             'comercial': comercial_total,
