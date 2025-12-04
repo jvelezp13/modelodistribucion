@@ -52,13 +52,15 @@ def calculate_hr_expenses(escenario):
 
             # Fase 1: Personal con tipo_asignacion_geo = 'directo' (agrupa por zona)
             if tiene_zona:
-                grupos_directos = qs.filter(tipo_asignacion_geo='directo').values(
+                grupos_directos = qs.filter(tipo_asignacion_geo='directo').order_by().values(
                     'marca', 'tipo_asignacion_geo', 'zona'
                 ).distinct()
                 grupos.extend(grupos_directos)
 
             # Fase 2: Personal con tipo_asignacion_geo != 'directo' o NULL (NO agrupa por zona)
-            grupos_no_directos = qs.exclude(tipo_asignacion_geo='directo').values(
+            # IMPORTANTE: usar .order_by() para limpiar el Meta.ordering del modelo,
+            # que causa que .distinct() agrupe por campos adicionales (como 'tipo')
+            grupos_no_directos = qs.exclude(tipo_asignacion_geo='directo').order_by().values(
                 'marca', 'tipo_asignacion_geo'
             ).distinct()
             grupos.extend(grupos_no_directos)
