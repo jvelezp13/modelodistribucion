@@ -1277,6 +1277,68 @@ def obtener_pyg_zonas(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/debug/rubros-detallado")
+def diagnosticar_rubros_detallado(
+    escenario_id: int,
+    marca_id: str
+) -> Dict[str, Any]:
+    """
+    Muestra exactamente qué rubros se envían al frontend para P&G Detallado.
+    """
+    try:
+        from api.pyg_general_service import obtener_pyg_general
+
+        resultado = obtener_pyg_general(escenario_id, mes_seleccionado=1)
+        marca_data = next((m for m in resultado.marcas if m.marca_id == marca_id), None)
+
+        if not marca_data:
+            raise HTTPException(status_code=404, detail="Marca no encontrada")
+
+        # Analizar rubros comerciales
+        rubros_comerciales_personal = [r for r in marca_data.rubros_individuales + marca_data.rubros_compartidos_asignados
+                                      if r.categoria == 'comercial' and r.tipo == 'personal']
+        rubros_comerciales_gastos = [r for r in marca_data.rubros_individuales + marca_data.rubros_compartidos_asignados
+                                     if r.categoria == 'comercial' and r.tipo != 'personal']
+
+        # Identificar lejanías
+        lejanias_en_rubros = [r for r in rubros_comerciales_gastos
+                             if 'Combustible Lejanía' in r.nombre or 'Viáticos Pernocta' in r.nombre]
+        gastos_sin_lejanias = [r for r in rubros_comerciales_gastos
+                              if 'Combustible Lejanía' not in r.nombre and 'Viáticos Pernocta' not in r.nombre]
+
+        total_personal = sum(r.valor_total for r in rubros_comerciales_personal)
+        total_lejanias_rubros = sum(r.valor_total for r in lejanias_en_rubros)
+        total_gastos_sin_lejanias = sum(r.valor_total for r in gastos_sin_lejanias)
+
+        # Total como lo calcula el frontend
+        total_frontend = total_personal + total_gastos_sin_lejanias + float(marca_data.lejania_comercial)
+
+        return {
+            'marca': marca_data.nombre,
+            'totales': {
+                'personal': float(total_personal),
+                'gastos_sin_lejanias': float(total_gastos_sin_lejanias),
+                'lejanias_en_rubros': float(total_lejanias_rubros),
+                'lejania_comercial_campo': float(marca_data.lejania_comercial),
+                'total_frontend_calculado': float(total_frontend),
+            },
+            'conteos': {
+                'rubros_personal': len(rubros_comerciales_personal),
+                'rubros_gastos': len(rubros_comerciales_gastos),
+                'lejanias_en_rubros': len(lejanias_en_rubros),
+                'gastos_sin_lejanias': len(gastos_sin_lejanias),
+            },
+            'lejanias_detalle': [
+                {'nombre': r.nombre, 'valor': float(r.valor_total)}
+                for r in lejanias_en_rubros
+            ]
+        }
+
+    except Exception as e:
+        logger.error(f"Error en diagnóstico rubros: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/debug/diferencia-pyg")
 def diagnosticar_diferencia_pyg(
     escenario_id: int,
