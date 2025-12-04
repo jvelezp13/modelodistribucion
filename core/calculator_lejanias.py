@@ -850,8 +850,7 @@ class CalculadoraLejanias:
 
         # Obtener todos los vehículos de la marca
         vehiculos = Vehiculo.objects.filter(
-            escenario=self.escenario,
-            activo=True
+            escenario=self.escenario
         ).filter(
             # Vehículos individuales de la marca o compartidos
             Q(marca=marca, asignacion='individual') |
