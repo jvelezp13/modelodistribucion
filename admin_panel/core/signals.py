@@ -83,7 +83,9 @@ def calculate_hr_expenses(escenario):
                 filtro = {
                     'marca_id': marca_id,
                 }
-                if tiene_zona:
+                # Solo filtrar por zona si el grupo incluye 'zona' (tipo='directo')
+                # Para tipo='proporcional'/'compartido', NO filtrar por zona
+                if tiene_zona and 'zona' in grupo:
                     filtro['zona_id'] = zona_id
                 if tipo_asig_geo_original is not None:
                     filtro['tipo_asignacion_geo'] = tipo_asig_geo_original
