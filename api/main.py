@@ -1913,7 +1913,25 @@ def diagnostico_lejanias_logisticas(
             },
             'gastos_en_db': {
                 'total': len(gastos_lista),
+                'suma_total': sum(g['valor_mensual'] for g in gastos_lista),
                 'items': sorted(gastos_lista, key=lambda x: -x['valor_mensual'])[:20]
+            },
+            'gastos_que_se_excluyen': {
+                'combustible': sum(g['valor_mensual'] for g in gastos_lista if g['nombre'].startswith('Combustible - ')),
+                'peajes': sum(g['valor_mensual'] for g in gastos_lista if g['nombre'].startswith('Peajes - ')),
+                'viaticos_ruta': sum(g['valor_mensual'] for g in gastos_lista if g['nombre'].startswith('Viáticos Ruta - ')),
+                'total_excluido': sum(g['valor_mensual'] for g in gastos_lista if
+                    g['nombre'].startswith('Combustible - ') or
+                    g['nombre'].startswith('Peajes - ') or
+                    g['nombre'].startswith('Viáticos Ruta - '))
+            },
+            'gastos_que_se_incluyen': {
+                'flete_base_tercero': sum(g['valor_mensual'] for g in gastos_lista if g['nombre'].startswith('Flete Base Tercero - ')),
+                'otros': sum(g['valor_mensual'] for g in gastos_lista if not (
+                    g['nombre'].startswith('Combustible - ') or
+                    g['nombre'].startswith('Peajes - ') or
+                    g['nombre'].startswith('Viáticos Ruta - ') or
+                    g['nombre'].startswith('Flete Base Tercero - ')))
             }
         }
 
