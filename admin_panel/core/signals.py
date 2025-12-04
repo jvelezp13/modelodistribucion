@@ -36,97 +36,109 @@ def calculate_hr_expenses(escenario):
 
     tope_dotacion = politica.tope_smlv_dotacion * smlv
     
-    # Función auxiliar para procesar gastos por grupo de marcas
+    # Función auxiliar para procesar gastos por grupo (marca, tipo_asignacion_geo, zona)
     def process_expenses(model_personal, model_gasto, tipo_personal):
-        # Obtener todas las marcas presentes en el personal de este escenario + None (compartidos)
         qs = model_personal.objects.filter(escenario=escenario)
-        marcas_ids = set(qs.values_list('marca', flat=True)) # Incluye None si hay compartidos
-        
-        for marca_id in marcas_ids:
-            # Filtrar personal para esta marca (o None)
-            if marca_id is None:
-                personal_grupo = qs.filter(marca__isnull=True)
-                marca_obj = None
-                asignacion = 'compartido'
-            else:
-                personal_grupo = qs.filter(marca_id=marca_id)
-                marca_obj = Marca.objects.get(pk=marca_id)
-                asignacion = 'individual'
-            
-            # Sumar cantidad de empleados (no contar registros)
+
+        # Agrupar por (marca, tipo_asignacion_geo, zona) para respetar la asignación del personal
+        # Usar values para obtener grupos únicos
+        grupos = qs.values('marca', 'tipo_asignacion_geo', 'zona').distinct()
+
+        # Limpiar gastos de provisiones existentes para este escenario y modelo
+        # (se recrearán con los valores correctos)
+        model_gasto.objects.filter(
+            escenario=escenario,
+            tipo__in=['dotacion', 'epp', 'examenes']
+        ).delete()
+
+        for grupo in grupos:
+            marca_id = grupo['marca']
+            tipo_asig_geo = grupo['tipo_asignacion_geo'] or 'proporcional'
+            zona_id = grupo['zona']
+
+            # Filtrar personal de este grupo
+            personal_grupo = qs.filter(
+                marca_id=marca_id,
+                tipo_asignacion_geo=tipo_asig_geo,
+                zona_id=zona_id
+            )
+
+            # Obtener objetos relacionados
+            marca_obj = Marca.objects.get(pk=marca_id) if marca_id else None
+            zona_obj = None
+            if zona_id and tipo_asig_geo == 'directo':
+                from .models import Zona
+                zona_obj = Zona.objects.get(pk=zona_id)
+
+            asignacion = 'compartido' if marca_id is None else 'individual'
+
+            # Sumar cantidad de empleados
             count_total = personal_grupo.aggregate(total=Sum('cantidad'))['total'] or 0
             if count_total == 0:
                 continue
+
+            # Generar nombre descriptivo para el gasto
+            if zona_obj:
+                nombre_suffix = f" - {zona_obj.nombre}"
+            else:
+                nombre_suffix = ""
 
             # --- 1. DOTACIÓN (Aplica a todos con salario <= tope) ---
             count_dotacion = personal_grupo.filter(salario_base__lte=tope_dotacion).aggregate(
                 total=Sum('cantidad')
             )['total'] or 0
-            # Fórmula: (cantidad * valor_dotacion) / frecuencia_meses
-            # Ej: 10 empleados * $200,000 / 4 meses = $500,000/mes
             valor_dotacion = (count_dotacion * politica.valor_dotacion_completa) / politica.frecuencia_dotacion_meses
-            
+
             if valor_dotacion > 0:
-                model_gasto.objects.update_or_create(
+                model_gasto.objects.create(
                     escenario=escenario,
                     tipo='dotacion',
                     marca=marca_obj,
-                    defaults={
-                        'nombre': 'Provisión Dotación',
-                        'valor_mensual': valor_dotacion,
-                        'asignacion': asignacion
-                    }
+                    nombre=f'Provisión Dotación{nombre_suffix}',
+                    valor_mensual=valor_dotacion,
+                    asignacion=asignacion,
+                    tipo_asignacion_geo=tipo_asig_geo,
+                    zona=zona_obj
                 )
-            else:
-                # Si baja a cero, borrar el registro si existe
-                model_gasto.objects.filter(escenario=escenario, tipo='dotacion', marca=marca_obj).delete()
 
             # --- 2. EXÁMENES MÉDICOS ---
-            # Definir costos según tipo de personal
             if tipo_personal == 'comercial':
                 costo_ingreso = politica.costo_examen_ingreso_comercial
                 costo_periodico = politica.costo_examen_periodico_comercial
             else:
                 costo_ingreso = politica.costo_examen_ingreso_operativo
                 costo_periodico = politica.costo_examen_periodico_operativo
-            
+
             valor_examenes = (count_total * costo_ingreso * (politica.tasa_rotacion_anual / 100) / 12) + \
                              (count_total * costo_periodico / 12)
 
             if valor_examenes > 0:
-                model_gasto.objects.update_or_create(
+                model_gasto.objects.create(
                     escenario=escenario,
                     tipo='examenes',
                     marca=marca_obj,
-                    defaults={
-                        'nombre': 'Provisión Exámenes Médicos',
-                        'valor_mensual': valor_examenes,
-                        'asignacion': asignacion
-                    }
+                    nombre=f'Provisión Exámenes Médicos{nombre_suffix}',
+                    valor_mensual=valor_examenes,
+                    asignacion=asignacion,
+                    tipo_asignacion_geo=tipo_asig_geo,
+                    zona=zona_obj
                 )
-            else:
-                model_gasto.objects.filter(escenario=escenario, tipo='examenes', marca=marca_obj).delete()
 
             # --- 3. EPP (SOLO COMERCIAL) ---
             if tipo_personal == 'comercial':
-                # EPP aplica a TODOS los comerciales
-                # Fórmula: (cantidad * valor_epp) / frecuencia_meses
-                # Ej: 10 empleados * $100,000 / 24 meses = $41,667/mes (si es cada 2 años)
                 valor_epp = (count_total * politica.valor_epp_anual_comercial) / politica.frecuencia_epp_meses
-                
+
                 if valor_epp > 0:
-                    model_gasto.objects.update_or_create(
+                    model_gasto.objects.create(
                         escenario=escenario,
                         tipo='epp',
                         marca=marca_obj,
-                        defaults={
-                            'nombre': 'Provisión EPP (Comercial)',
-                            'valor_mensual': valor_epp,
-                            'asignacion': asignacion
-                        }
+                        nombre=f'Provisión EPP (Comercial){nombre_suffix}',
+                        valor_mensual=valor_epp,
+                        asignacion=asignacion,
+                        tipo_asignacion_geo=tipo_asig_geo,
+                        zona=zona_obj
                     )
-                else:
-                    model_gasto.objects.filter(escenario=escenario, tipo='epp', marca=marca_obj).delete()
 
     # Ejecutar para cada tipo de personal
     process_expenses(PersonalComercial, GastoComercial, 'comercial')

@@ -1213,13 +1213,50 @@ def obtener_pyg_zonas(
         except Exception:
             pass
 
+        # Calcular utilidad neta por zona para ordenar (usar mes actual como referencia)
+        from datetime import datetime
+        mes_actual = f"mes_{datetime.now().month}"
+        ventas_mes_actual = ventas_mensuales.get(mes_actual, 0) if ventas_mensuales else 0
+
+        def calcular_utilidad_neta_zona(zona):
+            """Calcula la utilidad neta de una zona para ordenamiento"""
+            participacion = zona['zona']['participacion_ventas'] / 100
+            ventas_zona = ventas_mes_actual * participacion
+
+            # Margen bruto
+            descuento_ponderado = config_descuentos['descuento_pie_factura_ponderado'] / 100
+            margen_bruto = ventas_zona * descuento_ponderado
+
+            # Utilidad operacional
+            utilidad_operacional = margen_bruto - zona['total_mensual']
+
+            # Otros ingresos (rebate + descuento financiero)
+            rebate = ventas_zona * (config_descuentos['porcentaje_rebate'] / 100)
+            desc_financiero = ventas_zona * (config_descuentos['porcentaje_descuento_financiero'] / 100) if config_descuentos['aplica_descuento_financiero'] else 0
+            otros_ingresos = rebate + desc_financiero
+
+            # Utilidad antes de impuestos
+            utilidad_antes_impuestos = utilidad_operacional + otros_ingresos
+
+            # Utilidad neta (después de impuestos)
+            impuesto = utilidad_antes_impuestos * tasa_impuesto if utilidad_antes_impuestos > 0 else 0
+            utilidad_neta = utilidad_antes_impuestos - impuesto
+
+            # Margen neto %
+            margen_neto = (utilidad_neta / ventas_zona * 100) if ventas_zona > 0 else 0
+
+            return margen_neto
+
+        # Ordenar zonas por margen neto (de mayor a menor)
+        zonas_ordenadas = sorted(zonas, key=calcular_utilidad_neta_zona, reverse=True)
+
         return {
             'escenario_id': escenario_id,
             'escenario_nombre': escenario.nombre,
             'marca_id': marca_id,
             'marca_nombre': marca.nombre,
-            'zonas': [_serializar_pyg_zona(z) for z in zonas],
-            'total_zonas': len(zonas),
+            'zonas': [_serializar_pyg_zona(z) for z in zonas_ordenadas],
+            'total_zonas': len(zonas_ordenadas),
             'ventas_mensuales': ventas_mensuales,
             'configuracion_descuentos': config_descuentos,
             'tasa_impuesto_renta': tasa_impuesto,
