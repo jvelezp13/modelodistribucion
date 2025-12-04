@@ -1854,120 +1854,280 @@ def diagnostico_personal_detallado(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/api/diagnostico/lejanias-logisticas")
-def diagnostico_lejanias_logisticas(
+@app.get("/api/diagnostico/comparar-pyg")
+def diagnostico_comparar_pyg(
     escenario_id: int,
     marca_id: str
 ) -> Dict[str, Any]:
     """
-    Diagnóstico que compara P&G Detallado vs P&G Zonas para costos logísticos.
+    Diagnóstico completo que compara P&G Detallado vs P&G Zonas.
+    Calcula ambos usando la misma lógica y muestra diferencias.
     """
     try:
-        from core.models import Escenario, Marca, Zona, GastoLogistico, Vehiculo
+        from core.models import (
+            Escenario, Marca, Zona, Vehiculo,
+            PersonalComercial, PersonalLogistico, PersonalAdministrativo,
+            GastoComercial, GastoLogistico, GastoAdministrativo
+        )
         from core.calculator_lejanias import CalculadoraLejanias
+        from api.pyg_service import calcular_pyg_zona
         from decimal import Decimal
 
         escenario = Escenario.objects.get(pk=escenario_id)
         marca = Marca.objects.get(marca_id=marca_id)
 
-        # === P&G DETALLADO: Cómo calcula Flota de Vehículos ===
-        # Obtener vehículos de la marca
-        vehiculos = Vehiculo.objects.filter(escenario=escenario, marca=marca)
-        flota_detallado = Decimal('0')
-        flota_desglose = []
-        for v in vehiculos:
-            costo_vehiculo = Decimal('0')
-            if v.esquema == 'renting':
-                costo_vehiculo = v.canon_renting * v.cantidad
-            elif v.esquema == 'tradicional':
-                if v.vida_util_anios > 0:
-                    depreciacion = (v.costo_compra - v.valor_residual) / (v.vida_util_anios * 12)
-                else:
-                    depreciacion = Decimal('0')
-                costo_vehiculo = (depreciacion + v.costo_mantenimiento_mensual + v.costo_seguro_mensual) * v.cantidad
-            # Costos comunes
-            costo_vehiculo += (v.costo_lavado_mensual + v.costo_parqueadero_mensual +
-                             v.costo_monitoreo_mensual + v.costo_seguro_mercancia_mensual) * v.cantidad
-            flota_detallado += costo_vehiculo
-            flota_desglose.append({
-                'nombre': v.nombre or f'{v.tipo_vehiculo}',
-                'esquema': v.esquema,
-                'cantidad': v.cantidad,
-                'costo_mensual': float(costo_vehiculo)
+        # =====================================================================
+        # P&G DETALLADO - Calcular como lo hace el frontend PyGDetallado.tsx
+        # =====================================================================
+
+        # --- COMERCIAL ---
+        personal_comercial = Decimal('0')
+        personal_comercial_items = []
+        for p in PersonalComercial.objects.filter(escenario=escenario, marca=marca):
+            costo = Decimal(str(p.calcular_costo_mensual()))
+            personal_comercial += costo
+            personal_comercial_items.append({
+                'nombre': p.nombre or p.tipo,
+                'cantidad': p.cantidad,
+                'costo': float(costo)
             })
 
-        # Calcular lejanías usando CalculadoraLejanias (incluye flete_base de rutas)
+        gastos_comercial = Decimal('0')
+        gastos_comercial_items = []
+        for g in GastoComercial.objects.filter(escenario=escenario, marca=marca):
+            # Excluir lejanías (se calculan aparte)
+            if g.nombre.startswith('Combustible Lejanía') or g.nombre.startswith('Viáticos Pernocta'):
+                continue
+            gastos_comercial += g.valor_mensual
+            gastos_comercial_items.append({
+                'nombre': g.nombre,
+                'valor': float(g.valor_mensual)
+            })
+
+        # Lejanías comerciales
         calc = CalculadoraLejanias(escenario)
-        lejanias_marca = calc.calcular_lejanias_logisticas_marca(marca)
+        lejanias_comercial = Decimal('0')
+        zonas = Zona.objects.filter(escenario=escenario, marca=marca, activo=True)
+        for zona in zonas:
+            lej = calc.calcular_lejania_comercial_zona(zona)
+            lejanias_comercial += lej['total_mensual']
 
-        # En P&G Detallado: Flota incluye flete_base de terceros
-        flete_base_rutas = float(lejanias_marca['total_flete_base_mensual'])
-        flota_total_detallado = float(flota_detallado) + flete_base_rutas
+        total_comercial = personal_comercial + gastos_comercial + lejanias_comercial
 
-        # Lejanías en Detallado = combustible + peajes + pernocta
-        lejanias_detallado = (
-            float(lejanias_marca['total_combustible_mensual']) +
-            float(lejanias_marca['total_peaje_mensual']) +
-            float(lejanias_marca['total_pernocta_mensual'])
+        # --- LOGÍSTICO ---
+        personal_logistico = Decimal('0')
+        personal_logistico_items = []
+        for p in PersonalLogistico.objects.filter(escenario=escenario, marca=marca):
+            costo = Decimal(str(p.calcular_costo_mensual()))
+            personal_logistico += costo
+            personal_logistico_items.append({
+                'nombre': p.nombre or p.tipo,
+                'cantidad': p.cantidad,
+                'costo': float(costo)
+            })
+
+        # Flota de vehículos (desde tabla Vehiculo)
+        flota_vehiculos = Decimal('0')
+        flota_items = []
+        for v in Vehiculo.objects.filter(escenario=escenario, marca=marca):
+            costo_v = Decimal('0')
+            if v.esquema == 'renting':
+                costo_v = v.canon_renting * v.cantidad
+            elif v.esquema == 'tradicional':
+                if v.vida_util_anios > 0:
+                    dep = (v.costo_compra - v.valor_residual) / (v.vida_util_anios * 12)
+                    costo_v = dep * v.cantidad
+                costo_v += (v.costo_mantenimiento_mensual + v.costo_seguro_mensual) * v.cantidad
+            # Costos comunes a todos
+            if v.esquema in ['renting', 'tradicional']:
+                costo_v += (v.costo_lavado_mensual + v.costo_parqueadero_mensual) * v.cantidad
+            costo_v += (v.costo_monitoreo_mensual + v.costo_seguro_mercancia_mensual) * v.cantidad
+            flota_vehiculos += costo_v
+            flota_items.append({
+                'nombre': v.nombre or v.tipo_vehiculo,
+                'esquema': v.esquema,
+                'cantidad': v.cantidad,
+                'costo': float(costo_v)
+            })
+
+        # Flete base de rutas (terceros)
+        lejanias_log = calc.calcular_lejanias_logisticas_marca(marca)
+        flete_base = lejanias_log['total_flete_base_mensual']
+        flota_total = flota_vehiculos + flete_base
+
+        # Gastos logísticos (excluyendo rutas y flota)
+        gastos_logistico = Decimal('0')
+        gastos_logistico_items = []
+        for g in GastoLogistico.objects.filter(escenario=escenario, marca=marca):
+            nombre = g.nombre or ''
+            # Excluir lejanías y flota
+            if (nombre.startswith('Combustible - ') or nombre.startswith('Peajes - ') or
+                nombre.startswith('Viáticos Ruta - ') or nombre.startswith('Flete Base Tercero - ')):
+                continue
+            if g.tipo in ['canon_renting', 'depreciacion_vehiculo', 'mantenimiento_vehiculos',
+                         'lavado_vehiculos', 'parqueadero_vehiculos', 'monitoreo_satelital']:
+                continue
+            if nombre in ['Canon Renting Flota', 'Depreciación Flota Propia', 'Mantenimiento Flota Propia',
+                         'Seguros Flota Propia', 'Aseo y Limpieza Vehículos', 'Parqueaderos',
+                         'Monitoreo Satelital (GPS)', 'Seguro de Mercancía']:
+                continue
+            gastos_logistico += g.valor_mensual
+            gastos_logistico_items.append({
+                'nombre': nombre,
+                'valor': float(g.valor_mensual)
+            })
+
+        # Lejanías logísticas (sin flete)
+        lejanias_logistico = (
+            lejanias_log['total_combustible_mensual'] +
+            lejanias_log['total_peaje_mensual'] +
+            lejanias_log['total_pernocta_mensual']
         )
 
-        # === P&G ZONAS: Cómo calcula ===
-        zonas = Zona.objects.filter(escenario=escenario, marca=marca, activo=True)
+        total_logistico = flota_total + personal_logistico + gastos_logistico + lejanias_logistico
+
+        # --- ADMINISTRATIVO ---
+        personal_admin = Decimal('0')
+        for p in PersonalAdministrativo.objects.filter(escenario=escenario, marca=marca):
+            personal_admin += Decimal(str(p.calcular_costo_mensual()))
+
+        gastos_admin = Decimal('0')
+        for g in GastoAdministrativo.objects.filter(escenario=escenario, marca=marca):
+            gastos_admin += g.valor_mensual
+
+        total_admin = personal_admin + gastos_admin
+
+        # =====================================================================
+        # P&G ZONAS - Calcular sumando todas las zonas
+        # =====================================================================
+        zonas_pyg = []
+        zonas_totales = {
+            'comercial_personal': Decimal('0'),
+            'comercial_gastos': Decimal('0'),
+            'comercial_lejanias': Decimal('0'),
+            'logistico_personal': Decimal('0'),
+            'logistico_gastos': Decimal('0'),
+            'logistico_lejanias': Decimal('0'),
+            'admin_personal': Decimal('0'),
+            'admin_gastos': Decimal('0'),
+        }
+
+        for zona in zonas:
+            pyg_zona = calcular_pyg_zona(escenario, zona)
+            zonas_pyg.append({
+                'nombre': zona.nombre,
+                'participacion': float(zona.participacion_ventas or 0),
+                'comercial': float(pyg_zona['comercial']['total']),
+                'logistico': float(pyg_zona['logistico']['total']),
+                'administrativo': float(pyg_zona['administrativo']['total']),
+                'total': float(pyg_zona['total_mensual'])
+            })
+            zonas_totales['comercial_personal'] += pyg_zona['comercial']['personal']
+            zonas_totales['comercial_gastos'] += pyg_zona['comercial']['gastos']
+            zonas_totales['comercial_lejanias'] += pyg_zona['comercial'].get('lejanias', Decimal('0'))
+            zonas_totales['logistico_personal'] += pyg_zona['logistico']['personal']
+            zonas_totales['logistico_gastos'] += pyg_zona['logistico']['gastos']
+            zonas_totales['logistico_lejanias'] += pyg_zona['logistico'].get('lejanias', Decimal('0'))
+            zonas_totales['admin_personal'] += pyg_zona['administrativo']['personal']
+            zonas_totales['admin_gastos'] += pyg_zona['administrativo']['gastos']
+
         suma_participaciones = sum(float(z.participacion_ventas or 0) for z in zonas)
 
-        # Lejanías en Zonas = total_mensual (incluye flete) × participación
-        lejanias_zonas = float(lejanias_marca['total_mensual']) * (suma_participaciones / 100)
+        # =====================================================================
+        # COMPARACIÓN
+        # =====================================================================
+        detallado = {
+            'comercial': {
+                'personal': float(personal_comercial),
+                'gastos': float(gastos_comercial),
+                'lejanias': float(lejanias_comercial),
+                'total': float(total_comercial)
+            },
+            'logistico': {
+                'flota': float(flota_total),
+                'personal': float(personal_logistico),
+                'gastos': float(gastos_logistico),
+                'lejanias': float(lejanias_logistico),
+                'total': float(total_logistico)
+            },
+            'administrativo': {
+                'personal': float(personal_admin),
+                'gastos': float(gastos_admin),
+                'total': float(total_admin)
+            },
+            'total': float(total_comercial + total_logistico + total_admin)
+        }
 
-        # Gastos (excluyendo rutas)
-        gastos_db = GastoLogistico.objects.filter(escenario=escenario, marca=marca)
-        gastos_otros = sum(
-            float(g.valor_mensual) for g in gastos_db
-            if not (g.nombre.startswith('Combustible - ') or
-                   g.nombre.startswith('Peajes - ') or
-                   g.nombre.startswith('Viáticos Ruta - ') or
-                   g.nombre.startswith('Flete Base Tercero - '))
-        )
+        # En P&G Zonas, la flota está incluida en lejanías logísticas
+        # porque _calcular_lejanias_zona incluye los costos fijos de vehículos
+        zonas_sum = {
+            'comercial': {
+                'personal': float(zonas_totales['comercial_personal']),
+                'gastos': float(zonas_totales['comercial_gastos']),
+                'lejanias': float(zonas_totales['comercial_lejanias']),
+                'total': float(zonas_totales['comercial_personal'] + zonas_totales['comercial_gastos'] + zonas_totales['comercial_lejanias'])
+            },
+            'logistico': {
+                'flota': 0,  # En zonas, flota está incluida en lejanías
+                'personal': float(zonas_totales['logistico_personal']),
+                'gastos': float(zonas_totales['logistico_gastos']),
+                'lejanias': float(zonas_totales['logistico_lejanias']),
+                'total': float(zonas_totales['logistico_personal'] + zonas_totales['logistico_gastos'] + zonas_totales['logistico_lejanias'])
+            },
+            'administrativo': {
+                'personal': float(zonas_totales['admin_personal']),
+                'gastos': float(zonas_totales['admin_gastos']),
+                'total': float(zonas_totales['admin_personal'] + zonas_totales['admin_gastos'])
+            },
+            'total': float(sum(z['total'] for z in zonas_pyg))
+        }
+
+        # Calcular diferencias
+        def calc_diff(d, z):
+            return {k: round(d.get(k, 0) - z.get(k, 0), 2) for k in set(d.keys()) | set(z.keys())}
+
+        diferencias = {
+            'comercial': calc_diff(detallado['comercial'], zonas_sum['comercial']),
+            'logistico': calc_diff(detallado['logistico'], zonas_sum['logistico']),
+            'administrativo': calc_diff(detallado['administrativo'], zonas_sum['administrativo']),
+            'total': round(detallado['total'] - zonas_sum['total'], 2)
+        }
+
+        # Alertas de discrepancias significativas (> $1000)
+        alertas = []
+        for cat in ['comercial', 'logistico', 'administrativo']:
+            for key, diff in diferencias[cat].items():
+                if abs(diff) > 1000:
+                    alertas.append({
+                        'categoria': cat,
+                        'campo': key,
+                        'diferencia': diff,
+                        'valor_detallado': detallado[cat].get(key, 0),
+                        'valor_zonas': zonas_sum[cat].get(key, 0)
+                    })
 
         return {
-            'comparacion': {
-                'pyg_detallado': {
-                    'flota_vehiculos': 56305500,  # Valor de tu imagen
-                    'personal': 40491647,
-                    'gastos': 11901833,
-                    'lejanias': 23159438,
-                    'total': 131858418
-                },
-                'pyg_zonas_actual': {
-                    'personal': 40493708,
-                    'gastos': 11902032,
-                    'lejanias': 78374775,
-                    'total': 130770515
-                },
-                'diferencia_total': 131858418 - 130770515
+            'escenario': escenario.nombre,
+            'marca': marca.nombre,
+            'suma_participaciones': suma_participaciones,
+            'pyg_detallado': detallado,
+            'pyg_zonas': zonas_sum,
+            'diferencias': diferencias,
+            'alertas': alertas,
+            'desglose': {
+                'flota_items': flota_items,
+                'flete_base': float(flete_base),
+                'lejanias_log_desglose': {
+                    'combustible': float(lejanias_log['total_combustible_mensual']),
+                    'peajes': float(lejanias_log['total_peaje_mensual']),
+                    'pernocta': float(lejanias_log['total_pernocta_mensual'])
+                }
             },
-            'analisis': {
-                'flota_desde_vehiculos': float(flota_detallado),
-                'flete_base_desde_rutas': flete_base_rutas,
-                'flota_total_calculada': flota_total_detallado,
-                'flota_en_pyg_detallado': 56305500,
-                'diferencia_flota': flota_total_detallado - 56305500,
-                'lejanias_calculadas': lejanias_detallado,
-                'lejanias_en_pyg_detallado': 23159438,
-                'diferencia_lejanias': lejanias_detallado - 23159438,
-            },
-            'desglose_flota': flota_desglose,
-            'lejanias_rutas': {
-                'flete_base': flete_base_rutas,
-                'combustible': float(lejanias_marca['total_combustible_mensual']),
-                'peajes': float(lejanias_marca['total_peaje_mensual']),
-                'pernocta': float(lejanias_marca['total_pernocta_mensual']),
-                'total': float(lejanias_marca['total_mensual'])
-            },
-            'suma_participaciones': suma_participaciones
+            'zonas_detalle': zonas_pyg
         }
 
     except Exception as e:
-        logger.error(f"Error en diagnóstico lejanías: {e}")
+        logger.error(f"Error en diagnóstico comparar P&G: {e}")
         import traceback
         raise HTTPException(status_code=500, detail=f"{str(e)}\n{traceback.format_exc()}")
 

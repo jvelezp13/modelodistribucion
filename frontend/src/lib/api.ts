@@ -396,6 +396,18 @@ class APIClient {
       `/api/diagnostico/personal-detallado?escenario_id=${escenarioId}&marca_id=${marcaId}`
     );
   }
+
+  /**
+   * Obtiene comparación completa P&G Detallado vs P&G Zonas
+   */
+  async obtenerComparacionPyG(
+    escenarioId: number,
+    marcaId: string
+  ): Promise<ComparacionPyGResponse> {
+    return this.request<ComparacionPyGResponse>(
+      `/api/diagnostico/comparar-pyg?escenario_id=${escenarioId}&marca_id=${marcaId}`
+    );
+  }
 }
 
 // Interfaz para respuesta de tasa de renta
@@ -542,6 +554,51 @@ export interface DiagnosticoPersonalResponse {
   comercial: CategoriaResumen;
   logistico: CategoriaResumen;
   administrativo: CategoriaResumen;
+}
+
+// Interfaz para comparación P&G Detallado vs Zonas
+export interface ComparacionPyGResponse {
+  escenario: string;
+  marca: string;
+  suma_participaciones: number;
+  pyg_detallado: {
+    comercial: { personal: number; gastos: number; lejanias: number; total: number };
+    logistico: { flota: number; personal: number; gastos: number; lejanias: number; total: number };
+    administrativo: { personal: number; gastos: number; total: number };
+    total: number;
+  };
+  pyg_zonas: {
+    comercial: { personal: number; gastos: number; lejanias: number; total: number };
+    logistico: { flota: number; personal: number; gastos: number; lejanias: number; total: number };
+    administrativo: { personal: number; gastos: number; total: number };
+    total: number;
+  };
+  diferencias: {
+    comercial: Record<string, number>;
+    logistico: Record<string, number>;
+    administrativo: Record<string, number>;
+    total: number;
+  };
+  alertas: Array<{
+    categoria: string;
+    campo: string;
+    diferencia: number;
+    valor_detallado: number;
+    valor_zonas: number;
+  }>;
+  desglose: {
+    flota_items: Array<{ nombre: string; esquema: string; cantidad: number; costo: number }>;
+    flete_base: number;
+    lejanias_log_desglose: { combustible: number; peajes: number; pernocta: number };
+  };
+  zonas_detalle: Array<{
+    nombre: string;
+    participacion: number;
+    comercial: number;
+    logistico: number;
+    administrativo: number;
+    total: number;
+  }>;
 }
 
 export const apiClient = new APIClient();

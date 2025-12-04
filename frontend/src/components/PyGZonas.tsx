@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { apiClient, PyGZonasResponse, PyGZona, MESES, getMesActual, VentasMensualesDesglose, DiagnosticoPersonalResponse } from '@/lib/api';
-import { ChevronDown, ChevronRight, MapPin, TrendingUp, TrendingDown, Users, Truck, Building2, Calendar, DollarSign, Percent, AlertTriangle } from 'lucide-react';
+import { apiClient, PyGZonasResponse, PyGZona, MESES, getMesActual, VentasMensualesDesglose, DiagnosticoPersonalResponse, ComparacionPyGResponse } from '@/lib/api';
+import { ChevronDown, ChevronRight, MapPin, TrendingUp, TrendingDown, Users, Truck, Building2, Calendar, DollarSign, Percent, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 
 interface PyGZonasProps {
   escenarioId: number;
@@ -17,6 +17,7 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
   const [expandedZonas, setExpandedZonas] = useState<Set<number>>(new Set());
   const [mesSeleccionado, setMesSeleccionado] = useState<string>(getMesActual());
   const [diagnostico, setDiagnostico] = useState<DiagnosticoPersonalResponse | null>(null);
+  const [comparacion, setComparacion] = useState<ComparacionPyGResponse | null>(null);
   const [showDiagnostico, setShowDiagnostico] = useState(true);
   const [expandedCategoria, setExpandedCategoria] = useState<string | null>(null);
 
@@ -27,12 +28,14 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
       setLoading(true);
       setError(null);
       try {
-        const [zonasResponse, diagResponse] = await Promise.all([
+        const [zonasResponse, diagResponse, comparacionResponse] = await Promise.all([
           apiClient.obtenerPyGZonas(escenarioId, marcaId),
-          apiClient.obtenerDiagnosticoPersonal(escenarioId, marcaId)
+          apiClient.obtenerDiagnosticoPersonal(escenarioId, marcaId),
+          apiClient.obtenerComparacionPyG(escenarioId, marcaId)
         ]);
         setData(zonasResponse);
         setDiagnostico(diagResponse);
+        setComparacion(comparacionResponse);
       } catch (err) {
         console.error('Error cargando P&G por zonas:', err);
         setError('Error al cargar los datos de P&G por zonas');
@@ -301,277 +304,229 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
           </div>
         </div>
 
-        {/* Panel de Diagnóstico - Subtotales detallados para comparar con P&G Detallado */}
-        {showDiagnostico && (
-        <div className="p-4 bg-amber-50 border-b border-amber-200">
+        {/* Panel de Diagnóstico - Comparación P&G Detallado vs P&G Zonas */}
+        {showDiagnostico && comparacion && (
+        <div className="p-4 bg-slate-50 border-b border-slate-200">
           <div className="flex justify-between items-center mb-3">
-            <h4 className="text-xs font-semibold text-amber-800 flex items-center gap-2">
-              <AlertTriangle size={14} />
-              <span className="px-2 py-0.5 bg-amber-200 rounded text-[10px]">DIAGNÓSTICO</span>
-              Subtotales para validación vs P&G Detallado
+            <h4 className="text-xs font-semibold text-slate-800 flex items-center gap-2">
+              {comparacion.alertas.length === 0 ? (
+                <CheckCircle size={14} className="text-green-600" />
+              ) : (
+                <AlertTriangle size={14} className="text-amber-600" />
+              )}
+              <span className={`px-2 py-0.5 rounded text-[10px] ${comparacion.alertas.length === 0 ? 'bg-green-200 text-green-800' : 'bg-amber-200 text-amber-800'}`}>
+                {comparacion.alertas.length === 0 ? 'VALIDADO' : 'DIFERENCIAS'}
+              </span>
+              Comparación P&G Detallado vs P&G Zonas
             </h4>
             <button
               onClick={() => setShowDiagnostico(false)}
-              className="text-[10px] text-amber-600 hover:text-amber-800"
+              className="text-[10px] text-slate-600 hover:text-slate-800"
             >
               Ocultar
             </button>
           </div>
 
-          {/* Info de zonas */}
-          {diagnostico && (
-            <div className="mb-3 p-2 bg-white rounded border border-amber-200 text-[10px]">
-              <span className="font-medium text-gray-700">Zonas:</span>{' '}
-              <span className="text-gray-600">{diagnostico.zonas.cantidad} zonas |</span>{' '}
-              <span className="text-gray-600">Suma participaciones: </span>
-              <span className={diagnostico.zonas.suma_participaciones === 100 ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
-                {diagnostico.zonas.suma_participaciones.toFixed(1)}%
-              </span>
-              {diagnostico.zonas.suma_participaciones !== 100 && (
-                <span className="text-red-600 ml-1">(Debería ser 100%)</span>
-              )}
+          {/* Alertas si hay diferencias */}
+          {comparacion.alertas.length > 0 && (
+            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded">
+              <div className="text-[10px] font-semibold text-amber-800 mb-2 flex items-center gap-1">
+                <AlertTriangle size={12} />
+                {comparacion.alertas.length} diferencia(s) detectada(s) (&gt;$1,000)
+              </div>
+              <div className="space-y-1">
+                {comparacion.alertas.map((alerta, idx) => (
+                  <div key={idx} className="text-[10px] flex items-center gap-2 text-amber-700">
+                    <XCircle size={10} className="text-red-500 flex-shrink-0" />
+                    <span className="font-medium">{alerta.categoria} → {alerta.campo}:</span>
+                    <span>Detallado: {formatCurrency(alerta.valor_detallado)}</span>
+                    <span>vs Zonas: {formatCurrency(alerta.valor_zonas)}</span>
+                    <span className={`font-bold ${alerta.diferencia > 0 ? 'text-red-600' : 'text-blue-600'}`}>
+                      ({alerta.diferencia > 0 ? '+' : ''}{formatCurrency(alerta.diferencia)})
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
-          <div className="grid grid-cols-3 gap-4 text-xs">
-            {/* Comercial */}
-            <div className="bg-white rounded border border-amber-200 p-3">
-              <div
-                className="font-semibold text-gray-700 mb-2 flex items-center justify-between cursor-pointer"
-                onClick={() => setExpandedCategoria(expandedCategoria === 'comercial' ? null : 'comercial')}
-              >
-                <div className="flex items-center gap-1">
-                  <Users size={12} />
-                  COSTOS COMERCIALES
-                </div>
-                {expandedCategoria === 'comercial' ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-              </div>
-              <div className="space-y-1">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Personal Comercial:</span>
-                  <span className="font-medium">{formatCurrency(totales.comercialPersonal)}</span>
-                </div>
-                {diagnostico && diagnostico.comercial.personal.diferencia > 0 && (
-                  <div className="flex justify-between text-red-600">
-                    <span className="text-[10px]">No distribuido:</span>
-                    <span className="text-[10px] font-medium">-{formatCurrency(diagnostico.comercial.personal.diferencia)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Gastos Comerciales:</span>
-                  <span className="font-medium">{formatCurrency(totales.comercialGastos)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Lejanías Comerciales:</span>
-                  <span className="font-medium text-orange-600">{formatCurrency(totales.comercialLejanias)}</span>
-                </div>
-                <div className="flex justify-between border-t border-gray-200 pt-1 mt-1">
-                  <span className="font-semibold text-gray-700">Total Comercial:</span>
-                  <span className="font-bold text-gray-900">{formatCurrency(totales.comercial)}</span>
-                </div>
-              </div>
+          {/* Tabla comparativa lado a lado */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-[10px] border-collapse">
+              <thead>
+                <tr className="bg-slate-200">
+                  <th className="text-left px-2 py-1.5 font-semibold text-slate-700 border border-slate-300">Categoría / Campo</th>
+                  <th className="text-right px-2 py-1.5 font-semibold text-blue-700 border border-slate-300 bg-blue-50">P&G Detallado</th>
+                  <th className="text-right px-2 py-1.5 font-semibold text-green-700 border border-slate-300 bg-green-50">P&G Zonas</th>
+                  <th className="text-right px-2 py-1.5 font-semibold text-slate-700 border border-slate-300">Diferencia</th>
+                  <th className="text-center px-2 py-1.5 font-semibold text-slate-700 border border-slate-300">Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {/* COMERCIAL */}
+                <tr className="bg-slate-100">
+                  <td colSpan={5} className="px-2 py-1 font-bold text-slate-700 border border-slate-300">
+                    <div className="flex items-center gap-1">
+                      <Users size={10} />
+                      COMERCIAL
+                    </div>
+                  </td>
+                </tr>
+                <FilaComparativa
+                  label="Personal"
+                  detallado={comparacion.pyg_detallado.comercial.personal}
+                  zonas={comparacion.pyg_zonas.comercial.personal}
+                  diferencia={comparacion.diferencias.comercial.personal}
+                  formatCurrency={formatCurrency}
+                />
+                <FilaComparativa
+                  label="Gastos"
+                  detallado={comparacion.pyg_detallado.comercial.gastos}
+                  zonas={comparacion.pyg_zonas.comercial.gastos}
+                  diferencia={comparacion.diferencias.comercial.gastos}
+                  formatCurrency={formatCurrency}
+                />
+                <FilaComparativa
+                  label="Lejanías"
+                  detallado={comparacion.pyg_detallado.comercial.lejanias}
+                  zonas={comparacion.pyg_zonas.comercial.lejanias}
+                  diferencia={comparacion.diferencias.comercial.lejanias}
+                  formatCurrency={formatCurrency}
+                />
+                <FilaComparativa
+                  label="TOTAL COMERCIAL"
+                  detallado={comparacion.pyg_detallado.comercial.total}
+                  zonas={comparacion.pyg_zonas.comercial.total}
+                  diferencia={comparacion.diferencias.comercial.total}
+                  formatCurrency={formatCurrency}
+                  isTotal
+                />
 
-              {/* Detalle expandido del personal comercial */}
-              {expandedCategoria === 'comercial' && diagnostico && (
-                <div className="mt-3 pt-3 border-t border-amber-200">
-                  <div className="text-[10px] font-medium text-gray-600 mb-2">Detalle Personal ({diagnostico.comercial.personal.items.length}):</div>
-                  <div className="space-y-1 max-h-60 overflow-y-auto">
-                    {diagnostico.comercial.personal.items.map((item, idx) => (
-                      <div key={idx} className={`text-[10px] p-1.5 rounded ${item.perdido > 0 ? 'bg-red-50' : 'bg-gray-50'}`}>
-                        <div className="flex justify-between">
-                          <span className="font-medium text-gray-700">{item.nombre}</span>
-                          <span className="font-medium">{formatCurrency(item.costo_total)}</span>
-                        </div>
-                        <div className="flex justify-between text-gray-400 text-[9px]">
-                          <span>Base: {formatCurrency(item.salario_base)} | Unit: {formatCurrency(item.costo_unitario)}</span>
-                        </div>
-                        <div className="flex justify-between text-gray-500">
-                          <span>{item.asignacion} → {item.zona_destino}</span>
-                          {item.perdido > 0 && (
-                            <span className="text-red-600">-{formatCurrency(item.perdido)}</span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-2 pt-2 border-t border-gray-200 text-[10px]">
-                    <div className="flex justify-between">
-                      <span>Total costo:</span>
-                      <span className="font-medium">{formatCurrency(diagnostico.comercial.personal.total_costo)}</span>
+                {/* LOGÍSTICO */}
+                <tr className="bg-slate-100">
+                  <td colSpan={5} className="px-2 py-1 font-bold text-slate-700 border border-slate-300">
+                    <div className="flex items-center gap-1">
+                      <Truck size={10} />
+                      LOGÍSTICO
                     </div>
-                    <div className="flex justify-between">
-                      <span>Total distribuido:</span>
-                      <span className="font-medium">{formatCurrency(diagnostico.comercial.personal.total_distribuido)}</span>
+                  </td>
+                </tr>
+                <FilaComparativa
+                  label="Personal"
+                  detallado={comparacion.pyg_detallado.logistico.personal}
+                  zonas={comparacion.pyg_zonas.logistico.personal}
+                  diferencia={comparacion.diferencias.logistico.personal}
+                  formatCurrency={formatCurrency}
+                />
+                <FilaComparativa
+                  label="Gastos"
+                  detallado={comparacion.pyg_detallado.logistico.gastos}
+                  zonas={comparacion.pyg_zonas.logistico.gastos}
+                  diferencia={comparacion.diferencias.logistico.gastos}
+                  formatCurrency={formatCurrency}
+                />
+                {/* En Detallado: Flota + Lejanías. En Zonas: todo en Lejanías */}
+                <tr>
+                  <td className="px-2 py-1 border border-slate-300 pl-6 text-gray-700">
+                    Flota + Lejanías<br/>
+                    <span className="text-[9px] text-gray-400">(Detallado separa, Zonas agrupa)</span>
+                  </td>
+                  <td className="text-right px-2 py-1 border border-slate-300 bg-blue-50/50">
+                    <div>{formatCurrency(comparacion.pyg_detallado.logistico.flota)}</div>
+                    <div className="text-gray-400">+ {formatCurrency(comparacion.pyg_detallado.logistico.lejanias)}</div>
+                    <div className="border-t border-gray-300 mt-0.5 pt-0.5 font-medium">
+                      = {formatCurrency(comparacion.pyg_detallado.logistico.flota + comparacion.pyg_detallado.logistico.lejanias)}
                     </div>
-                    {diagnostico.comercial.personal.diferencia > 0 && (
-                      <div className="flex justify-between text-red-600 font-medium">
-                        <span>Diferencia (no distribuido):</span>
-                        <span>{formatCurrency(diagnostico.comercial.personal.diferencia)}</span>
-                      </div>
+                  </td>
+                  <td className="text-right px-2 py-1 border border-slate-300 bg-green-50/50 font-medium">
+                    {formatCurrency(comparacion.pyg_zonas.logistico.lejanias)}
+                  </td>
+                  <td className={`text-right px-2 py-1 border border-slate-300 ${
+                    Math.abs((comparacion.pyg_detallado.logistico.flota + comparacion.pyg_detallado.logistico.lejanias) - comparacion.pyg_zonas.logistico.lejanias) < 1000
+                      ? 'text-gray-500' : 'text-red-600 font-medium'
+                  }`}>
+                    {(() => {
+                      const diff = (comparacion.pyg_detallado.logistico.flota + comparacion.pyg_detallado.logistico.lejanias) - comparacion.pyg_zonas.logistico.lejanias;
+                      return diff !== 0 ? (diff > 0 ? '+' : '') + formatCurrency(diff) : '-';
+                    })()}
+                  </td>
+                  <td className="text-center px-2 py-1 border border-slate-300">
+                    {Math.abs((comparacion.pyg_detallado.logistico.flota + comparacion.pyg_detallado.logistico.lejanias) - comparacion.pyg_zonas.logistico.lejanias) < 1000 ? (
+                      <CheckCircle size={12} className="text-green-500 mx-auto" />
+                    ) : (
+                      <XCircle size={12} className="text-red-500 mx-auto" />
                     )}
-                  </div>
-                </div>
-              )}
-            </div>
+                  </td>
+                </tr>
+                <FilaComparativa
+                  label="TOTAL LOGÍSTICO"
+                  detallado={comparacion.pyg_detallado.logistico.total}
+                  zonas={comparacion.pyg_zonas.logistico.total}
+                  diferencia={comparacion.diferencias.logistico.total}
+                  formatCurrency={formatCurrency}
+                  isTotal
+                />
 
-            {/* Logístico */}
-            <div className="bg-white rounded border border-amber-200 p-3">
-              <div
-                className="font-semibold text-gray-700 mb-2 flex items-center justify-between cursor-pointer"
-                onClick={() => setExpandedCategoria(expandedCategoria === 'logistico' ? null : 'logistico')}
-              >
-                <div className="flex items-center gap-1">
-                  <Truck size={12} />
-                  COSTOS LOGÍSTICOS
-                </div>
-                {expandedCategoria === 'logistico' ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-              </div>
-              <div className="space-y-1">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Personal Logístico:</span>
-                  <span className="font-medium">{formatCurrency(totales.logisticoPersonal)}</span>
-                </div>
-                {diagnostico && diagnostico.logistico.personal.diferencia > 0 && (
-                  <div className="flex justify-between text-red-600">
-                    <span className="text-[10px]">No distribuido:</span>
-                    <span className="text-[10px] font-medium">-{formatCurrency(diagnostico.logistico.personal.diferencia)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Gastos Logísticos:</span>
-                  <span className="font-medium">{formatCurrency(totales.logisticoGastos)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Lejanías Logísticas:</span>
-                  <span className="font-medium text-orange-600">{formatCurrency(totales.logisticoLejanias)}</span>
-                </div>
-                <div className="flex justify-between border-t border-gray-200 pt-1 mt-1">
-                  <span className="font-semibold text-gray-700">Total Logístico:</span>
-                  <span className="font-bold text-gray-900">{formatCurrency(totales.logistico)}</span>
-                </div>
-              </div>
+                {/* ADMINISTRATIVO */}
+                <tr className="bg-slate-100">
+                  <td colSpan={5} className="px-2 py-1 font-bold text-slate-700 border border-slate-300">
+                    <div className="flex items-center gap-1">
+                      <Building2 size={10} />
+                      ADMINISTRATIVO
+                    </div>
+                  </td>
+                </tr>
+                <FilaComparativa
+                  label="Personal"
+                  detallado={comparacion.pyg_detallado.administrativo.personal}
+                  zonas={comparacion.pyg_zonas.administrativo.personal}
+                  diferencia={comparacion.diferencias.administrativo.personal}
+                  formatCurrency={formatCurrency}
+                />
+                <FilaComparativa
+                  label="Gastos"
+                  detallado={comparacion.pyg_detallado.administrativo.gastos}
+                  zonas={comparacion.pyg_zonas.administrativo.gastos}
+                  diferencia={comparacion.diferencias.administrativo.gastos}
+                  formatCurrency={formatCurrency}
+                />
+                <FilaComparativa
+                  label="TOTAL ADMINISTRATIVO"
+                  detallado={comparacion.pyg_detallado.administrativo.total}
+                  zonas={comparacion.pyg_zonas.administrativo.total}
+                  diferencia={comparacion.diferencias.administrativo.total}
+                  formatCurrency={formatCurrency}
+                  isTotal
+                />
 
-              {/* Detalle expandido del personal logístico */}
-              {expandedCategoria === 'logistico' && diagnostico && (
-                <div className="mt-3 pt-3 border-t border-amber-200">
-                  <div className="text-[10px] font-medium text-gray-600 mb-2">Detalle Personal ({diagnostico.logistico.personal.items.length}):</div>
-                  <div className="space-y-1 max-h-60 overflow-y-auto">
-                    {diagnostico.logistico.personal.items.map((item, idx) => (
-                      <div key={idx} className={`text-[10px] p-1.5 rounded ${item.perdido > 0 ? 'bg-red-50' : 'bg-gray-50'}`}>
-                        <div className="flex justify-between">
-                          <span className="font-medium text-gray-700">{item.nombre}</span>
-                          <span className="font-medium">{formatCurrency(item.costo_total)}</span>
-                        </div>
-                        <div className="flex justify-between text-gray-400 text-[9px]">
-                          <span>Base: {formatCurrency(item.salario_base)} | Unit: {formatCurrency(item.costo_unitario)}</span>
-                        </div>
-                        <div className="flex justify-between text-gray-500">
-                          <span>{item.asignacion} → {item.zona_destino}</span>
-                          {item.perdido > 0 && (
-                            <span className="text-red-600">-{formatCurrency(item.perdido)}</span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-2 pt-2 border-t border-gray-200 text-[10px]">
-                    <div className="flex justify-between">
-                      <span>Total costo:</span>
-                      <span className="font-medium">{formatCurrency(diagnostico.logistico.personal.total_costo)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Total distribuido:</span>
-                      <span className="font-medium">{formatCurrency(diagnostico.logistico.personal.total_distribuido)}</span>
-                    </div>
-                    {diagnostico.logistico.personal.diferencia > 0 && (
-                      <div className="flex justify-between text-red-600 font-medium">
-                        <span>Diferencia (no distribuido):</span>
-                        <span>{formatCurrency(diagnostico.logistico.personal.diferencia)}</span>
-                      </div>
+                {/* TOTAL GENERAL */}
+                <tr className="bg-slate-300">
+                  <td className="px-2 py-2 font-bold text-slate-800 border border-slate-400">TOTAL GENERAL</td>
+                  <td className="text-right px-2 py-2 font-bold text-blue-800 border border-slate-400 bg-blue-100">
+                    {formatCurrency(comparacion.pyg_detallado.total)}
+                  </td>
+                  <td className="text-right px-2 py-2 font-bold text-green-800 border border-slate-400 bg-green-100">
+                    {formatCurrency(comparacion.pyg_zonas.total)}
+                  </td>
+                  <td className={`text-right px-2 py-2 font-bold border border-slate-400 ${
+                    Math.abs(comparacion.diferencias.total) < 1000 ? 'text-green-700 bg-green-50' : 'text-red-700 bg-red-50'
+                  }`}>
+                    {comparacion.diferencias.total > 0 ? '+' : ''}{formatCurrency(comparacion.diferencias.total)}
+                  </td>
+                  <td className="text-center px-2 py-2 border border-slate-400">
+                    {Math.abs(comparacion.diferencias.total) < 1000 ? (
+                      <CheckCircle size={14} className="text-green-600 mx-auto" />
+                    ) : (
+                      <XCircle size={14} className="text-red-600 mx-auto" />
                     )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Administrativo */}
-            <div className="bg-white rounded border border-amber-200 p-3">
-              <div
-                className="font-semibold text-gray-700 mb-2 flex items-center justify-between cursor-pointer"
-                onClick={() => setExpandedCategoria(expandedCategoria === 'administrativo' ? null : 'administrativo')}
-              >
-                <div className="flex items-center gap-1">
-                  <Building2 size={12} />
-                  COSTOS ADMINISTRATIVOS
-                </div>
-                {expandedCategoria === 'administrativo' ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-              </div>
-              <div className="space-y-1">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Personal Admin:</span>
-                  <span className="font-medium">{formatCurrency(totales.administrativoPersonal)}</span>
-                </div>
-                {diagnostico && diagnostico.administrativo.personal.diferencia > 0 && (
-                  <div className="flex justify-between text-red-600">
-                    <span className="text-[10px]">No distribuido:</span>
-                    <span className="text-[10px] font-medium">-{formatCurrency(diagnostico.administrativo.personal.diferencia)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Gastos Admin:</span>
-                  <span className="font-medium">{formatCurrency(totales.administrativoGastos)}</span>
-                </div>
-                <div className="flex justify-between border-t border-gray-200 pt-1 mt-1">
-                  <span className="font-semibold text-gray-700">Total Admin:</span>
-                  <span className="font-bold text-gray-900">{formatCurrency(totales.administrativo)}</span>
-                </div>
-              </div>
-
-              {/* Detalle expandido del personal administrativo */}
-              {expandedCategoria === 'administrativo' && diagnostico && (
-                <div className="mt-3 pt-3 border-t border-amber-200">
-                  <div className="text-[10px] font-medium text-gray-600 mb-2">Detalle Personal ({diagnostico.administrativo.personal.items.length}):</div>
-                  <div className="space-y-1 max-h-60 overflow-y-auto">
-                    {diagnostico.administrativo.personal.items.map((item, idx) => (
-                      <div key={idx} className={`text-[10px] p-1.5 rounded ${item.perdido > 0 ? 'bg-red-50' : 'bg-gray-50'}`}>
-                        <div className="flex justify-between">
-                          <span className="font-medium text-gray-700">{item.nombre}</span>
-                          <span className="font-medium">{formatCurrency(item.costo_total)}</span>
-                        </div>
-                        <div className="flex justify-between text-gray-400 text-[9px]">
-                          <span>Base: {formatCurrency(item.salario_base)} | Unit: {formatCurrency(item.costo_unitario)}</span>
-                        </div>
-                        <div className="flex justify-between text-gray-500">
-                          <span>{item.asignacion} → {item.zona_destino}</span>
-                          {item.perdido > 0 && (
-                            <span className="text-red-600">-{formatCurrency(item.perdido)}</span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-2 pt-2 border-t border-gray-200 text-[10px]">
-                    <div className="flex justify-between">
-                      <span>Total costo:</span>
-                      <span className="font-medium">{formatCurrency(diagnostico.administrativo.personal.total_costo)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Total distribuido:</span>
-                      <span className="font-medium">{formatCurrency(diagnostico.administrativo.personal.total_distribuido)}</span>
-                    </div>
-                    {diagnostico.administrativo.personal.diferencia > 0 && (
-                      <div className="flex justify-between text-red-600 font-medium">
-                        <span>Diferencia (no distribuido):</span>
-                        <span>{formatCurrency(diagnostico.administrativo.personal.diferencia)}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
-          <div className="mt-3 text-[10px] text-amber-700">
-            Haz clic en cada categoría para ver el detalle del personal y su distribución a zonas.
+
+          <div className="mt-3 text-[10px] text-slate-600">
+            Los valores deben coincidir entre P&G Detallado y P&G Zonas. Diferencias menores a $1,000 son tolerables por redondeo.
           </div>
         </div>
         )}
@@ -900,5 +855,44 @@ function ZonaRow({
         </tr>
       )}
     </>
+  );
+}
+
+interface FilaComparativaProps {
+  label: string;
+  detallado: number;
+  zonas: number;
+  diferencia: number;
+  formatCurrency: (value: number) => string;
+  isTotal?: boolean;
+}
+
+function FilaComparativa({ label, detallado, zonas, diferencia, formatCurrency, isTotal = false }: FilaComparativaProps) {
+  const esOk = Math.abs(diferencia) < 1000;
+
+  return (
+    <tr className={isTotal ? 'bg-slate-50 font-semibold' : ''}>
+      <td className={`px-2 py-1 border border-slate-300 ${isTotal ? 'pl-4' : 'pl-6'} text-gray-700`}>
+        {label}
+      </td>
+      <td className="text-right px-2 py-1 border border-slate-300 bg-blue-50/50">
+        {formatCurrency(detallado)}
+      </td>
+      <td className="text-right px-2 py-1 border border-slate-300 bg-green-50/50">
+        {formatCurrency(zonas)}
+      </td>
+      <td className={`text-right px-2 py-1 border border-slate-300 ${
+        esOk ? 'text-gray-500' : (diferencia > 0 ? 'text-red-600 font-medium' : 'text-blue-600 font-medium')
+      }`}>
+        {diferencia !== 0 ? (diferencia > 0 ? '+' : '') + formatCurrency(diferencia) : '-'}
+      </td>
+      <td className="text-center px-2 py-1 border border-slate-300">
+        {esOk ? (
+          <CheckCircle size={12} className="text-green-500 mx-auto" />
+        ) : (
+          <XCircle size={12} className="text-red-500 mx-auto" />
+        )}
+      </td>
+    </tr>
   );
 }
