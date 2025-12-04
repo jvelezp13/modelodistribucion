@@ -2239,10 +2239,19 @@ def diagnostico_logistico_detallado(
                 flota_zona = flota_por_zona[zona.id]['costo_flota_total']
                 detalle_vehiculos = flota_por_zona[zona.id]['detalle_vehiculos']
 
+            # Separar flete fijo de lejanías
+            flete_fijo_zona = Decimal('0')
+            lejanias_zona = Decimal('0')
+            if zona.id in costos_por_zona:
+                flete_fijo_zona = costos_por_zona[zona.id].get('flete_fijo_total', Decimal('0'))
+                lejanias_zona = costos_por_zona[zona.id].get('lejanias_total', Decimal('0'))
+
             zonas_detalle.append({
                 'zona_id': zona.id,
                 'zona_nombre': zona.nombre,
                 'participacion_ventas': float(zona.participacion_ventas or 0),
+                'flete_fijo_asignado': float(flete_fijo_zona),
+                'lejanias_asignado': float(lejanias_zona),
                 'costo_logistico_asignado': float(costo_zona),
                 'costo_flota_asignado': float(flota_zona),
                 'costo_total_asignado': float(costo_zona + flota_zona),

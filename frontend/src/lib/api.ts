@@ -676,6 +676,8 @@ export interface DiagnosticoLogisticoResponse {
     zona_id: number;
     zona_nombre: string;
     participacion_ventas: number;
+    flete_fijo_asignado: number;
+    lejanias_asignado: number;
     costo_logistico_asignado: number;
     costo_flota_asignado: number;
     costo_total_asignado: number;
@@ -683,9 +685,13 @@ export interface DiagnosticoLogisticoResponse {
       municipio_id: number;
       municipio_nombre: string;
       costo_total_municipio: number;
+      flete_fijo: number;
+      lejanias: number;
       venta_zona: number;
       venta_total: number;
       proporcion: number;
+      flete_asignado: number;
+      lejanias_asignado: number;
       costo_asignado: number;
     }>;
     vehiculos_con_costo: Array<{

@@ -738,6 +738,8 @@ class CalculadoraLejanias:
             {
                 'zona_nombre': str,
                 'costo_logistico_total': Decimal,
+                'flete_fijo_total': Decimal,
+                'lejanias_total': Decimal,
                 'detalle_municipios': [...]
             }
         """
@@ -760,6 +762,8 @@ class CalculadoraLejanias:
             costos_por_zona[zona.id] = {
                 'zona_nombre': zona.nombre,
                 'costo_logistico_total': Decimal('0'),
+                'flete_fijo_total': Decimal('0'),
+                'lejanias_total': Decimal('0'),
                 'detalle_municipios': []
             }
 
@@ -795,16 +799,33 @@ class CalculadoraLejanias:
                     # Si no hay ventas, distribuir equitativamente
                     proporcion = Decimal('1') / zonas_municipio.count()
 
-                costo_zona_municipio = costo_mun['costo_total'] * proporcion
+                # Separar flete fijo de lejanías
+                flete_fijo_municipio = Decimal(str(costo_mun['flete_total']))
+                lejanias_municipio = (
+                    Decimal(str(costo_mun['combustible_total'])) +
+                    Decimal(str(costo_mun['peaje_total'])) +
+                    Decimal(str(costo_mun['pernocta_total']))
+                )
+                costo_total_municipio = flete_fijo_municipio + lejanias_municipio
+
+                flete_zona = flete_fijo_municipio * proporcion
+                lejanias_zona = lejanias_municipio * proporcion
+                costo_zona_municipio = costo_total_municipio * proporcion
 
                 costos_por_zona[zona_id]['costo_logistico_total'] += costo_zona_municipio
+                costos_por_zona[zona_id]['flete_fijo_total'] += flete_zona
+                costos_por_zona[zona_id]['lejanias_total'] += lejanias_zona
                 costos_por_zona[zona_id]['detalle_municipios'].append({
                     'municipio_id': mun_id,
                     'municipio_nombre': costo_mun['municipio_nombre'],
-                    'costo_total_municipio': float(costo_mun['costo_total']),
+                    'costo_total_municipio': float(costo_total_municipio),
+                    'flete_fijo': float(flete_fijo_municipio),
+                    'lejanias': float(lejanias_municipio),
                     'venta_zona': float(zona_mun.venta_proyectada or 0),
                     'venta_total': float(venta_total_municipio),
                     'proporcion': float(proporcion),
+                    'flete_asignado': float(flete_zona),
+                    'lejanias_asignado': float(lejanias_zona),
                     'costo_asignado': float(costo_zona_municipio),
                 })
 
