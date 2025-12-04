@@ -2109,6 +2109,173 @@ def diagnostico_comparar_pyg(
         raise HTTPException(status_code=500, detail=f"{str(e)}\n{traceback.format_exc()}")
 
 
+@app.get("/api/diagnostico/logistico-detallado")
+def diagnostico_logistico_detallado(
+    escenario_id: int,
+    marca_id: str
+) -> Dict[str, Any]:
+    """
+    Diagnóstico detallado de costos logísticos.
+    Muestra cómo se distribuye cada rubro logístico a cada zona.
+    """
+    try:
+        from core.models import Escenario, Marca, Zona, RutaLogistica, RutaMunicipio, ZonaMunicipio
+        from core.calculator_lejanias import CalculadoraLejanias
+        from core.simulator import Simulator
+        from utils.loaders_db import DataLoaderDB
+        from decimal import Decimal
+
+        escenario = Escenario.objects.get(pk=escenario_id)
+        marca_obj = Marca.objects.get(marca_id=marca_id)
+
+        calc = CalculadoraLejanias(escenario)
+
+        # 1. COSTOS POR MUNICIPIO (desde rutas logísticas)
+        costos_por_municipio = calc.calcular_costos_logisticos_por_municipio(marca_obj)
+
+        # 2. DISTRIBUCIÓN A ZONAS
+        costos_por_zona = calc.distribuir_costos_logisticos_a_zonas(marca_obj)
+
+        # 3. RUBROS DEL SIMULADOR (para comparar)
+        loader = DataLoaderDB(escenario_id=escenario_id)
+        simulator = Simulator(loader=loader)
+        simulator.cargar_marcas([marca_id])
+        resultado = simulator.ejecutar_simulacion()
+        marca_sim = next((m for m in resultado.marcas if m.marca_id == marca_id), None)
+
+        rubros_logisticos = []
+        total_flota = Decimal('0')
+        total_personal = Decimal('0')
+        total_gastos = Decimal('0')
+        total_lejanias_sim = Decimal('0')
+
+        if marca_sim:
+            todos_rubros = marca_sim.rubros_individuales + marca_sim.rubros_compartidos_asignados
+            for rubro in todos_rubros:
+                if rubro.categoria == 'logistico':
+                    valor = Decimal(str(rubro.valor_total))
+                    rubros_logisticos.append({
+                        'nombre': rubro.nombre,
+                        'tipo': rubro.tipo,
+                        'valor': float(valor),
+                        'asignacion': str(rubro.tipo_asignacion) if hasattr(rubro, 'tipo_asignacion') else 'individual'
+                    })
+                    if rubro.tipo == 'vehiculo':
+                        total_flota += valor
+                    elif rubro.tipo == 'personal':
+                        total_personal += valor
+                    else:
+                        total_gastos += valor
+
+            # Lejanías del simulador
+            total_lejanias_sim = Decimal(str(marca_sim.lejania_logistica or 0))
+
+        # 4. RUTAS LOGÍSTICAS DETALLE
+        rutas_detalle = []
+        rutas = RutaLogistica.objects.filter(
+            marca=marca_obj,
+            escenario=escenario,
+            activo=True
+        ).prefetch_related('municipios__municipio').select_related('vehiculo')
+
+        for ruta in rutas:
+            municipios_ruta = []
+            for rm in ruta.municipios.all().order_by('orden_visita'):
+                # Ver qué zonas atienden este municipio
+                zonas_municipio = ZonaMunicipio.objects.filter(
+                    municipio=rm.municipio,
+                    zona__marca=marca_obj,
+                    zona__escenario=escenario,
+                    zona__activo=True
+                ).select_related('zona')
+
+                zonas_list = [{
+                    'zona_id': zm.zona.id,
+                    'zona_nombre': zm.zona.nombre,
+                    'venta_proyectada': float(zm.venta_proyectada or 0)
+                } for zm in zonas_municipio]
+
+                municipios_ruta.append({
+                    'orden': rm.orden_visita,
+                    'municipio_id': rm.municipio.id,
+                    'municipio_nombre': rm.municipio.nombre,
+                    'flete_base': float(rm.flete_base or 0),
+                    'zonas_que_lo_atienden': zonas_list,
+                    'cantidad_zonas': len(zonas_list)
+                })
+
+            rutas_detalle.append({
+                'ruta_id': ruta.id,
+                'ruta_nombre': ruta.nombre,
+                'vehiculo': str(ruta.vehiculo) if ruta.vehiculo else None,
+                'vehiculo_id': ruta.vehiculo.id if ruta.vehiculo else None,
+                'esquema': ruta.vehiculo.esquema if ruta.vehiculo else None,
+                'frecuencia': ruta.frecuencia,
+                'viajes_por_periodo': ruta.viajes_por_periodo,
+                'recorridos_mensuales': float(ruta.recorridos_mensuales()),
+                'municipios': municipios_ruta
+            })
+
+        # 5. ZONAS CON SUS COSTOS ASIGNADOS
+        zonas = Zona.objects.filter(escenario=escenario, marca=marca_obj, activo=True).order_by('nombre')
+        zonas_detalle = []
+
+        total_distribuido = Decimal('0')
+        for zona in zonas:
+            costo_zona = Decimal('0')
+            detalle_municipios = []
+            if zona.id in costos_por_zona:
+                costo_zona = costos_por_zona[zona.id]['costo_logistico_total']
+                detalle_municipios = costos_por_zona[zona.id]['detalle_municipios']
+                total_distribuido += costo_zona
+
+            zonas_detalle.append({
+                'zona_id': zona.id,
+                'zona_nombre': zona.nombre,
+                'participacion_ventas': float(zona.participacion_ventas or 0),
+                'costo_logistico_asignado': float(costo_zona),
+                'municipios_con_costo': detalle_municipios
+            })
+
+        # 6. RESUMEN
+        total_costo_municipios = sum(
+            Decimal(str(m['costo_total'])) for m in costos_por_municipio.values()
+        )
+
+        return {
+            'escenario': escenario.nombre,
+            'marca': marca_obj.nombre,
+            'resumen': {
+                'total_flota_simulador': float(total_flota),
+                'total_personal_simulador': float(total_personal),
+                'total_gastos_simulador': float(total_gastos),
+                'total_lejanias_simulador': float(total_lejanias_sim),
+                'total_costo_por_municipios': float(total_costo_municipios),
+                'total_distribuido_a_zonas': float(total_distribuido),
+                'diferencia': float(total_costo_municipios - total_distribuido)
+            },
+            'rubros_logisticos_simulador': rubros_logisticos,
+            'costos_por_municipio': {
+                str(k): {
+                    'municipio_nombre': v['municipio_nombre'],
+                    'flete_total': float(v['flete_total']),
+                    'combustible_total': float(v['combustible_total']),
+                    'peaje_total': float(v['peaje_total']),
+                    'pernocta_total': float(v['pernocta_total']),
+                    'costo_total': float(v['costo_total']),
+                    'rutas': v['rutas']
+                } for k, v in costos_por_municipio.items()
+            },
+            'rutas_logisticas': rutas_detalle,
+            'distribucion_a_zonas': zonas_detalle
+        }
+
+    except Exception as e:
+        logger.error(f"Error en diagnóstico logístico detallado: {e}")
+        import traceback
+        raise HTTPException(status_code=500, detail=f"{str(e)}\n{traceback.format_exc()}")
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
