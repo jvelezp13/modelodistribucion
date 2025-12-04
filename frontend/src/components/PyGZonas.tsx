@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { apiClient, PyGZonasResponse, PyGZona, MESES, getMesActual, VentasMensualesDesglose, DiagnosticoPersonalResponse, ComparacionPyGResponse, DiagnosticoLogisticoResponse } from '@/lib/api';
-import { ChevronDown, ChevronRight, MapPin, TrendingUp, TrendingDown, Users, Truck, Building2, Calendar, DollarSign, Percent, AlertTriangle, CheckCircle, XCircle, Package, Route } from 'lucide-react';
+import { apiClient, PyGZonasResponse, PyGZona, MESES, getMesActual, VentasMensualesDesglose, DiagnosticoPersonalResponse, ComparacionPyGResponse } from '@/lib/api';
+import { ChevronDown, ChevronRight, TrendingUp, TrendingDown, Users, Truck, Building2, Calendar, DollarSign, Percent, AlertTriangle, CheckCircle, XCircle, MapPin } from 'lucide-react';
 
 interface PyGZonasProps {
   escenarioId: number;
@@ -18,10 +18,8 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
   const [mesSeleccionado, setMesSeleccionado] = useState<string>(getMesActual());
   const [diagnostico, setDiagnostico] = useState<DiagnosticoPersonalResponse | null>(null);
   const [comparacion, setComparacion] = useState<ComparacionPyGResponse | null>(null);
-  const [diagLogistico, setDiagLogistico] = useState<DiagnosticoLogisticoResponse | null>(null);
   const [showDiagnostico, setShowDiagnostico] = useState(true);
   const [expandedCategoria, setExpandedCategoria] = useState<string | null>(null);
-  const [expandedRutas, setExpandedRutas] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     const fetchData = async () => {
@@ -30,16 +28,14 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
       setLoading(true);
       setError(null);
       try {
-        const [zonasResponse, diagResponse, comparacionResponse, diagLogisticoResponse] = await Promise.all([
+        const [zonasResponse, diagResponse, comparacionResponse] = await Promise.all([
           apiClient.obtenerPyGZonas(escenarioId, marcaId),
           apiClient.obtenerDiagnosticoPersonal(escenarioId, marcaId),
-          apiClient.obtenerComparacionPyG(escenarioId, marcaId),
-          apiClient.obtenerDiagnosticoLogistico(escenarioId, marcaId)
+          apiClient.obtenerComparacionPyG(escenarioId, marcaId)
         ]);
         setData(zonasResponse);
         setDiagnostico(diagResponse);
         setComparacion(comparacionResponse);
-        setDiagLogistico(diagLogisticoResponse);
       } catch (err) {
         console.error('Error cargando P&G por zonas:', err);
         setError('Error al cargar los datos de P&G por zonas');
@@ -307,209 +303,6 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
             <div className="text-sm font-bold text-gray-900">{formatCurrency(totales.costoTotal)}</div>
           </div>
         </div>
-
-        {/* Panel de Diagnóstico Logístico */}
-        {showDiagnostico && diagLogistico && (
-        <div className="p-4 bg-slate-50 border-b border-slate-200">
-          <div className="flex justify-between items-center mb-3">
-            <h4 className="text-xs font-semibold text-slate-800 flex items-center gap-2">
-              <Truck size={14} className="text-blue-600" />
-              Diagnóstico de Distribución Logística
-              {Math.abs(diagLogistico.resumen.diferencia_lejanias) < 1000 && Math.abs(diagLogistico.resumen.diferencia_flota) < 1000 ? (
-                <span className="px-2 py-0.5 rounded text-[10px] bg-green-200 text-green-800">OK</span>
-              ) : (
-                <span className="px-2 py-0.5 rounded text-[10px] bg-amber-200 text-amber-800">
-                  Diferencias detectadas
-                </span>
-              )}
-            </h4>
-            <button
-              onClick={() => setShowDiagnostico(false)}
-              className="text-[10px] text-slate-600 hover:text-slate-800"
-            >
-              Ocultar
-            </button>
-          </div>
-
-          {/* Resumen */}
-          <div className="grid grid-cols-5 gap-3 mb-4">
-            <div className="bg-white rounded border p-2">
-              <div className="text-[10px] text-gray-500">Flota (Simulador)</div>
-              <div className="text-sm font-bold text-gray-800">{formatCurrency(diagLogistico.resumen.total_flota_simulador)}</div>
-              <div className="text-[9px] text-gray-400">Distribuida: {formatCurrency(diagLogistico.resumen.total_flota_distribuida)}</div>
-            </div>
-            <div className="bg-white rounded border p-2">
-              <div className="text-[10px] text-gray-500">Lejanías (Simulador)</div>
-              <div className="text-sm font-bold text-gray-800">{formatCurrency(diagLogistico.resumen.total_lejanias_simulador)}</div>
-            </div>
-            <div className="bg-white rounded border p-2">
-              <div className="text-[10px] text-gray-500">Costo por Municipios</div>
-              <div className="text-sm font-bold text-blue-700">{formatCurrency(diagLogistico.resumen.total_costo_por_municipios)}</div>
-            </div>
-            <div className="bg-white rounded border p-2">
-              <div className="text-[10px] text-gray-500">Total Distribuido</div>
-              <div className="text-sm font-bold text-green-700">{formatCurrency(diagLogistico.resumen.total_distribuido_a_zonas)}</div>
-            </div>
-            <div className="bg-white rounded border p-2">
-              <div className="text-[10px] text-gray-500">Diferencias</div>
-              <div className="text-[10px]">
-                <span className={diagLogistico.resumen.diferencia_lejanias === 0 ? 'text-green-600' : 'text-amber-600'}>
-                  Lejanías: {formatCurrency(diagLogistico.resumen.diferencia_lejanias)}
-                </span>
-              </div>
-              <div className="text-[10px]">
-                <span className={diagLogistico.resumen.diferencia_flota === 0 ? 'text-green-600' : 'text-amber-600'}>
-                  Flota: {formatCurrency(diagLogistico.resumen.diferencia_flota)}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Rutas Logísticas con detalle de municipios y zonas */}
-          <div className="mb-4">
-            <h5 className="text-[11px] font-semibold text-slate-700 mb-2 flex items-center gap-1">
-              <Route size={12} />
-              Rutas Logísticas → Municipios → Zonas
-            </h5>
-            <div className="bg-white rounded border overflow-hidden">
-              <table className="w-full text-[10px]">
-                <thead className="bg-slate-100">
-                  <tr>
-                    <th className="text-left px-2 py-1.5 font-semibold">Ruta / Vehículo</th>
-                    <th className="text-center px-2 py-1.5 font-semibold">Frecuencia</th>
-                    <th className="text-left px-2 py-1.5 font-semibold">Municipios</th>
-                    <th className="text-left px-2 py-1.5 font-semibold">Zonas que Atienden</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {diagLogistico.rutas_logisticas.map((ruta) => (
-                    <tr key={ruta.ruta_id} className="border-t border-slate-100 hover:bg-slate-50">
-                      <td className="px-2 py-2 align-top">
-                        <div className="font-medium text-gray-800">{ruta.ruta_nombre}</div>
-                        <div className="text-[9px] text-gray-500">{ruta.vehiculo}</div>
-                        <div className="text-[9px] text-gray-400">{ruta.esquema}</div>
-                      </td>
-                      <td className="px-2 py-2 text-center align-top">
-                        <div className="text-gray-700">{ruta.frecuencia}</div>
-                        <div className="text-[9px] text-gray-500">{ruta.recorridos_mensuales.toFixed(1)}/mes</div>
-                      </td>
-                      <td className="px-2 py-2 align-top">
-                        <div className="space-y-1">
-                          {ruta.municipios.map((mun) => (
-                            <div key={mun.municipio_id} className="flex items-center gap-1">
-                              <span className="text-[9px] text-gray-400">{mun.orden}.</span>
-                              <span className="text-gray-700">{mun.municipio_nombre}</span>
-                              {mun.flete_base > 0 && (
-                                <span className="text-[9px] text-orange-600">
-                                  (${(mun.flete_base / 1000).toFixed(0)}K)
-                                </span>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="px-2 py-2 align-top">
-                        <div className="space-y-1">
-                          {ruta.municipios.map((mun) => (
-                            <div key={mun.municipio_id} className="flex items-center gap-1">
-                              {mun.cantidad_zonas === 0 ? (
-                                <span className="text-red-500 flex items-center gap-1">
-                                  <AlertTriangle size={10} />
-                                  Sin zona
-                                </span>
-                              ) : mun.cantidad_zonas === 1 ? (
-                                <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-[9px]">
-                                  {mun.zonas_que_lo_atienden[0]?.zona_nombre}
-                                </span>
-                              ) : (
-                                <div className="flex flex-wrap gap-1">
-                                  {mun.zonas_que_lo_atienden.map((z) => (
-                                    <span key={z.zona_id} className="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-[9px]">
-                                      {z.zona_nombre}
-                                    </span>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Distribución a Zonas */}
-          <div>
-            <h5 className="text-[11px] font-semibold text-slate-700 mb-2 flex items-center gap-1">
-              <MapPin size={12} />
-              Costos Logísticos por Zona
-            </h5>
-            <div className="bg-white rounded border overflow-hidden">
-              <table className="w-full text-[10px]">
-                <thead className="bg-slate-100">
-                  <tr>
-                    <th className="text-left px-2 py-1.5 font-semibold">Zona</th>
-                    <th className="text-right px-2 py-1.5 font-semibold">Part.</th>
-                    <th className="text-right px-2 py-1.5 font-semibold">Flete Fijo</th>
-                    <th className="text-right px-2 py-1.5 font-semibold">Lejanías</th>
-                    <th className="text-right px-2 py-1.5 font-semibold">Gastos Fijos Veh.</th>
-                    <th className="text-right px-2 py-1.5 font-semibold">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {diagLogistico.distribucion_a_zonas.map((zona) => (
-                    <tr key={zona.zona_id} className="border-t border-slate-100 hover:bg-slate-50">
-                      <td className="px-2 py-2 font-medium text-gray-800">
-                        {zona.zona_nombre}
-                      </td>
-                      <td className="px-2 py-2 text-right text-gray-600">
-                        {zona.participacion_ventas.toFixed(1)}%
-                      </td>
-                      <td className="px-2 py-2 text-right text-orange-700">
-                        {formatCurrency(zona.flete_fijo_asignado || 0)}
-                      </td>
-                      <td className="px-2 py-2 text-right text-blue-700">
-                        {formatCurrency(zona.lejanias_asignado || 0)}
-                      </td>
-                      <td className="px-2 py-2 text-right text-purple-700">
-                        {formatCurrency(zona.costo_flota_asignado)}
-                      </td>
-                      <td className="px-2 py-2 text-right font-bold text-green-700">
-                        {formatCurrency(zona.costo_total_asignado)}
-                      </td>
-                    </tr>
-                  ))}
-                  {/* Fila de totales */}
-                  <tr className="border-t-2 border-slate-300 bg-slate-50 font-bold">
-                    <td className="px-2 py-2 text-gray-800">TOTAL</td>
-                    <td className="px-2 py-2 text-right text-gray-600">100%</td>
-                    <td className="px-2 py-2 text-right text-orange-700">
-                      {formatCurrency(diagLogistico.distribucion_a_zonas.reduce((sum, z) => sum + (z.flete_fijo_asignado || 0), 0))}
-                    </td>
-                    <td className="px-2 py-2 text-right text-blue-700">
-                      {formatCurrency(diagLogistico.distribucion_a_zonas.reduce((sum, z) => sum + (z.lejanias_asignado || 0), 0))}
-                    </td>
-                    <td className="px-2 py-2 text-right text-purple-700">
-                      {formatCurrency(diagLogistico.distribucion_a_zonas.reduce((sum, z) => sum + z.costo_flota_asignado, 0))}
-                    </td>
-                    <td className="px-2 py-2 text-right text-green-700">
-                      {formatCurrency(diagLogistico.distribucion_a_zonas.reduce((sum, z) => sum + z.costo_total_asignado, 0))}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-          <div className="mt-3 text-[10px] text-slate-600">
-            <strong>Flete Fijo:</strong> Costo base por visita a cada municipio |
-            <strong> Lejanías:</strong> Combustible + Peajes + Pernoctas |
-            <strong> Gastos Fijos Veh.:</strong> Canon renting, seguros, mantenimiento, etc.
-          </div>
-        </div>
-      )}
 
       {/* Tabla de zonas */}
         <div className="overflow-x-auto">

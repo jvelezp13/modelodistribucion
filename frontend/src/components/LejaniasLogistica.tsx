@@ -1,15 +1,15 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { apiClient, DetalleLejaniasLogistica, DetalleRutaLogistica } from '@/lib/api';
-import { ChevronDown, ChevronRight, MapPin, Truck, DollarSign, Fuel, Route, ArrowRight } from 'lucide-react';
+import { apiClient, DetalleLejaniasLogistica, DetalleRutaLogistica, DiagnosticoLogisticoResponse } from '@/lib/api';
+import { ChevronDown, ChevronRight, MapPin, Truck, DollarSign, Fuel, Route, ArrowRight, Building2 } from 'lucide-react';
 
 interface LejaniasLogisticaProps {
   escenarioId: number;
   marcaId: string;
 }
 
-type VistaType = 'recorrido' | 'vehiculo';
+type VistaType = 'recorrido' | 'vehiculo' | 'distribucion';
 
 interface VehiculoAgrupado {
   vehiculo_id: number;
@@ -31,6 +31,7 @@ export default function LejaniasLogistica({ escenarioId, marcaId }: LejaniasLogi
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [datos, setDatos] = useState<DetalleLejaniasLogistica | null>(null);
+  const [distribucion, setDistribucion] = useState<DiagnosticoLogisticoResponse | null>(null);
   const [recorridosExpandidos, setRecorridosExpandidos] = useState<Set<number>>(new Set());
   const [vehiculosExpandidos, setVehiculosExpandidos] = useState<Set<number>>(new Set());
   const [vistaActiva, setVistaActiva] = useState<VistaType>('recorrido');
@@ -43,8 +44,12 @@ export default function LejaniasLogistica({ escenarioId, marcaId }: LejaniasLogi
     try {
       setLoading(true);
       setError(null);
-      const resultado = await apiClient.obtenerDetalleLejaniasLogistica(escenarioId, marcaId);
+      const [resultado, distResult] = await Promise.all([
+        apiClient.obtenerDetalleLejaniasLogistica(escenarioId, marcaId),
+        apiClient.obtenerDiagnosticoLogistico(escenarioId, marcaId)
+      ]);
       setDatos(resultado);
+      setDistribucion(distResult);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error cargando datos');
     } finally {
@@ -253,6 +258,19 @@ export default function LejaniasLogistica({ escenarioId, marcaId }: LejaniasLogi
           }`}
         >
           Por Vehículo ({vehiculosAgrupados.length})
+        </button>
+        <button
+          onClick={() => setVistaActiva('distribucion')}
+          className={`px-4 py-2 text-sm font-medium rounded-t transition-colors ${
+            vistaActiva === 'distribucion'
+              ? 'bg-green-700 text-white'
+              : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+          }`}
+        >
+          <span className="flex items-center gap-1">
+            <Building2 size={14} />
+            Distribución por Zona
+          </span>
         </button>
       </div>
 
@@ -463,6 +481,121 @@ export default function LejaniasLogistica({ escenarioId, marcaId }: LejaniasLogi
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Vista Distribución por Zona */}
+      {vistaActiva === 'distribucion' && distribucion && (
+        <div className="bg-white border border-gray-200 rounded">
+          <div className="bg-green-700 text-white px-4 py-2">
+            <span className="text-xs font-semibold uppercase tracking-wide">
+              Distribución de Costos Logísticos por Zona Comercial
+            </span>
+          </div>
+
+          <div className="p-4">
+            {/* Explicación */}
+            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded text-xs text-green-800">
+              <strong>¿Cómo se distribuyen los costos?</strong>
+              <ul className="mt-1 ml-4 list-disc space-y-0.5">
+                <li><strong>Flete Fijo:</strong> Se asigna a cada zona según los municipios que atiende cada ruta y la participación de venta de la zona en ese municipio.</li>
+                <li><strong>Lejanías:</strong> Combustible + Peajes + Pernoctas, distribuidos de la misma forma.</li>
+                <li><strong>Gastos Fijos Vehículos:</strong> Canon renting, seguros, mantenimiento, etc. Se distribuyen según las rutas que atiende cada vehículo.</li>
+              </ul>
+            </div>
+
+            {/* Tabla de distribución */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-100">
+                  <tr>
+                    <th className="text-left px-3 py-2 font-semibold">Zona</th>
+                    <th className="text-right px-3 py-2 font-semibold">Part. Ventas</th>
+                    <th className="text-right px-3 py-2 font-semibold text-orange-700">Flete Fijo</th>
+                    <th className="text-right px-3 py-2 font-semibold text-blue-700">Lejanías</th>
+                    <th className="text-right px-3 py-2 font-semibold text-purple-700">Gastos Fijos Veh.</th>
+                    <th className="text-right px-3 py-2 font-semibold text-green-700">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {distribucion.distribucion_a_zonas.map((zona) => (
+                    <tr key={zona.zona_id} className="border-t border-gray-100 hover:bg-gray-50">
+                      <td className="px-3 py-2 font-medium text-gray-800">
+                        {zona.zona_nombre}
+                      </td>
+                      <td className="px-3 py-2 text-right text-gray-600">
+                        {zona.participacion_ventas.toFixed(1)}%
+                      </td>
+                      <td className="px-3 py-2 text-right text-orange-700">
+                        {formatCurrency(zona.flete_fijo_asignado || 0)}
+                      </td>
+                      <td className="px-3 py-2 text-right text-blue-700">
+                        {formatCurrency(zona.lejanias_asignado || 0)}
+                      </td>
+                      <td className="px-3 py-2 text-right text-purple-700">
+                        {formatCurrency(zona.costo_flota_asignado)}
+                      </td>
+                      <td className="px-3 py-2 text-right font-bold text-green-700">
+                        {formatCurrency(zona.costo_total_asignado)}
+                      </td>
+                    </tr>
+                  ))}
+                  {/* Fila de totales */}
+                  <tr className="border-t-2 border-gray-300 bg-gray-100 font-bold">
+                    <td className="px-3 py-2 text-gray-800">TOTAL</td>
+                    <td className="px-3 py-2 text-right text-gray-600">100%</td>
+                    <td className="px-3 py-2 text-right text-orange-700">
+                      {formatCurrency(distribucion.distribucion_a_zonas.reduce((sum, z) => sum + (z.flete_fijo_asignado || 0), 0))}
+                    </td>
+                    <td className="px-3 py-2 text-right text-blue-700">
+                      {formatCurrency(distribucion.distribucion_a_zonas.reduce((sum, z) => sum + (z.lejanias_asignado || 0), 0))}
+                    </td>
+                    <td className="px-3 py-2 text-right text-purple-700">
+                      {formatCurrency(distribucion.distribucion_a_zonas.reduce((sum, z) => sum + z.costo_flota_asignado, 0))}
+                    </td>
+                    <td className="px-3 py-2 text-right text-green-700">
+                      {formatCurrency(distribucion.distribucion_a_zonas.reduce((sum, z) => sum + z.costo_total_asignado, 0))}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Comparación con totales del simulador */}
+            <div className="mt-4 p-3 bg-slate-50 border border-slate-200 rounded">
+              <h4 className="text-xs font-semibold text-slate-700 mb-2">Comparación con Simulador</h4>
+              <div className="grid grid-cols-3 gap-4 text-xs">
+                <div>
+                  <span className="text-gray-500">Lejanías (Simulador):</span>
+                  <span className="ml-2 font-medium">{formatCurrency(distribucion.resumen.total_lejanias_simulador)}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500">Lejanías (Distribuidas):</span>
+                  <span className="ml-2 font-medium">{formatCurrency(distribucion.resumen.total_costo_por_municipios)}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500">Diferencia:</span>
+                  <span className={`ml-2 font-medium ${Math.abs(distribucion.resumen.diferencia_lejanias) < 1 ? 'text-green-600' : 'text-amber-600'}`}>
+                    {formatCurrency(distribucion.resumen.diferencia_lejanias)}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-500">Flota (Simulador):</span>
+                  <span className="ml-2 font-medium">{formatCurrency(distribucion.resumen.total_flota_simulador)}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500">Flota (Distribuida):</span>
+                  <span className="ml-2 font-medium">{formatCurrency(distribucion.resumen.total_flota_distribuida)}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500">Diferencia:</span>
+                  <span className={`ml-2 font-medium ${Math.abs(distribucion.resumen.diferencia_flota) < 1 ? 'text-green-600' : 'text-amber-600'}`}>
+                    {formatCurrency(distribucion.resumen.diferencia_flota)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
