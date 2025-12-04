@@ -53,15 +53,23 @@ def calculate_hr_expenses(escenario):
 
         for grupo in grupos:
             marca_id = grupo['marca']
-            tipo_asig_geo = grupo['tipo_asignacion_geo'] or 'proporcional'
+            tipo_asig_geo_original = grupo['tipo_asignacion_geo']
             zona_id = grupo['zona']
 
-            # Filtrar personal de este grupo
-            personal_grupo = qs.filter(
-                marca_id=marca_id,
-                tipo_asignacion_geo=tipo_asig_geo,
-                zona_id=zona_id
-            )
+            # Filtrar personal de este grupo (usar valores originales, incluyendo None)
+            filtro = {
+                'marca_id': marca_id,
+                'zona_id': zona_id,
+            }
+            if tipo_asig_geo_original is not None:
+                filtro['tipo_asignacion_geo'] = tipo_asig_geo_original
+            else:
+                filtro['tipo_asignacion_geo__isnull'] = True
+
+            personal_grupo = qs.filter(**filtro)
+
+            # Aplicar default para tipo_asignacion_geo al crear el gasto
+            tipo_asig_geo = tipo_asig_geo_original or 'proporcional'
 
             # Obtener objetos relacionados
             marca_obj = Marca.objects.get(pk=marca_id) if marca_id else None

@@ -1220,15 +1220,16 @@ def obtener_pyg_zonas(
 
         def calcular_utilidad_neta_zona(zona):
             """Calcula la utilidad neta de una zona para ordenamiento"""
-            participacion = zona['zona']['participacion_ventas'] / 100
+            participacion = float(zona['zona']['participacion_ventas']) / 100
             ventas_zona = ventas_mes_actual * participacion
 
             # Margen bruto
             descuento_ponderado = config_descuentos['descuento_pie_factura_ponderado'] / 100
             margen_bruto = ventas_zona * descuento_ponderado
 
-            # Utilidad operacional
-            utilidad_operacional = margen_bruto - zona['total_mensual']
+            # Utilidad operacional (convertir total_mensual a float)
+            total_mensual = float(zona['total_mensual'])
+            utilidad_operacional = margen_bruto - total_mensual
 
             # Otros ingresos (rebate + descuento financiero)
             rebate = ventas_zona * (config_descuentos['porcentaje_rebate'] / 100)
