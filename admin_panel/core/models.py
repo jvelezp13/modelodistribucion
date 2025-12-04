@@ -197,26 +197,55 @@ class PersonalComercial(models.Model):
         ordering = ['marca', 'tipo']
 
     def calcular_costo_mensual(self):
-        """Calcula el costo mensual total para este registro de personal"""
+        """
+        Calcula el costo mensual total para este registro de personal.
+
+        Según normativa laboral colombiana:
+        - Seguridad social y parafiscales: base = solo salario
+        - Cesantías, intereses cesantías y prima: base = salario + subsidio transporte
+        - Vacaciones: base = solo salario
+        """
         if not self.salario_base or not self.cantidad:
             return 0
 
         try:
             # Obtener factor prestacional
             factor = FactorPrestacional.objects.get(perfil=self.perfil_prestacional)
-            costo_unitario = self.salario_base * (1 + factor.factor_total)
 
-            # Sumar auxilio de transporte si aplica (<= 2 SMLV)
+            # Determinar subsidio de transporte si aplica (<= 2 SMLV)
+            subsidio_transporte = Decimal('0')
             if self.escenario:
                 try:
                     macro = ParametrosMacro.objects.get(anio=self.escenario.anio, activo=True)
                     if self.salario_base <= (macro.salario_minimo_legal * 2):
-                        costo_unitario += macro.subsidio_transporte
+                        subsidio_transporte = macro.subsidio_transporte
                 except ParametrosMacro.DoesNotExist:
                     pass
 
-            # Sumar auxilio adicional
-            costo_unitario += self.auxilio_adicional
+            # Calcular prestaciones correctamente según base legal
+            # Factor sobre solo salario (seguridad social, parafiscales, vacaciones)
+            factor_solo_salario = (
+                factor.salud + factor.pension + factor.arl +
+                factor.caja_compensacion + factor.icbf + factor.sena +
+                factor.vacaciones
+            ) / Decimal('100')
+
+            # Factor sobre salario + subsidio (cesantías, intereses, prima)
+            factor_con_subsidio = (
+                factor.cesantias + factor.intereses_cesantias + factor.prima
+            ) / Decimal('100')
+
+            # Costo unitario = salario + prestaciones sobre salario + prestaciones sobre (salario+subsidio) + subsidio
+            prestaciones_salario = self.salario_base * factor_solo_salario
+            prestaciones_con_subsidio = (self.salario_base + subsidio_transporte) * factor_con_subsidio
+
+            costo_unitario = (
+                self.salario_base +
+                prestaciones_salario +
+                prestaciones_con_subsidio +
+                subsidio_transporte +
+                (self.auxilio_adicional or Decimal('0'))
+            )
 
             # Multiplicar por cantidad
             return costo_unitario * self.cantidad
@@ -327,23 +356,54 @@ class PersonalLogistico(models.Model):
         ordering = ['marca', 'tipo']
 
     def calcular_costo_mensual(self):
-        """Calcula el costo mensual total para este registro de personal"""
+        """
+        Calcula el costo mensual total para este registro de personal.
+
+        Según normativa laboral colombiana:
+        - Seguridad social y parafiscales: base = solo salario
+        - Cesantías, intereses cesantías y prima: base = salario + subsidio transporte
+        - Vacaciones: base = solo salario
+        """
         if not self.salario_base or not self.cantidad:
             return 0
 
         try:
             # Obtener factor prestacional
             factor = FactorPrestacional.objects.get(perfil=self.perfil_prestacional)
-            costo_unitario = self.salario_base * (1 + factor.factor_total)
 
-            # Sumar auxilio de transporte si aplica (<= 2 SMLV)
+            # Determinar subsidio de transporte si aplica (<= 2 SMLV)
+            subsidio_transporte = Decimal('0')
             if self.escenario:
                 try:
                     macro = ParametrosMacro.objects.get(anio=self.escenario.anio, activo=True)
                     if self.salario_base <= (macro.salario_minimo_legal * 2):
-                        costo_unitario += macro.subsidio_transporte
+                        subsidio_transporte = macro.subsidio_transporte
                 except ParametrosMacro.DoesNotExist:
                     pass
+
+            # Calcular prestaciones correctamente según base legal
+            # Factor sobre solo salario (seguridad social, parafiscales, vacaciones)
+            factor_solo_salario = (
+                factor.salud + factor.pension + factor.arl +
+                factor.caja_compensacion + factor.icbf + factor.sena +
+                factor.vacaciones
+            ) / Decimal('100')
+
+            # Factor sobre salario + subsidio (cesantías, intereses, prima)
+            factor_con_subsidio = (
+                factor.cesantias + factor.intereses_cesantias + factor.prima
+            ) / Decimal('100')
+
+            # Costo unitario = salario + prestaciones sobre salario + prestaciones sobre (salario+subsidio) + subsidio
+            prestaciones_salario = self.salario_base * factor_solo_salario
+            prestaciones_con_subsidio = (self.salario_base + subsidio_transporte) * factor_con_subsidio
+
+            costo_unitario = (
+                self.salario_base +
+                prestaciones_salario +
+                prestaciones_con_subsidio +
+                subsidio_transporte
+            )
 
             # Multiplicar por cantidad
             return costo_unitario * self.cantidad
@@ -929,7 +989,14 @@ class PersonalAdministrativo(models.Model):
         ordering = ['tipo']
 
     def calcular_costo_mensual(self):
-        """Calcula el costo mensual total para este registro de personal"""
+        """
+        Calcula el costo mensual total para este registro de personal.
+
+        Según normativa laboral colombiana:
+        - Seguridad social y parafiscales: base = solo salario
+        - Cesantías, intereses cesantías y prima: base = salario + subsidio transporte
+        - Vacaciones: base = solo salario
+        """
         if not self.cantidad:
             return 0
 
@@ -946,16 +1013,40 @@ class PersonalAdministrativo(models.Model):
         try:
             # Obtener factor prestacional
             factor = FactorPrestacional.objects.get(perfil=self.perfil_prestacional)
-            costo_unitario = self.salario_base * (1 + factor.factor_total)
 
-            # Sumar auxilio de transporte si aplica (<= 2 SMLV)
+            # Determinar subsidio de transporte si aplica (<= 2 SMLV)
+            subsidio_transporte = Decimal('0')
             if self.escenario:
                 try:
                     macro = ParametrosMacro.objects.get(anio=self.escenario.anio, activo=True)
                     if self.salario_base <= (macro.salario_minimo_legal * 2):
-                        costo_unitario += macro.subsidio_transporte
+                        subsidio_transporte = macro.subsidio_transporte
                 except ParametrosMacro.DoesNotExist:
                     pass
+
+            # Calcular prestaciones correctamente según base legal
+            # Factor sobre solo salario (seguridad social, parafiscales, vacaciones)
+            factor_solo_salario = (
+                factor.salud + factor.pension + factor.arl +
+                factor.caja_compensacion + factor.icbf + factor.sena +
+                factor.vacaciones
+            ) / Decimal('100')
+
+            # Factor sobre salario + subsidio (cesantías, intereses, prima)
+            factor_con_subsidio = (
+                factor.cesantias + factor.intereses_cesantias + factor.prima
+            ) / Decimal('100')
+
+            # Costo unitario = salario + prestaciones sobre salario + prestaciones sobre (salario+subsidio) + subsidio
+            prestaciones_salario = self.salario_base * factor_solo_salario
+            prestaciones_con_subsidio = (self.salario_base + subsidio_transporte) * factor_con_subsidio
+
+            costo_unitario = (
+                self.salario_base +
+                prestaciones_salario +
+                prestaciones_con_subsidio +
+                subsidio_transporte
+            )
 
             # Multiplicar por cantidad
             return costo_unitario * self.cantidad
