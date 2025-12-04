@@ -41,15 +41,27 @@ def calculate_hr_expenses(escenario):
         try:
             qs = model_personal.objects.filter(escenario=escenario)
 
-            # Determinar campos de agrupación según el modelo
-            # PersonalAdministrativo NO tiene 'zona', solo PersonalComercial y PersonalLogistico
-            campos_agrupacion = ['marca', 'tipo_asignacion_geo']
+            # Verificar si el modelo tiene campo 'zona'
             tiene_zona = 'zona' in [f.name for f in model_personal._meta.get_fields()]
-            if tiene_zona:
-                campos_agrupacion.append('zona')
 
-            # Agrupar por los campos disponibles
-            grupos = qs.values(*campos_agrupacion).distinct()
+            # Procesar en dos fases:
+            # 1. Personal con asignación directa (agrupa por zona)
+            # 2. Personal con asignación proporcional/compartida (NO agrupa por zona)
+
+            grupos = []
+
+            # Fase 1: Personal con tipo_asignacion_geo = 'directo' (agrupa por zona)
+            if tiene_zona:
+                grupos_directos = qs.filter(tipo_asignacion_geo='directo').values(
+                    'marca', 'tipo_asignacion_geo', 'zona'
+                ).distinct()
+                grupos.extend(grupos_directos)
+
+            # Fase 2: Personal con tipo_asignacion_geo != 'directo' o NULL (NO agrupa por zona)
+            grupos_no_directos = qs.exclude(tipo_asignacion_geo='directo').values(
+                'marca', 'tipo_asignacion_geo'
+            ).distinct()
+            grupos.extend(grupos_no_directos)
 
             # Limpiar gastos de provisiones existentes para este escenario y modelo
             # (se recrearán con los valores correctos)
