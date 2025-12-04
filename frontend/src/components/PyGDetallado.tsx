@@ -63,6 +63,7 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
   const [loadingLejanias, setLoadingLejanias] = useState(false);
   const [mesSeleccionado, setMesSeleccionado] = useState<string>(getMesActual());
   const [tasaImpuestoRenta, setTasaImpuestoRenta] = useState<number>(0.33); // Default 33%
+  const [provisionesExpandidas, setProvisionesExpandidas] = useState<Set<string>>(new Set());
 
   // Cargar tasa de impuesto de renta desde el backend
   useEffect(() => {
@@ -105,6 +106,18 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
 
   const toggleSubSeccion = (subSeccion: keyof SubSeccionState) => {
     setSubSeccionesAbiertas(prev => ({ ...prev, [subSeccion]: !prev[subSeccion] }));
+  };
+
+  const toggleProvision = (key: string) => {
+    setProvisionesExpandidas(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(key)) {
+        newSet.delete(key);
+      } else {
+        newSet.add(key);
+      }
+      return newSet;
+    });
   };
 
   // Combinar rubros individuales y compartidos
@@ -153,6 +166,30 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
   };
 
   const grupos = agruparRubros();
+
+  // Agrupar provisiones por tipo (Dotación, EPP, Exámenes)
+  const agruparProvisionesYGastos = (rubros: Rubro[]) => {
+    const provisiones: { [key: string]: Rubro[] } = {};
+    const otrosGastos: Rubro[] = [];
+
+    rubros.forEach(rubro => {
+      // Identificar si es una provisión
+      if (rubro.nombre.includes('Provisión Dotación')) {
+        if (!provisiones['dotacion']) provisiones['dotacion'] = [];
+        provisiones['dotacion'].push(rubro);
+      } else if (rubro.nombre.includes('Provisión EPP')) {
+        if (!provisiones['epp']) provisiones['epp'] = [];
+        provisiones['epp'].push(rubro);
+      } else if (rubro.nombre.includes('Provisión Exámenes')) {
+        if (!provisiones['examenes']) provisiones['examenes'] = [];
+        provisiones['examenes'].push(rubro);
+      } else {
+        otrosGastos.push(rubro);
+      }
+    });
+
+    return { provisiones, otrosGastos };
+  };
 
   // Calcular flete base por vehículo desde las rutas logísticas
   const calcularFleteBasePorVehiculo = (): Map<string, number> => {
@@ -487,7 +524,7 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
     );
   };
 
-  const RubroItem = ({ rubro }: { rubro: Rubro }) => {
+  const RubroItem = ({ rubro, extraIndent = false }: { rubro: Rubro; extraIndent?: boolean }) => {
     const [expandido, setExpandido] = useState(false);
 
     // Determinar si tiene detalles para expandir
@@ -499,7 +536,7 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
       <div className="border-b border-gray-100">
         {/* Línea principal */}
         <div
-          className={`flex justify-between items-center py-1.5 px-3 hover:bg-gray-50 text-xs ${tieneDetalles ? 'cursor-pointer' : ''}`}
+          className={`flex justify-between items-center py-1.5 hover:bg-gray-50 text-xs ${tieneDetalles ? 'cursor-pointer' : ''} ${extraIndent ? 'pl-12' : 'px-3'}`}
           onClick={() => tieneDetalles && setExpandido(!expandido)}
         >
           <div className="flex-1 flex items-center gap-2">
@@ -693,15 +730,54 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
                   .reduce((sum, r) => sum + r.valor_total, 0)}
                 mostrarPorcentaje
               />
-              {subSeccionesAbiertas.comercialGastos && (
-                <>
-                  {grupos.comercialGastos
-                    .filter(r => !r.nombre.startsWith('Combustible Lejanía') && !r.nombre.startsWith('Viáticos Pernocta'))
-                    .map((rubro, idx) => (
+              {subSeccionesAbiertas.comercialGastos && (() => {
+                const gastosFiltrados = grupos.comercialGastos.filter(r =>
+                  !r.nombre.startsWith('Combustible Lejanía') &&
+                  !r.nombre.startsWith('Viáticos Pernocta')
+                );
+                const { provisiones, otrosGastos } = agruparProvisionesYGastos(gastosFiltrados);
+
+                return (
+                  <>
+                    {/* Provisiones agrupadas */}
+                    {Object.entries(provisiones).map(([tipo, rubros]) => {
+                      const total = rubros.reduce((sum, r) => sum + r.valor_total, 0);
+                      const tipoLabel = tipo === 'dotacion' ? 'Dotación' :
+                                       tipo === 'epp' ? 'EPP' :
+                                       'Exámenes Médicos';
+                      const provisionKey = `comercial-${tipo}`;
+                      const isExpanded = provisionesExpandidas.has(provisionKey);
+
+                      return (
+                        <div key={provisionKey}>
+                          {/* Línea agrupada de provisión */}
+                          <div
+                            className="flex justify-between items-center px-3 py-1.5 cursor-pointer hover:bg-gray-50"
+                            onClick={() => toggleProvision(provisionKey)}
+                          >
+                            <div className="flex items-center gap-1 pl-8">
+                              {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                              <span className="text-xs text-gray-700">Provisiones de {tipoLabel}</span>
+                              <span className="text-xs text-gray-500">({rubros.length})</span>
+                            </div>
+                            <span className="text-xs text-gray-700">{formatCurrency(total)}</span>
+                          </div>
+
+                          {/* Detalle de provisiones (expandible) */}
+                          {isExpanded && rubros.map((rubro, idx) => (
+                            <RubroItem key={`provision-${tipo}-${idx}`} rubro={rubro} extraIndent />
+                          ))}
+                        </div>
+                      );
+                    })}
+
+                    {/* Otros gastos (no provisiones) */}
+                    {otrosGastos.map((rubro, idx) => (
                       <RubroItem key={`com-gasto-${idx}`} rubro={rubro} />
                     ))}
-                </>
-              )}
+                  </>
+                );
+              })()}
             </>
           )}
 
