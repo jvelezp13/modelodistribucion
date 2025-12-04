@@ -1987,13 +1987,43 @@ def diagnostico_comparar_pyg(
         total_logistico = flota_total + personal_logistico + gastos_logistico + lejanias_logistico
 
         # --- ADMINISTRATIVO ---
-        personal_admin = Decimal('0')
-        for p in PersonalAdministrativo.objects.filter(escenario=escenario, marca=marca):
-            personal_admin += Decimal(str(p.calcular_costo_mensual()))
+        # Usar la misma lógica que el Simulador (services.py):
+        # - Personal/Gastos individuales (marca=marca, asignacion='individual')
+        # - Personal/Gastos compartidos (marca=null, asignacion='compartido') prorrateados entre marcas
+        from core.models import Marca as MarcaModel
+        marcas_activas = MarcaModel.objects.filter(activa=True).count() or 1
 
-        gastos_admin = Decimal('0')
-        for g in GastoAdministrativo.objects.filter(escenario=escenario, marca=marca):
-            gastos_admin += g.valor_mensual
+        # Personal individual de la marca
+        personal_admin_individual = Decimal('0')
+        for p in PersonalAdministrativo.objects.filter(
+            escenario=escenario, marca=marca, asignacion='individual'
+        ):
+            personal_admin_individual += Decimal(str(p.calcular_costo_mensual()))
+
+        # Personal compartido (sin marca) - prorratear entre marcas
+        personal_admin_compartido = Decimal('0')
+        for p in PersonalAdministrativo.objects.filter(
+            escenario=escenario, marca__isnull=True, asignacion='compartido'
+        ):
+            personal_admin_compartido += Decimal(str(p.calcular_costo_mensual())) / marcas_activas
+
+        personal_admin = personal_admin_individual + personal_admin_compartido
+
+        # Gastos individuales de la marca
+        gastos_admin_individual = Decimal('0')
+        for g in GastoAdministrativo.objects.filter(
+            escenario=escenario, marca=marca, asignacion='individual'
+        ):
+            gastos_admin_individual += g.valor_mensual
+
+        # Gastos compartidos (sin marca) - prorratear entre marcas
+        gastos_admin_compartido = Decimal('0')
+        for g in GastoAdministrativo.objects.filter(
+            escenario=escenario, marca__isnull=True, asignacion='compartido'
+        ):
+            gastos_admin_compartido += g.valor_mensual / marcas_activas
+
+        gastos_admin = gastos_admin_individual + gastos_admin_compartido
 
         total_admin = personal_admin + gastos_admin
 
