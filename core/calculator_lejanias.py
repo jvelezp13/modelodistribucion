@@ -859,7 +859,7 @@ class CalculadoraLejanias:
 
         for vehiculo in vehiculos:
             # Calcular costo fijo mensual del vehículo
-            costo_fijo = vehiculo.costo_fijo_total_mensual()
+            costo_fijo = vehiculo.calcular_costo_mensual()
 
             # Si es compartido, obtener solo la proporción de esta marca
             if vehiculo.asignacion == 'compartido':
