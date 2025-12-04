@@ -13,6 +13,7 @@ Para:
 from decimal import Decimal
 from typing import Dict, List, Optional
 import logging
+from django.db import models
 
 logger = logging.getLogger(__name__)
 
@@ -806,6 +807,148 @@ class CalculadoraLejanias:
                     'venta_total': float(venta_total_municipio),
                     'proporcion': float(proporcion),
                     'costo_asignado': float(costo_zona_municipio),
+                })
+
+        return costos_por_zona
+
+    def distribuir_flota_a_zonas(self, marca) -> Dict[int, Dict]:
+        """
+        Distribuye los costos fijos de vehículos (flota) a las zonas comerciales
+        según las rutas que atiende cada vehículo.
+
+        Lógica:
+        1. Para cada vehículo, identificar qué rutas lo usan
+        2. Para cada ruta, identificar qué municipios visita
+        3. Distribuir el costo del vehículo a las zonas que atienden esos municipios
+           (proporcional a la venta proyectada)
+
+        Returns:
+            Dict con zona_id como key y:
+            {
+                'zona_nombre': str,
+                'costo_flota_total': Decimal,
+                'detalle_vehiculos': [...]
+            }
+        """
+        from core.models import Vehiculo, RutaLogistica, ZonaMunicipio, Zona
+
+        zonas = Zona.objects.filter(
+            marca=marca,
+            escenario=self.escenario,
+            activo=True
+        )
+
+        costos_por_zona = {}
+
+        # Inicializar todas las zonas
+        for zona in zonas:
+            costos_por_zona[zona.id] = {
+                'zona_nombre': zona.nombre,
+                'costo_flota_total': Decimal('0'),
+                'detalle_vehiculos': []
+            }
+
+        # Obtener todos los vehículos de la marca
+        vehiculos = Vehiculo.objects.filter(
+            escenario=self.escenario,
+            activo=True
+        ).filter(
+            # Vehículos individuales de la marca o compartidos
+            models.Q(marca=marca, asignacion='individual') |
+            models.Q(asignacion='compartido')
+        )
+
+        for vehiculo in vehiculos:
+            # Calcular costo fijo mensual del vehículo
+            costo_fijo = vehiculo.costo_fijo_total_mensual()
+
+            # Si es compartido, obtener solo la proporción de esta marca
+            if vehiculo.asignacion == 'compartido':
+                # Buscar el prorrateo para esta marca
+                from core.models import VehiculoProrrateo
+                prorrateo = VehiculoProrrateo.objects.filter(
+                    vehiculo=vehiculo,
+                    marca=marca
+                ).first()
+                if prorrateo:
+                    costo_fijo = costo_fijo * (prorrateo.porcentaje / 100)
+                else:
+                    continue  # No tiene prorrateo para esta marca
+
+            # Encontrar las rutas que usan este vehículo
+            rutas = RutaLogistica.objects.filter(
+                vehiculo=vehiculo,
+                marca=marca,
+                escenario=self.escenario,
+                activo=True
+            ).prefetch_related('municipios__municipio')
+
+            if not rutas.exists():
+                # Vehículo sin rutas asignadas - distribuir proporcionalmente
+                # (fallback al comportamiento anterior)
+                for zona in zonas:
+                    participacion = (zona.participacion_ventas or Decimal('0')) / 100
+                    costo_zona = costo_fijo * participacion
+                    costos_por_zona[zona.id]['costo_flota_total'] += costo_zona
+                    costos_por_zona[zona.id]['detalle_vehiculos'].append({
+                        'vehiculo_id': vehiculo.id,
+                        'vehiculo_nombre': str(vehiculo),
+                        'costo_vehiculo': float(costo_fijo),
+                        'metodo': 'proporcional',
+                        'costo_asignado': float(costo_zona)
+                    })
+                continue
+
+            # Recopilar todos los municipios de todas las rutas del vehículo
+            municipios_vehiculo = set()
+            for ruta in rutas:
+                for rm in ruta.municipios.all():
+                    municipios_vehiculo.add(rm.municipio.id)
+
+            if not municipios_vehiculo:
+                continue
+
+            # Encontrar todas las zonas que atienden estos municipios
+            zonas_municipios = ZonaMunicipio.objects.filter(
+                municipio_id__in=municipios_vehiculo,
+                zona__marca=marca,
+                zona__escenario=self.escenario,
+                zona__activo=True
+            ).select_related('zona')
+
+            # Calcular venta total de todas las zonas en los municipios del vehículo
+            venta_total = sum(
+                zm.venta_proyectada or Decimal('0')
+                for zm in zonas_municipios
+            )
+
+            # Agrupar por zona y sumar ventas
+            venta_por_zona = {}
+            for zm in zonas_municipios:
+                zona_id = zm.zona.id
+                if zona_id not in venta_por_zona:
+                    venta_por_zona[zona_id] = Decimal('0')
+                venta_por_zona[zona_id] += zm.venta_proyectada or Decimal('0')
+
+            # Distribuir el costo del vehículo entre las zonas
+            for zona_id, venta_zona in venta_por_zona.items():
+                if venta_total > 0:
+                    proporcion = venta_zona / venta_total
+                else:
+                    proporcion = Decimal('1') / len(venta_por_zona)
+
+                costo_zona = costo_fijo * proporcion
+
+                costos_por_zona[zona_id]['costo_flota_total'] += costo_zona
+                costos_por_zona[zona_id]['detalle_vehiculos'].append({
+                    'vehiculo_id': vehiculo.id,
+                    'vehiculo_nombre': str(vehiculo),
+                    'costo_vehiculo': float(costo_fijo),
+                    'metodo': 'por_rutas',
+                    'venta_zona': float(venta_zona),
+                    'venta_total': float(venta_total),
+                    'proporcion': float(proporcion),
+                    'costo_asignado': float(costo_zona)
                 })
 
         return costos_por_zona

@@ -619,12 +619,14 @@ export interface DiagnosticoLogisticoResponse {
   marca: string;
   resumen: {
     total_flota_simulador: number;
+    total_flota_distribuida: number;
     total_personal_simulador: number;
     total_gastos_simulador: number;
     total_lejanias_simulador: number;
     total_costo_por_municipios: number;
     total_distribuido_a_zonas: number;
-    diferencia: number;
+    diferencia_lejanias: number;
+    diferencia_flota: number;
   };
   rubros_logisticos_simulador: Array<{
     nombre: string;
@@ -675,6 +677,8 @@ export interface DiagnosticoLogisticoResponse {
     zona_nombre: string;
     participacion_ventas: number;
     costo_logistico_asignado: number;
+    costo_flota_asignado: number;
+    costo_total_asignado: number;
     municipios_con_costo: Array<{
       municipio_id: number;
       municipio_nombre: string;
@@ -682,6 +686,13 @@ export interface DiagnosticoLogisticoResponse {
       venta_zona: number;
       venta_total: number;
       proporcion: number;
+      costo_asignado: number;
+    }>;
+    vehiculos_con_costo: Array<{
+      vehiculo_id: number;
+      vehiculo_nombre: string;
+      costo_vehiculo: number;
+      metodo: string;
       costo_asignado: number;
     }>;
   }>;

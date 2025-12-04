@@ -2133,8 +2133,11 @@ def diagnostico_logistico_detallado(
         # 1. COSTOS POR MUNICIPIO (desde rutas logísticas)
         costos_por_municipio = calc.calcular_costos_logisticos_por_municipio(marca_obj)
 
-        # 2. DISTRIBUCIÓN A ZONAS
+        # 2. DISTRIBUCIÓN A ZONAS (lejanías)
         costos_por_zona = calc.distribuir_costos_logisticos_a_zonas(marca_obj)
+
+        # 2b. DISTRIBUCIÓN DE FLOTA A ZONAS
+        flota_por_zona = calc.distribuir_flota_a_zonas(marca_obj)
 
         # 3. RUBROS DEL SIMULADOR (para comparar)
         loader = DataLoaderDB(escenario_id=escenario_id)
@@ -2229,17 +2232,30 @@ def diagnostico_logistico_detallado(
                 detalle_municipios = costos_por_zona[zona.id]['detalle_municipios']
                 total_distribuido += costo_zona
 
+            # Flota asignada a esta zona
+            flota_zona = Decimal('0')
+            detalle_vehiculos = []
+            if zona.id in flota_por_zona:
+                flota_zona = flota_por_zona[zona.id]['costo_flota_total']
+                detalle_vehiculos = flota_por_zona[zona.id]['detalle_vehiculos']
+
             zonas_detalle.append({
                 'zona_id': zona.id,
                 'zona_nombre': zona.nombre,
                 'participacion_ventas': float(zona.participacion_ventas or 0),
                 'costo_logistico_asignado': float(costo_zona),
-                'municipios_con_costo': detalle_municipios
+                'costo_flota_asignado': float(flota_zona),
+                'costo_total_asignado': float(costo_zona + flota_zona),
+                'municipios_con_costo': detalle_municipios,
+                'vehiculos_con_costo': detalle_vehiculos
             })
 
         # 6. RESUMEN
         total_costo_municipios = sum(
             Decimal(str(m['costo_total'])) for m in costos_por_municipio.values()
+        )
+        total_flota_distribuida = sum(
+            Decimal(str(z['costo_flota_total'])) for z in flota_por_zona.values()
         )
 
         return {
@@ -2247,12 +2263,14 @@ def diagnostico_logistico_detallado(
             'marca': marca_obj.nombre,
             'resumen': {
                 'total_flota_simulador': float(total_flota),
+                'total_flota_distribuida': float(total_flota_distribuida),
                 'total_personal_simulador': float(total_personal),
                 'total_gastos_simulador': float(total_gastos),
                 'total_lejanias_simulador': float(total_lejanias_sim),
                 'total_costo_por_municipios': float(total_costo_municipios),
-                'total_distribuido_a_zonas': float(total_distribuido),
-                'diferencia': float(total_costo_municipios - total_distribuido)
+                'total_distribuido_a_zonas': float(total_distribuido + total_flota_distribuida),
+                'diferencia_lejanias': float(total_costo_municipios - total_distribuido),
+                'diferencia_flota': float(total_flota - total_flota_distribuida)
             },
             'rubros_logisticos_simulador': rubros_logisticos,
             'costos_por_municipio': {

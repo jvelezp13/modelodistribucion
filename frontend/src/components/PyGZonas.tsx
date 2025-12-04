@@ -315,11 +315,11 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
             <h4 className="text-xs font-semibold text-slate-800 flex items-center gap-2">
               <Truck size={14} className="text-blue-600" />
               Diagnóstico de Distribución Logística
-              {Math.abs(diagLogistico.resumen.diferencia) < 1000 ? (
+              {Math.abs(diagLogistico.resumen.diferencia_lejanias) < 1000 && Math.abs(diagLogistico.resumen.diferencia_flota) < 1000 ? (
                 <span className="px-2 py-0.5 rounded text-[10px] bg-green-200 text-green-800">OK</span>
               ) : (
                 <span className="px-2 py-0.5 rounded text-[10px] bg-amber-200 text-amber-800">
-                  Diferencia: {formatCurrency(diagLogistico.resumen.diferencia)}
+                  Diferencias detectadas
                 </span>
               )}
             </h4>
@@ -332,10 +332,11 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
           </div>
 
           {/* Resumen */}
-          <div className="grid grid-cols-4 gap-3 mb-4">
+          <div className="grid grid-cols-5 gap-3 mb-4">
             <div className="bg-white rounded border p-2">
               <div className="text-[10px] text-gray-500">Flota (Simulador)</div>
               <div className="text-sm font-bold text-gray-800">{formatCurrency(diagLogistico.resumen.total_flota_simulador)}</div>
+              <div className="text-[9px] text-gray-400">Distribuida: {formatCurrency(diagLogistico.resumen.total_flota_distribuida)}</div>
             </div>
             <div className="bg-white rounded border p-2">
               <div className="text-[10px] text-gray-500">Lejanías (Simulador)</div>
@@ -346,8 +347,21 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
               <div className="text-sm font-bold text-blue-700">{formatCurrency(diagLogistico.resumen.total_costo_por_municipios)}</div>
             </div>
             <div className="bg-white rounded border p-2">
-              <div className="text-[10px] text-gray-500">Distribuido a Zonas</div>
+              <div className="text-[10px] text-gray-500">Total Distribuido</div>
               <div className="text-sm font-bold text-green-700">{formatCurrency(diagLogistico.resumen.total_distribuido_a_zonas)}</div>
+            </div>
+            <div className="bg-white rounded border p-2">
+              <div className="text-[10px] text-gray-500">Diferencias</div>
+              <div className="text-[10px]">
+                <span className={diagLogistico.resumen.diferencia_lejanias === 0 ? 'text-green-600' : 'text-amber-600'}>
+                  Lejanías: {formatCurrency(diagLogistico.resumen.diferencia_lejanias)}
+                </span>
+              </div>
+              <div className="text-[10px]">
+                <span className={diagLogistico.resumen.diferencia_flota === 0 ? 'text-green-600' : 'text-amber-600'}>
+                  Flota: {formatCurrency(diagLogistico.resumen.diferencia_flota)}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -438,9 +452,11 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
                 <thead className="bg-slate-100">
                   <tr>
                     <th className="text-left px-2 py-1.5 font-semibold">Zona</th>
-                    <th className="text-right px-2 py-1.5 font-semibold">Participación</th>
-                    <th className="text-right px-2 py-1.5 font-semibold">Costo Asignado</th>
-                    <th className="text-left px-2 py-1.5 font-semibold">Detalle por Municipio</th>
+                    <th className="text-right px-2 py-1.5 font-semibold">Part.</th>
+                    <th className="text-right px-2 py-1.5 font-semibold">Lejanías</th>
+                    <th className="text-right px-2 py-1.5 font-semibold">Flota</th>
+                    <th className="text-right px-2 py-1.5 font-semibold">Total</th>
+                    <th className="text-left px-2 py-1.5 font-semibold">Detalle</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -452,30 +468,54 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
                       <td className="px-2 py-2 text-right text-gray-600">
                         {zona.participacion_ventas.toFixed(1)}%
                       </td>
-                      <td className="px-2 py-2 text-right font-bold text-green-700">
+                      <td className="px-2 py-2 text-right text-blue-700">
                         {formatCurrency(zona.costo_logistico_asignado)}
                       </td>
+                      <td className="px-2 py-2 text-right text-purple-700">
+                        {formatCurrency(zona.costo_flota_asignado)}
+                      </td>
+                      <td className="px-2 py-2 text-right font-bold text-green-700">
+                        {formatCurrency(zona.costo_total_asignado)}
+                      </td>
                       <td className="px-2 py-2">
-                        {zona.municipios_con_costo.length === 0 ? (
-                          <span className="text-gray-400 italic">Sin municipios asignados</span>
-                        ) : (
-                          <div className="flex flex-wrap gap-1">
-                            {zona.municipios_con_costo.slice(0, 5).map((m) => (
-                              <span
-                                key={m.municipio_id}
-                                className="px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded text-[9px]"
-                                title={`Costo: ${formatCurrency(m.costo_asignado)} (${(m.proporcion * 100).toFixed(0)}%)`}
-                              >
-                                {m.municipio_nombre}: {formatCurrency(m.costo_asignado)}
-                              </span>
-                            ))}
-                            {zona.municipios_con_costo.length > 5 && (
-                              <span className="text-[9px] text-gray-400">
-                                +{zona.municipios_con_costo.length - 5} más
-                              </span>
-                            )}
-                          </div>
-                        )}
+                        <div className="space-y-1">
+                          {zona.municipios_con_costo.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {zona.municipios_con_costo.slice(0, 3).map((m) => (
+                                <span
+                                  key={m.municipio_id}
+                                  className="px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded text-[9px]"
+                                  title={`Costo: ${formatCurrency(m.costo_asignado)} (${(m.proporcion * 100).toFixed(0)}%)`}
+                                >
+                                  {m.municipio_nombre}
+                                </span>
+                              ))}
+                              {zona.municipios_con_costo.length > 3 && (
+                                <span className="text-[9px] text-gray-400">
+                                  +{zona.municipios_con_costo.length - 3} mun.
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          {zona.vehiculos_con_costo.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {zona.vehiculos_con_costo.slice(0, 3).map((v) => (
+                                <span
+                                  key={v.vehiculo_id}
+                                  className="px-1.5 py-0.5 bg-purple-50 text-purple-600 rounded text-[9px]"
+                                  title={`Costo: ${formatCurrency(v.costo_asignado)} (${v.metodo})`}
+                                >
+                                  {v.vehiculo_nombre.split(' ')[0]}
+                                </span>
+                              ))}
+                              {zona.vehiculos_con_costo.length > 3 && (
+                                <span className="text-[9px] text-gray-400">
+                                  +{zona.vehiculos_con_costo.length - 3} veh.
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -484,6 +524,12 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
                   <tr>
                     <td className="px-2 py-2 font-bold text-gray-800">TOTAL</td>
                     <td className="px-2 py-2 text-right font-bold text-gray-800">100%</td>
+                    <td className="px-2 py-2 text-right font-bold text-blue-800">
+                      {formatCurrency(diagLogistico.resumen.total_costo_por_municipios)}
+                    </td>
+                    <td className="px-2 py-2 text-right font-bold text-purple-800">
+                      {formatCurrency(diagLogistico.resumen.total_flota_distribuida)}
+                    </td>
                     <td className="px-2 py-2 text-right font-bold text-green-800">
                       {formatCurrency(diagLogistico.resumen.total_distribuido_a_zonas)}
                     </td>
