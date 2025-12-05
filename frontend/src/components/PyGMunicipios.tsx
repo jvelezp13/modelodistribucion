@@ -77,9 +77,35 @@ export default function PyGMunicipios({ escenarioId, zonaId, zonaNombre, marcaId
 
   // Pre-calcular ventas por municipio con ajuste de redondeo
   const ventasPorMunicipio = React.useMemo(() => {
-    if (!data?.municipios) return new Map<number, number>();
+    if (!data?.municipios || data.municipios.length === 0) return new Map<number, number>();
 
     const ventasMap = new Map<number, number>();
+    const numMunicipios = data.municipios.length;
+
+    // Verificar si hay participaciones configuradas
+    const sumaParticipaciones = data.municipios.reduce(
+      (sum, mun) => sum + (mun.municipio.participacion_ventas || 0), 0
+    );
+
+    // Si no hay participaciones configuradas, distribuir equitativamente
+    if (sumaParticipaciones === 0) {
+      const ventasPorMun = Math.round(ventasZona / numMunicipios);
+      let sumaAsignada = 0;
+
+      // Asignar a todos excepto el último
+      data.municipios.slice(0, -1).forEach(mun => {
+        ventasMap.set(mun.municipio.id, ventasPorMun);
+        sumaAsignada += ventasPorMun;
+      });
+
+      // El último absorbe la diferencia de redondeo
+      const ultimoMun = data.municipios[numMunicipios - 1];
+      ventasMap.set(ultimoMun.municipio.id, Math.round(ventasZona) - sumaAsignada);
+
+      return ventasMap;
+    }
+
+    // Si hay participaciones, usar el algoritmo normal
     let sumaRedondeada = 0;
 
     // Ordenar municipios por participación descendente
@@ -188,6 +214,24 @@ export default function PyGMunicipios({ escenarioId, zonaId, zonaNombre, marcaId
     const ventas = calcularVentasMunicipio(mun);
     if (ventas === 0) return 0;
     return (calcularUtilidadNeta(mun) / ventas) * 100;
+  };
+
+  // Verificar si hay participaciones configuradas
+  const tieneParticipacionesConfiguradas = React.useMemo(() => {
+    if (!data?.municipios) return false;
+    return data.municipios.reduce(
+      (sum, mun) => sum + (mun.municipio.participacion_ventas || 0), 0
+    ) > 0;
+  }, [data?.municipios]);
+
+  // Obtener participación efectiva (configurada o equitativa)
+  const getParticipacionEfectiva = (mun: PyGMunicipio): number => {
+    if (tieneParticipacionesConfiguradas) {
+      return mun.municipio.participacion_ventas || 0;
+    }
+    // Si no hay configuración, distribuir equitativamente
+    const numMunicipios = data?.municipios?.length || 1;
+    return 100 / numMunicipios;
   };
 
   // Calcular totales
@@ -375,8 +419,12 @@ export default function PyGMunicipios({ escenarioId, zonaId, zonaNombre, marcaId
                           </button>
                         </td>
                         <td className="text-right px-2 py-2">
-                          <span className="px-1 py-0.5 bg-green-100 text-green-700 rounded text-[9px] font-medium">
-                            {formatPercent(mun.municipio.participacion_ventas)}
+                          <span className={`px-1 py-0.5 rounded text-[9px] font-medium ${
+                            tieneParticipacionesConfiguradas
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-yellow-100 text-yellow-700'
+                          }`} title={!tieneParticipacionesConfiguradas ? 'Distribución equitativa (sin config.)' : undefined}>
+                            {formatPercent(getParticipacionEfectiva(mun))}
                           </span>
                         </td>
                         <td className="text-right px-2 py-2 text-gray-700 text-[11px]">{formatCurrency(ventasMun)}</td>
