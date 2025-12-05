@@ -1541,7 +1541,10 @@ def obtener_pyg_municipios(
         Lista de P&G por municipio con ventas y configuración de descuentos
     """
     try:
-        from core.models import Escenario, Zona, Marca, Impuesto
+        from core.models import (
+            Escenario, Zona, Marca, Impuesto,
+            ProyeccionVentasConfig, ConfiguracionDescuentos
+        )
         from api.pyg_service import calcular_pyg_todos_municipios
 
         escenario = Escenario.objects.get(pk=escenario_id)
