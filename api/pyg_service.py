@@ -663,34 +663,33 @@ def calcular_pyg_todos_municipios(escenario, zona) -> List[Dict]:
             }
 
     # Construir resultado para cada municipio
+    # Todos los costos se distribuyen proporcionalmente según el peso relativo
+    # para que la suma de municipios = total de la zona
     resultados = []
     for zm in zona_municipios:
         mun_id = zm.municipio.id
         peso = pesos_relativos.get(mun_id, Decimal('0'))
         participacion = participaciones.get(mun_id, Decimal('0'))
 
-        # Costos comerciales y administrativos: proporcionales al peso relativo
+        # Costos comerciales: proporcionales al peso relativo
         comercial = {
             'personal': pyg_zona['comercial']['personal'] * peso,
             'gastos': pyg_zona['comercial']['gastos'] * peso,
             'total': pyg_zona['comercial']['total'] * peso
         }
+
+        # Costos logísticos: proporcionales al peso relativo
+        logistico = {
+            'personal': pyg_zona['logistico']['personal'] * peso,
+            'gastos': pyg_zona['logistico']['gastos'] * peso,
+            'total': pyg_zona['logistico']['total'] * peso
+        }
+
+        # Costos administrativos: proporcionales al peso relativo
         administrativo = {
             'personal': pyg_zona['administrativo']['personal'] * peso,
             'gastos': pyg_zona['administrativo']['gastos'] * peso,
             'total': pyg_zona['administrativo']['total'] * peso
-        }
-
-        # Costos logísticos: desde la distribución por rutas
-        costo_log = costos_log_por_municipio.get(mun_id, {
-            'flete': Decimal('0'),
-            'lejanias': Decimal('0'),
-            'total': Decimal('0')
-        })
-        logistico = {
-            'personal': pyg_zona['logistico']['personal'] * peso,  # Personal proporcional
-            'gastos': costo_log['total'],  # Gastos = costos logísticos de rutas
-            'total': pyg_zona['logistico']['personal'] * peso + costo_log['total']
         }
 
         total_mensual = comercial['total'] + logistico['total'] + administrativo['total']
