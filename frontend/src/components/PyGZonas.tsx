@@ -163,12 +163,40 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
     return calcularUtilidadOperacionalConICA(zona) + calcularOtrosIngresos(zona);
   };
 
-  // Calcular utilidad neta (después de impuesto de renta solamente)
+  // Calcular totales consolidados para prorrateo de impuesto
+  const calcularTotalesConsolidados = () => {
+    if (!data?.zonas) return { utilidadAntesImpuestos: 0, ventasTotal: 0, impuestoTotal: 0 };
+
+    let utilidadAntesImpuestos = 0;
+    let ventasTotal = 0;
+
+    data.zonas.forEach(zona => {
+      utilidadAntesImpuestos += calcularUtilidadAntesImpuestosConICA(zona);
+      ventasTotal += calcularVentasZona(zona);
+    });
+
+    const tasaImpuesto = data?.tasa_impuesto_renta || 0.33;
+    // Impuesto sobre utilidad consolidada (como en PyGDetallado)
+    const impuestoTotal = utilidadAntesImpuestos > 0 ? utilidadAntesImpuestos * tasaImpuesto : 0;
+
+    return { utilidadAntesImpuestos, ventasTotal, impuestoTotal };
+  };
+
+  const consolidado = calcularTotalesConsolidados();
+
+  // Calcular impuesto prorrateado por zona (según participación en ventas)
+  const calcularImpuestoProrrateado = (zona: PyGZona): number => {
+    if (consolidado.ventasTotal === 0 || consolidado.impuestoTotal === 0) return 0;
+    const ventasZona = calcularVentasZona(zona);
+    const participacion = ventasZona / consolidado.ventasTotal;
+    return consolidado.impuestoTotal * participacion;
+  };
+
+  // Calcular utilidad neta con impuesto prorrateado (coherente con PyGDetallado)
   const calcularUtilidadNeta = (zona: PyGZona): number => {
     const utilidadAntesImp = calcularUtilidadAntesImpuestosConICA(zona);
-    const tasaImpuesto = data?.tasa_impuesto_renta || 0.33;
-    const impuesto = utilidadAntesImp > 0 ? utilidadAntesImp * tasaImpuesto : 0;
-    return utilidadAntesImp - impuesto;
+    const impuestoProrrateado = calcularImpuestoProrrateado(zona);
+    return utilidadAntesImp - impuestoProrrateado;
   };
 
   // Calcular margen neto sobre ventas
