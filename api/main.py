@@ -1526,7 +1526,8 @@ def obtener_pyg_zona(
 @app.get("/api/pyg/municipios")
 def obtener_pyg_municipios(
     zona_id: int,
-    escenario_id: int
+    escenario_id: int,
+    marca_id: str
 ) -> Dict[str, Any]:
     """
     Obtiene el P&G desglosado por municipio para una zona.
@@ -1534,20 +1535,70 @@ def obtener_pyg_municipios(
     Args:
         zona_id: ID de la zona
         escenario_id: ID del escenario
+        marca_id: ID de la marca
 
     Returns:
-        Lista de P&G por municipio
+        Lista de P&G por municipio con ventas y configuración de descuentos
     """
     try:
-        from core.models import Escenario, Zona
+        from core.models import Escenario, Zona, Marca, Impuesto
         from api.pyg_service import calcular_pyg_todos_municipios
-
-        from core.models import Impuesto
 
         escenario = Escenario.objects.get(pk=escenario_id)
         zona = Zona.objects.get(pk=zona_id, escenario=escenario)
+        marca = Marca.objects.get(marca_id=marca_id)
 
         municipios = calcular_pyg_todos_municipios(escenario, zona)
+
+        # Obtener ventas mensuales de la marca
+        ventas_mensuales = {}
+        try:
+            config_ventas = ProyeccionVentasConfig.objects.get(
+                marca=marca,
+                escenario=escenario,
+                anio=escenario.anio
+            )
+            ventas_mensuales = {k: float(v) for k, v in config_ventas.calcular_ventas_mensuales().items()}
+        except ProyeccionVentasConfig.DoesNotExist:
+            pass
+
+        # Obtener configuración de descuentos
+        config_descuentos = None
+        try:
+            config = ConfiguracionDescuentos.objects.prefetch_related('tramos').get(
+                marca=marca,
+                activa=True
+            )
+            # Calcular descuento ponderado
+            descuento_ponderado = 0.0
+            tramos_data = []
+            for tramo in config.tramos.all().order_by('orden'):
+                peso = float(tramo.porcentaje_ventas) / 100
+                descuento = float(tramo.porcentaje_descuento) / 100
+                descuento_ponderado += peso * descuento
+                tramos_data.append({
+                    'orden': tramo.orden,
+                    'porcentaje_ventas': float(tramo.porcentaje_ventas),
+                    'porcentaje_descuento': float(tramo.porcentaje_descuento),
+                })
+
+            config_descuentos = {
+                'descuento_pie_factura_ponderado': descuento_ponderado * 100,
+                'tramos': tramos_data,
+                'porcentaje_rebate': float(config.porcentaje_rebate),
+                'aplica_descuento_financiero': config.aplica_descuento_financiero,
+                'porcentaje_descuento_financiero': float(config.porcentaje_descuento_financiero),
+                'aplica_cesantia_comercial': config.aplica_cesantia_comercial,
+            }
+        except ConfiguracionDescuentos.DoesNotExist:
+            config_descuentos = {
+                'descuento_pie_factura_ponderado': 0,
+                'tramos': [],
+                'porcentaje_rebate': 0,
+                'aplica_descuento_financiero': False,
+                'porcentaje_descuento_financiero': 0,
+                'aplica_cesantia_comercial': False,
+            }
 
         # Obtener tasa de impuesto de renta
         tasa_impuesto = 0.33  # Default
@@ -1580,8 +1631,13 @@ def obtener_pyg_municipios(
             'escenario_nombre': escenario.nombre,
             'zona_id': zona_id,
             'zona_nombre': zona.nombre,
+            'zona_participacion_ventas': float(zona.participacion_ventas),
+            'marca_id': marca_id,
+            'marca_nombre': marca.nombre,
             'municipios': [_serializar_pyg_municipio(m) for m in municipios],
             'total_municipios': len(municipios),
+            'ventas_mensuales': ventas_mensuales,
+            'configuracion_descuentos': config_descuentos,
             'tasa_impuesto_renta': tasa_impuesto,
             'tasa_ica': tasa_ica
         }
@@ -1590,6 +1646,8 @@ def obtener_pyg_municipios(
         raise HTTPException(status_code=404, detail=f"Escenario no encontrado: {escenario_id}")
     except Zona.DoesNotExist:
         raise HTTPException(status_code=404, detail=f"Zona no encontrada: {zona_id}")
+    except Marca.DoesNotExist:
+        raise HTTPException(status_code=404, detail=f"Marca no encontrada: {marca_id}")
     except Exception as e:
         logger.error(f"Error obteniendo P&G municipios: {e}")
         raise HTTPException(status_code=500, detail=str(e))

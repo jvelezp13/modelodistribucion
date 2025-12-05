@@ -371,10 +371,11 @@ class APIClient {
    */
   async obtenerPyGMunicipios(
     zonaId: number,
-    escenarioId: number
+    escenarioId: number,
+    marcaId: string
   ): Promise<PyGMunicipiosResponse> {
     return this.request<PyGMunicipiosResponse>(
-      `/api/pyg/municipios?zona_id=${zonaId}&escenario_id=${escenarioId}`
+      `/api/pyg/municipios?zona_id=${zonaId}&escenario_id=${escenarioId}&marca_id=${marcaId}`
     );
   }
 
@@ -516,10 +517,15 @@ export interface PyGMunicipio {
 export interface PyGMunicipiosResponse {
   zona_id: number;
   zona_nombre: string;
+  zona_participacion_ventas: number;
   escenario_id: number;
   escenario_nombre: string;
+  marca_id: string;
+  marca_nombre: string;
   total_municipios: number;
   municipios: PyGMunicipio[];
+  ventas_mensuales: VentasMensualesDesglose;
+  configuracion_descuentos: ConfigDescuentosZonas;
   tasa_impuesto_renta: number;
   tasa_ica: number;
 }

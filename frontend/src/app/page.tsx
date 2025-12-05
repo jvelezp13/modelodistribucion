@@ -403,6 +403,7 @@ export default function DashboardPage() {
                       escenarioId={selectedScenarioId!}
                       zonaId={selectedZonaId}
                       zonaNombre={selectedZonaNombre || undefined}
+                      marcaId={selectedMarcaPyG || resultado.marcas[0]?.marca_id}
                       onBack={() => {
                         setSelectedZonaId(null);
                         setSelectedZonaNombre(null);
