@@ -69,7 +69,7 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
   };
 
   const formatPercent = (value: number) => {
-    return `${value.toFixed(1)}%`;
+    return `${value.toFixed(2)}%`;
   };
 
   // Obtener ventas del mes seleccionado
