@@ -401,7 +401,9 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
               </tr>
             </thead>
             <tbody>
-              {data.zonas.map((zona, idx) => (
+              {[...data.zonas]
+                .sort((a, b) => calcularMargenNeto(b) - calcularMargenNeto(a))
+                .map((zona, idx) => (
                 <ZonaRow
                   key={zona.zona.id}
                   zona={zona}
@@ -449,50 +451,6 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
         </div>
       </div>
 
-      {/* Gráfico de rentabilidad por zona */}
-      <div className="bg-white border border-gray-200 rounded p-4">
-        <h4 className="text-xs font-semibold text-gray-700 mb-3 flex items-center gap-1">
-          <TrendingUp size={14} />
-          Rentabilidad por Zona (Margen Neto %)
-        </h4>
-        <div className="space-y-2">
-          {data.zonas
-            .map(zona => ({
-              zona,
-              margen: calcularMargenNeto(zona),
-              ventas: calcularVentasZona(zona)
-            }))
-            .sort((a, b) => b.margen - a.margen)
-            .map(({ zona, margen, ventas }) => {
-              const isPositive = margen >= 0;
-              const barWidth = Math.min(Math.abs(margen) * 5, 100); // Escala para visualización
-
-              return (
-                <div key={zona.zona.id} className="flex items-center gap-2">
-                  <div className="w-28 text-xs text-gray-600 truncate" title={zona.zona.nombre}>
-                    {zona.zona.nombre}
-                  </div>
-                  <div className="flex-1 bg-gray-100 rounded-full h-4 overflow-hidden relative">
-                    <div
-                      className={`h-full rounded-full transition-all duration-300 ${
-                        isPositive ? 'bg-green-500' : 'bg-red-500'
-                      }`}
-                      style={{ width: `${barWidth}%` }}
-                    />
-                  </div>
-                  <div className={`w-20 text-right text-xs font-medium ${
-                    isPositive ? 'text-green-700' : 'text-red-700'
-                  }`}>
-                    {formatPercent(margen)}
-                  </div>
-                  <div className="w-24 text-right text-[10px] text-gray-500">
-                    {formatCurrency(ventas)}
-                  </div>
-                </div>
-              );
-            })}
-        </div>
-      </div>
     </div>
   );
 }
