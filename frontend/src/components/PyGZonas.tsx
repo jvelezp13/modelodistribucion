@@ -81,9 +81,38 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
 
   const ventasTotalMes = getVentasMes();
 
-  // Calcular ventas de una zona según su participación
+  // Pre-calcular ventas por zona con ajuste de redondeo para que sumen exactamente el total
+  const ventasPorZona = React.useMemo(() => {
+    if (!data?.zonas) return new Map<number, number>();
+
+    const ventasMap = new Map<number, number>();
+    let sumaRedondeada = 0;
+
+    // Ordenar zonas por participación descendente para asignar ajuste a la más grande
+    const zonasOrdenadas = [...data.zonas].sort(
+      (a, b) => b.zona.participacion_ventas - a.zona.participacion_ventas
+    );
+
+    // Calcular ventas redondeadas para todas excepto la primera (más grande)
+    zonasOrdenadas.slice(1).forEach(zona => {
+      const ventasExactas = ventasTotalMes * (zona.zona.participacion_ventas / 100);
+      const ventasRedondeadas = Math.round(ventasExactas);
+      ventasMap.set(zona.zona.id, ventasRedondeadas);
+      sumaRedondeada += ventasRedondeadas;
+    });
+
+    // La zona más grande absorbe la diferencia para que el total cuadre
+    if (zonasOrdenadas.length > 0) {
+      const zonaMayor = zonasOrdenadas[0];
+      ventasMap.set(zonaMayor.zona.id, ventasTotalMes - sumaRedondeada);
+    }
+
+    return ventasMap;
+  }, [data?.zonas, ventasTotalMes]);
+
+  // Calcular ventas de una zona (usa el valor pre-calculado con ajuste)
   const calcularVentasZona = (zona: PyGZona): number => {
-    return ventasTotalMes * (zona.zona.participacion_ventas / 100);
+    return ventasPorZona.get(zona.zona.id) || 0;
   };
 
   // Calcular margen bruto de una zona (ventas - CMV)
