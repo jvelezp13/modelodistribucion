@@ -182,7 +182,7 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
   const calcularTotales = () => {
     if (!data?.zonas) return {
       comercial: 0, logistico: 0, administrativo: 0, costoTotal: 0, ica: 0,
-      ventas: 0, margenBruto: 0, utilidadOperacional: 0, utilidadNeta: 0,
+      ventas: 0, margenBruto: 0, utilidadOperacional: 0, utilidadNeta: 0, otrosIngresos: 0,
       // Subtotales para diagnóstico
       comercialPersonal: 0, comercialGastos: 0, comercialLejanias: 0,
       logisticoPersonal: 0, logisticoGastos: 0, logisticoLejanias: 0,
@@ -201,6 +201,7 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
         margenBruto: acc.margenBruto + calcularMargenBrutoZona(zona),
         utilidadOperacional: acc.utilidadOperacional + calcularUtilidadOperacionalConICA(zona),
         utilidadNeta: acc.utilidadNeta + calcularUtilidadNeta(zona),
+        otrosIngresos: acc.otrosIngresos + calcularOtrosIngresos(zona),
         // Subtotales para diagnóstico
         comercialPersonal: acc.comercialPersonal + zona.comercial.personal,
         comercialGastos: acc.comercialGastos + zona.comercial.gastos,
@@ -213,7 +214,7 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
       };
     }, {
       comercial: 0, logistico: 0, administrativo: 0, costoTotal: 0, ica: 0,
-      ventas: 0, margenBruto: 0, utilidadOperacional: 0, utilidadNeta: 0,
+      ventas: 0, margenBruto: 0, utilidadOperacional: 0, utilidadNeta: 0, otrosIngresos: 0,
       // Subtotales para diagnóstico
       comercialPersonal: 0, comercialGastos: 0, comercialLejanias: 0,
       logisticoPersonal: 0, logisticoGastos: 0, logisticoLejanias: 0,
@@ -357,15 +358,18 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
           <table className="w-full text-xs">
             <thead className="bg-gray-100 border-b border-gray-200">
               <tr>
-                <th className="text-left px-3 py-2 font-semibold text-gray-700">Zona</th>
-                <th className="text-right px-3 py-2 font-semibold text-gray-700">Part.</th>
-                <th className="text-right px-3 py-2 font-semibold text-gray-700">Ventas</th>
-                <th className="text-right px-3 py-2 font-semibold text-gray-700">Margen Bruto</th>
-                <th className="text-right px-3 py-2 font-semibold text-gray-700">Costos</th>
-                <th className="text-right px-3 py-2 font-semibold text-gray-700">Util. Oper.</th>
-                <th className="text-right px-3 py-2 font-semibold text-gray-700">Util. Neta</th>
-                <th className="text-right px-3 py-2 font-semibold text-gray-700">Margen</th>
-                <th className="text-center px-3 py-2 font-semibold text-gray-700">Acciones</th>
+                <th className="text-left px-2 py-2 font-semibold text-gray-700">Zona</th>
+                <th className="text-right px-2 py-2 font-semibold text-gray-700">Part.</th>
+                <th className="text-right px-2 py-2 font-semibold text-gray-700">Ventas</th>
+                <th className="text-right px-2 py-2 font-semibold text-gray-700">Margen</th>
+                <th className="text-right px-2 py-2 font-semibold text-gray-500 text-[10px]">Comerc.</th>
+                <th className="text-right px-2 py-2 font-semibold text-gray-500 text-[10px]">Logíst.</th>
+                <th className="text-right px-2 py-2 font-semibold text-gray-500 text-[10px]">Admin.</th>
+                <th className="text-right px-2 py-2 font-semibold text-gray-700">Costos</th>
+                <th className="text-right px-2 py-2 font-semibold text-gray-500 text-[10px]">Otros Ing.</th>
+                <th className="text-right px-2 py-2 font-semibold text-gray-700">Util. Neta</th>
+                <th className="text-right px-2 py-2 font-semibold text-gray-700">%</th>
+                <th className="text-center px-2 py-2 font-semibold text-gray-700"></th>
               </tr>
             </thead>
             <tbody>
@@ -395,18 +399,19 @@ export default function PyGZonas({ escenarioId, marcaId, onZonaSelect }: PyGZona
             </tbody>
             <tfoot className="bg-gray-100 border-t-2 border-gray-300">
               <tr>
-                <td className="px-3 py-2 font-bold text-gray-800">TOTAL</td>
-                <td className="text-right px-3 py-2 font-bold text-gray-800">100%</td>
-                <td className="text-right px-3 py-2 font-bold text-gray-800">{formatCurrency(totales.ventas)}</td>
-                <td className="text-right px-3 py-2 font-bold text-emerald-700">{formatCurrency(totales.margenBruto)}</td>
-                <td className="text-right px-3 py-2 font-bold text-gray-800">{formatCurrency(totales.costoTotal)}</td>
-                <td className={`text-right px-3 py-2 font-bold ${totales.utilidadOperacional >= 0 ? 'text-blue-700' : 'text-red-700'}`}>
-                  {formatCurrency(totales.utilidadOperacional)}
-                </td>
-                <td className={`text-right px-3 py-2 font-bold ${totales.utilidadNeta >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                <td className="px-2 py-2 font-bold text-gray-800">TOTAL</td>
+                <td className="text-right px-2 py-2 font-bold text-gray-800">100%</td>
+                <td className="text-right px-2 py-2 font-bold text-gray-800 text-[11px]">{formatCurrency(totales.ventas)}</td>
+                <td className="text-right px-2 py-2 font-bold text-emerald-700 text-[11px]">{formatCurrency(totales.margenBruto)}</td>
+                <td className="text-right px-2 py-2 font-medium text-gray-600 text-[10px]">{formatCurrency(totales.comercial)}</td>
+                <td className="text-right px-2 py-2 font-medium text-gray-600 text-[10px]">{formatCurrency(totales.logistico)}</td>
+                <td className="text-right px-2 py-2 font-medium text-gray-600 text-[10px]">{formatCurrency(totales.administrativo)}</td>
+                <td className="text-right px-2 py-2 font-bold text-gray-800 text-[11px]">{formatCurrency(totales.costoTotal)}</td>
+                <td className="text-right px-2 py-2 font-medium text-teal-600 text-[10px]">{formatCurrency(totales.otrosIngresos)}</td>
+                <td className={`text-right px-2 py-2 font-bold text-[11px] ${totales.utilidadNeta >= 0 ? 'text-green-700' : 'text-red-700'}`}>
                   {formatCurrency(totales.utilidadNeta)}
                 </td>
-                <td className={`text-right px-3 py-2 font-bold ${margenNetoTotal >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                <td className={`text-right px-2 py-2 font-bold ${margenNetoTotal >= 0 ? 'text-green-700' : 'text-red-700'}`}>
                   {formatPercent(margenNetoTotal)}
                 </td>
                 <td></td>
@@ -494,44 +499,45 @@ function ZonaRow({
   return (
     <>
       <tr className={`border-b border-gray-100 hover:bg-blue-50 transition-colors ${isEven ? 'bg-white' : 'bg-gray-50'}`}>
-        <td className="px-3 py-2">
+        <td className="px-2 py-2">
           <button
             onClick={onToggle}
-            className="flex items-center gap-1.5 text-gray-800 hover:text-blue-600"
+            className="flex items-center gap-1 text-gray-800 hover:text-blue-600"
           >
-            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-            <MapPin size={12} className={isRentable ? 'text-green-500' : 'text-red-500'} />
-            <span className="font-medium">{zona.zona.nombre}</span>
+            {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+            <MapPin size={10} className={isRentable ? 'text-green-500' : 'text-red-500'} />
+            <span className="font-medium text-[11px]">{zona.zona.nombre}</span>
           </button>
         </td>
-        <td className="text-right px-3 py-2">
-          <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px] font-medium">
+        <td className="text-right px-2 py-2">
+          <span className="px-1 py-0.5 bg-blue-100 text-blue-700 rounded text-[9px] font-medium">
             {formatPercent(zona.zona.participacion_ventas)}
           </span>
         </td>
-        <td className="text-right px-3 py-2 text-gray-700">{formatCurrency(ventasZona)}</td>
-        <td className="text-right px-3 py-2 text-emerald-600">{formatCurrency(margenBruto)}</td>
-        <td className="text-right px-3 py-2 text-gray-700">{formatCurrency(costosTotalConICA)}</td>
-        <td className={`text-right px-3 py-2 ${utilidadOperacional >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
-          {formatCurrency(utilidadOperacional)}
-        </td>
-        <td className={`text-right px-3 py-2 font-semibold ${isRentable ? 'text-green-600' : 'text-red-600'}`}>
+        <td className="text-right px-2 py-2 text-gray-700 text-[11px]">{formatCurrency(ventasZona)}</td>
+        <td className="text-right px-2 py-2 text-emerald-600 text-[11px]">{formatCurrency(margenBruto)}</td>
+        <td className="text-right px-2 py-2 text-gray-500 text-[10px]">{formatCurrency(zona.comercial.total)}</td>
+        <td className="text-right px-2 py-2 text-gray-500 text-[10px]">{formatCurrency(zona.logistico.total)}</td>
+        <td className="text-right px-2 py-2 text-gray-500 text-[10px]">{formatCurrency(zona.administrativo.total + ica)}</td>
+        <td className="text-right px-2 py-2 text-gray-700 font-medium text-[11px]">{formatCurrency(costosTotalConICA)}</td>
+        <td className="text-right px-2 py-2 text-teal-600 text-[10px]">{formatCurrency(otrosIngresos)}</td>
+        <td className={`text-right px-2 py-2 font-semibold text-[11px] ${isRentable ? 'text-green-600' : 'text-red-600'}`}>
           {formatCurrency(utilidadNeta)}
         </td>
-        <td className="text-right px-3 py-2">
-          <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+        <td className="text-right px-2 py-2">
+          <span className={`px-1 py-0.5 rounded text-[9px] font-medium ${
             isRentable ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
           }`}>
             {formatPercent(margenNeto)}
           </span>
         </td>
-        <td className="text-center px-3 py-2">
+        <td className="text-center px-1 py-2">
           {onVerMunicipios && (
             <button
               onClick={onVerMunicipios}
-              className="px-2 py-1 text-[10px] font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded transition-colors"
+              className="px-1.5 py-0.5 text-[9px] font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded transition-colors"
             >
-              Ver Municipios
+              Mun.
             </button>
           )}
         </td>

@@ -991,16 +991,13 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
         </div>
       )}
 
-      {/* EBITDA - Antes de Utilidad Operacional */}
-      <div className="bg-amber-50 border-y border-amber-300">
+      {/* TOTAL COSTOS OPERATIVOS */}
+      <div className="bg-gray-200 border-y border-gray-400">
         <div className="flex justify-between items-center px-3 py-2">
-          <div>
-            <span className="text-xs font-bold text-amber-900 uppercase">EBITDA</span>
-            <span className="text-[10px] text-amber-700 ml-2">(Utilidad antes de Intereses, Impuestos, Depreciación y Amortización)</span>
-          </div>
-          <div className="text-right">
-            <div className="text-sm font-bold text-amber-900">{formatCurrency(utilidadOperacional)}</div>
-            <div className="text-xs text-amber-700">{calcularPorcentajeSobreVentas(utilidadOperacional)}</div>
+          <span className="text-xs font-bold text-gray-800 uppercase">Total Costos Operativos</span>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-gray-600">{calcularPorcentajeSobreVentas(totalCostosOperativos)}</span>
+            <span className="text-sm font-bold text-gray-800">{formatCurrency(totalCostosOperativos)}</span>
           </div>
         </div>
       </div>
