@@ -675,6 +675,7 @@ def calcular_pyg_todos_municipios(escenario, zona) -> List[Dict]:
         comercial = {
             'personal': pyg_zona['comercial']['personal'] * peso,
             'gastos': pyg_zona['comercial']['gastos'] * peso,
+            'lejanias': pyg_zona['comercial'].get('lejanias', Decimal('0')) * peso,
             'total': pyg_zona['comercial']['total'] * peso
         }
 
@@ -682,6 +683,7 @@ def calcular_pyg_todos_municipios(escenario, zona) -> List[Dict]:
         logistico = {
             'personal': pyg_zona['logistico']['personal'] * peso,
             'gastos': pyg_zona['logistico']['gastos'] * peso,
+            'lejanias': pyg_zona['logistico'].get('lejanias', Decimal('0')) * peso,
             'total': pyg_zona['logistico']['total'] * peso
         }
 
