@@ -501,6 +501,7 @@ export interface PyGMunicipio {
     nombre: string;
     codigo_dane: string;
     participacion_ventas: number;
+    participacion_zona: number;  // Peso relativo dentro de la zona
     participacion_total: number;
   };
   zona: {

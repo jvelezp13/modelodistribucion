@@ -75,53 +75,28 @@ export default function PyGMunicipios({ escenarioId, zonaId, zonaNombre, marcaId
   const ventasMesMarca = getVentasMesMarca();
   const ventasZona = ventasMesMarca * ((data?.zona_participacion_ventas || 0) / 100);
 
-  // Pre-calcular ventas por municipio con ajuste de redondeo
+  // Pre-calcular ventas por municipio usando participacion_zona (peso relativo dentro de la zona)
   const ventasPorMunicipio = React.useMemo(() => {
     if (!data?.municipios || data.municipios.length === 0) return new Map<number, number>();
 
     const ventasMap = new Map<number, number>();
-    const numMunicipios = data.municipios.length;
-
-    // Verificar si hay participaciones configuradas
-    const sumaParticipaciones = data.municipios.reduce(
-      (sum, mun) => sum + (mun.municipio.participacion_ventas || 0), 0
-    );
-
-    // Si no hay participaciones configuradas, distribuir equitativamente
-    if (sumaParticipaciones === 0) {
-      const ventasPorMun = Math.round(ventasZona / numMunicipios);
-      let sumaAsignada = 0;
-
-      // Asignar a todos excepto el último
-      data.municipios.slice(0, -1).forEach(mun => {
-        ventasMap.set(mun.municipio.id, ventasPorMun);
-        sumaAsignada += ventasPorMun;
-      });
-
-      // El último absorbe la diferencia de redondeo
-      const ultimoMun = data.municipios[numMunicipios - 1];
-      ventasMap.set(ultimoMun.municipio.id, Math.round(ventasZona) - sumaAsignada);
-
-      return ventasMap;
-    }
-
-    // Si hay participaciones, usar el algoritmo normal
     let sumaRedondeada = 0;
 
-    // Ordenar municipios por participación descendente
+    // Ordenar municipios por participación en zona descendente
     const municipiosOrdenados = [...data.municipios].sort(
-      (a, b) => b.municipio.participacion_ventas - a.municipio.participacion_ventas
+      (a, b) => (b.municipio.participacion_zona || 0) - (a.municipio.participacion_zona || 0)
     );
 
     // Calcular ventas redondeadas para todos excepto el primero
     municipiosOrdenados.slice(1).forEach(mun => {
-      const ventasExactas = ventasZona * (mun.municipio.participacion_ventas / 100);
+      const participacionZona = mun.municipio.participacion_zona || 0;
+      const ventasExactas = ventasZona * (participacionZona / 100);
       const ventasRedondeadas = Math.round(ventasExactas);
       ventasMap.set(mun.municipio.id, ventasRedondeadas);
       sumaRedondeada += ventasRedondeadas;
     });
 
-    // El municipio más grande absorbe la diferencia
+    // El municipio más grande absorbe la diferencia de redondeo
     if (municipiosOrdenados.length > 0) {
       const munMayor = municipiosOrdenados[0];
       ventasMap.set(munMayor.municipio.id, Math.round(ventasZona) - sumaRedondeada);
@@ -216,22 +191,9 @@ export default function PyGMunicipios({ escenarioId, zonaId, zonaNombre, marcaId
     return (calcularUtilidadNeta(mun) / ventas) * 100;
   };
 
-  // Verificar si hay participaciones configuradas
-  const tieneParticipacionesConfiguradas = React.useMemo(() => {
-    if (!data?.municipios) return false;
-    return data.municipios.reduce(
-      (sum, mun) => sum + (mun.municipio.participacion_ventas || 0), 0
-    ) > 0;
-  }, [data?.municipios]);
-
-  // Obtener participación efectiva (configurada o equitativa)
-  const getParticipacionEfectiva = (mun: PyGMunicipio): number => {
-    if (tieneParticipacionesConfiguradas) {
-      return mun.municipio.participacion_ventas || 0;
-    }
-    // Si no hay configuración, distribuir equitativamente
-    const numMunicipios = data?.municipios?.length || 1;
-    return 100 / numMunicipios;
+  // Obtener participación del municipio dentro de la zona (viene del backend)
+  const getParticipacionZona = (mun: PyGMunicipio): number => {
+    return mun.municipio.participacion_zona || 0;
   };
 
   // Calcular totales
@@ -419,12 +381,9 @@ export default function PyGMunicipios({ escenarioId, zonaId, zonaNombre, marcaId
                           </button>
                         </td>
                         <td className="text-right px-2 py-2">
-                          <span className={`px-1 py-0.5 rounded text-[9px] font-medium ${
-                            tieneParticipacionesConfiguradas
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-yellow-100 text-yellow-700'
-                          }`} title={!tieneParticipacionesConfiguradas ? 'Distribución equitativa (sin config.)' : undefined}>
-                            {formatPercent(getParticipacionEfectiva(mun))}
+                          <span className="px-1 py-0.5 rounded text-[9px] font-medium bg-green-100 text-green-700"
+                            title={`Part. marca: ${formatPercent(mun.municipio.participacion_ventas)}`}>
+                            {formatPercent(getParticipacionZona(mun))}
                           </span>
                         </td>
                         <td className="text-right px-2 py-2 text-gray-700 text-[11px]">{formatCurrency(ventasMun)}</td>
