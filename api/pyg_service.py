@@ -529,9 +529,28 @@ def calcular_pyg_municipio(escenario, zona_municipio) -> Dict:
 
     El costo del municipio es:
     Costo_Zona × (participacion_ventas_municipio / 100)
+
+    La participación se obtiene de VentaMunicipio (tabla de ventas por municipio)
+    ya que ZonaMunicipio solo tiene la relación zona-municipio sin ventas.
     """
+    from core.models import VentaMunicipio
+
     zona = zona_municipio.zona
-    participacion_mun = (zona_municipio.participacion_ventas or Decimal('0')) / 100
+    municipio = zona_municipio.municipio
+
+    # Obtener participación desde VentaMunicipio
+    participacion_ventas = Decimal('0')
+    try:
+        venta_mun = VentaMunicipio.objects.get(
+            marca=zona.marca,
+            escenario=escenario,
+            municipio=municipio
+        )
+        participacion_ventas = venta_mun.participacion_ventas or Decimal('0')
+    except VentaMunicipio.DoesNotExist:
+        pass
+
+    participacion_mun = participacion_ventas / 100
 
     # Obtener P&G de la zona
     pyg_zona = calcular_pyg_zona(escenario, zona)
@@ -556,14 +575,14 @@ def calcular_pyg_municipio(escenario, zona_municipio) -> Dict:
     total_mensual = comercial['total'] + logistico['total'] + administrativo['total']
 
     # Calcular participación total (zona × municipio)
-    part_total = (zona.participacion_ventas or Decimal('0')) * (zona_municipio.participacion_ventas or Decimal('0')) / 100
+    part_total = (zona.participacion_ventas or Decimal('0')) * participacion_ventas / 100
 
     return {
         'municipio': {
-            'id': zona_municipio.municipio.id,
-            'nombre': zona_municipio.municipio.nombre,
-            'codigo_dane': zona_municipio.municipio.codigo_dane,
-            'participacion_ventas': float(zona_municipio.participacion_ventas or 0),
+            'id': municipio.id,
+            'nombre': municipio.nombre,
+            'codigo_dane': municipio.codigo_dane,
+            'participacion_ventas': float(participacion_ventas),
             'participacion_total': float(part_total),
         },
         'zona': {
