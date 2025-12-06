@@ -63,12 +63,12 @@ div.breadcrumbs a:visited {
     color: #fff !important;
 }
 
-/* Títulos de módulos/secciones en sidebar */
+/* Títulos de módulos/secciones en sidebar - negro sobrio */
 .module h2,
 .module caption,
 .module table caption,
 caption {
-    background: #166534 !important;
+    background: #1f2937 !important;
     color: #fff !important;
 }
 
@@ -76,7 +76,7 @@ caption {
 .app-label,
 tr.model-label th,
 .section h2 {
-    background: #166534 !important;
+    background: #1f2937 !important;
     color: #fff !important;
 }
 
