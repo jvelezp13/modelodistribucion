@@ -388,10 +388,11 @@ def calcular_pyg_todas_zonas(escenario, marca) -> List[Dict]:
     """
     from core.models import (
         Zona, PersonalComercial, GastoComercial,
-        PersonalLogistico, GastoLogistico,
-        PersonalAdministrativo, GastoAdministrativo
+        PersonalLogistico, GastoLogistico
     )
     from core.calculator_lejanias import CalculadoraLejanias
+    from core.simulator import Simulator
+    from utils.loaders_db import DataLoaderDB
 
     zonas = Zona.objects.filter(
         escenario=escenario,
@@ -401,6 +402,27 @@ def calcular_pyg_todas_zonas(escenario, marca) -> List[Dict]:
 
     zonas_list = list(zonas)
     zonas_count = len(zonas_list) or 1
+
+    # Obtener totales administrativos desde el Simulador (incluye compartidos prorrateados)
+    # Esto garantiza consistencia con P&G Detallado
+    loader = DataLoaderDB(escenario_id=escenario.id)
+    simulator = Simulator(loader=loader)
+    simulator.cargar_marcas([marca.marca_id])
+    resultado_sim = simulator.ejecutar_simulacion()
+    marca_sim = next((m for m in resultado_sim.marcas if m.marca_id == marca.marca_id), None)
+
+    # Calcular totales administrativos de la marca
+    admin_personal_marca = Decimal('0')
+    admin_gastos_marca = Decimal('0')
+    if marca_sim:
+        todos_rubros = marca_sim.rubros_individuales + marca_sim.rubros_compartidos_asignados
+        for rubro in todos_rubros:
+            if rubro.categoria == 'administrativo':
+                valor = Decimal(str(rubro.valor_total))
+                if rubro.tipo == 'personal':
+                    admin_personal_marca += valor
+                else:
+                    admin_gastos_marca += valor
 
     # Funciones de filtrado para excluir gastos que se calculan en lejanías
     def es_gasto_logistico_filtrable(nombre: str) -> bool:
@@ -511,27 +533,14 @@ def calcular_pyg_todas_zonas(escenario, marca) -> List[Dict]:
         }
 
         # === ADMINISTRATIVO ===
-        admin_personal = Decimal('0')
-        admin_gastos = Decimal('0')
-
-        # Personal administrativo
-        for p in PersonalAdministrativo.objects.filter(escenario=escenario, marca=marca):
-            costo = Decimal(str(p.calcular_costo_mensual()))
-            tipo_asignacion = getattr(p, 'tipo_asignacion_geo', 'compartido')
-            zona_asignada_id = p.zona_id if hasattr(p, 'zona_id') else None
-            admin_personal += distribuir_costo(costo, tipo_asignacion, zona_asignada_id, zona)
-
-        # Gastos administrativos
-        for g in GastoAdministrativo.objects.filter(escenario=escenario, marca=marca):
-            costo = g.valor_mensual or Decimal('0')
-            tipo_asignacion = getattr(g, 'tipo_asignacion_geo', 'compartido')
-            zona_asignada_id = g.zona_id if hasattr(g, 'zona_id') else None
-            admin_gastos += distribuir_costo(costo, tipo_asignacion, zona_asignada_id, zona)
+        # Los costos administrativos vienen del Simulador (incluye compartidos prorrateados)
+        # Se distribuyen equitativamente entre las zonas de la marca
+        factor_zona = Decimal('1') / zonas_count
 
         administrativo = {
-            'personal': admin_personal,
-            'gastos': admin_gastos,
-            'total': admin_personal + admin_gastos
+            'personal': admin_personal_marca * factor_zona,
+            'gastos': admin_gastos_marca * factor_zona,
+            'total': (admin_personal_marca + admin_gastos_marca) * factor_zona
         }
 
         total_mensual = comercial['total'] + logistico['total'] + administrativo['total']
