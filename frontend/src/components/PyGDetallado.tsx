@@ -606,6 +606,12 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
                     <span className="font-medium text-gray-700">{formatCurrency(rubro.subsidio_transporte * (rubro.cantidad || 1))}</span>
                   </div>
                 )}
+                {rubro.auxilio_adicional !== undefined && rubro.auxilio_adicional > 0 && (
+                  <div className="flex justify-between">
+                    <span>Auxilio Adicional (no prestacional):</span>
+                    <span className="font-medium text-gray-700">{formatCurrency(rubro.auxilio_adicional * (rubro.cantidad || 1))}</span>
+                  </div>
+                )}
               </>
             )}
           </div>

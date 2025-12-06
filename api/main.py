@@ -942,6 +942,8 @@ def serializar_rubro(rubro) -> Dict[str, Any]:
         rubro_dict['subsidio_transporte'] = float(rubro.subsidio_transporte)
     if hasattr(rubro, 'factor_prestacional') and rubro.factor_prestacional:
         rubro_dict['factor_prestacional'] = float(rubro.factor_prestacional)
+    if hasattr(rubro, 'auxilio_adicional') and rubro.auxilio_adicional:
+        rubro_dict['auxilio_adicional'] = float(rubro.auxilio_adicional)
     if hasattr(rubro, 'valor_unitario'):
         rubro_dict['valor_unitario'] = float(rubro.valor_unitario)
     if hasattr(rubro, 'tipo_vehiculo'):

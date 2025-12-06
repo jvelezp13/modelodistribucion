@@ -118,6 +118,7 @@ export interface Rubro {
   prestaciones?: number;
   subsidio_transporte?: number;
   factor_prestacional?: number;
+  auxilio_adicional?: number;
 
   // Campos para vehículos (solo costos fijos)
   tipo_vehiculo?: string;
