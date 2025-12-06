@@ -1969,21 +1969,7 @@ def diagnostico_comparar_pyg(
         personal_admin = Decimal('0')
         gastos_admin = Decimal('0')
 
-        # Función para filtrar gastos logísticos (igual que PyGDetallado.tsx)
-        # Excluir lejanías y fletes que se muestran en otras secciones
-        def es_gasto_logistico_filtrable(nombre: str) -> bool:
-            return (
-                nombre.startswith('Combustible - ') or
-                nombre.startswith('Peajes - ') or
-                nombre.startswith('Viáticos Ruta - ') or
-                nombre.startswith('Flete Base Tercero - ') or
-                nombre == 'Flete Transporte (Tercero)'
-            )
-
-        # Función para filtrar gastos comerciales (lejanías)
-        def es_gasto_comercial_lejania(nombre: str) -> bool:
-            return 'Combustible Lejanía' in nombre or 'Viáticos Pernocta' in nombre
-
+        # Usar funciones centralizadas de pyg_service
         for rubro in todos_rubros:
             valor = Decimal(str(rubro.valor_total))
             nombre = rubro.nombre or ''
@@ -1993,7 +1979,7 @@ def diagnostico_comparar_pyg(
                     personal_comercial += valor
                 else:
                     # Excluir lejanías comerciales (se calculan dinámicamente)
-                    if not es_gasto_comercial_lejania(nombre):
+                    if not es_gasto_lejania_comercial(nombre):
                         gastos_comercial += valor
             elif rubro.categoria == 'logistico':
                 if rubro.tipo == 'vehiculo':
@@ -2002,7 +1988,7 @@ def diagnostico_comparar_pyg(
                     personal_logistico += valor
                 else:
                     # Excluir lejanías y fletes (se muestran aparte)
-                    if not es_gasto_logistico_filtrable(nombre):
+                    if not es_gasto_lejania_logistica(nombre):
                         gastos_logistico += valor
             elif rubro.categoria == 'administrativo':
                 if rubro.tipo == 'personal':

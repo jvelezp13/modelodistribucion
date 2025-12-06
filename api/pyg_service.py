@@ -453,7 +453,7 @@ def calcular_pyg_todas_zonas(escenario, marca) -> List[Dict]:
 
         # Gastos comerciales (excluyendo lejanías)
         for g in GastoComercial.objects.filter(escenario=escenario, marca=marca):
-            if es_gasto_comercial_lejania(g.nombre or ''):
+            if es_gasto_lejania_comercial(g.nombre or ''):
                 continue
             costo = g.valor_mensual or Decimal('0')
             tipo_asignacion = getattr(g, 'tipo_asignacion_geo', 'proporcional')
