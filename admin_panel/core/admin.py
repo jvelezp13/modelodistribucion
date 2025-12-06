@@ -198,8 +198,8 @@ class MarcaAdmin(admin.ModelAdmin):
 @admin.register(PersonalComercial, site=dxv_admin_site)
 class PersonalComercialAdmin(DuplicarMixin, admin.ModelAdmin):
     change_list_template = 'admin/core/change_list_with_total.html'
-    list_display = ('marca', 'nombre', 'escenario', 'tipo', 'cantidad', 'salario_base', 'costo_total_estimado', 'asignacion', 'perfil_prestacional')
-    list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'perfil_prestacional')
+    list_display = ('marca', 'nombre', 'escenario', 'tipo', 'cantidad', 'salario_base', 'costo_total_estimado', 'asignacion', 'tipo_asignacion_geo', 'indice_incremento')
+    list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'tipo_asignacion_geo', 'indice_incremento', 'perfil_prestacional')
     search_fields = ('marca__nombre', 'nombre')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
     actions = ['duplicar_registros']
@@ -216,8 +216,12 @@ class PersonalComercialAdmin(DuplicarMixin, admin.ModelAdmin):
             'fields': ('tipo_asignacion_geo', 'zona'),
             'description': 'Directo = 100% a una zona. Proporcional = se distribuye entre zonas según venta.'
         }),
+        ('Proyección Anual', {
+            'fields': ('indice_incremento',),
+            'description': 'Índice usado para proyectar este costo a años futuros.'
+        }),
         ('Adicionales', {
-            'fields': ('auxilio_adicional', 'indice_incremento'),
+            'fields': ('auxilio_adicional',),
             'classes': ('collapse',)
         }),
         ('Metadata', {
@@ -281,8 +285,8 @@ class PersonalComercialAdmin(DuplicarMixin, admin.ModelAdmin):
 @admin.register(PersonalLogistico, site=dxv_admin_site)
 class PersonalLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
     change_list_template = 'admin/core/change_list_with_total.html'
-    list_display = ('marca', 'nombre', 'escenario', 'tipo', 'cantidad', 'salario_base', 'costo_total_estimado', 'asignacion', 'perfil_prestacional')
-    list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'perfil_prestacional')
+    list_display = ('marca', 'nombre', 'escenario', 'tipo', 'cantidad', 'salario_base', 'costo_total_estimado', 'asignacion', 'tipo_asignacion_geo', 'indice_incremento')
+    list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'tipo_asignacion_geo', 'indice_incremento', 'perfil_prestacional')
     search_fields = ('marca__nombre', 'nombre')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
     actions = ['duplicar_registros']
@@ -299,9 +303,9 @@ class PersonalLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
             'fields': ('tipo_asignacion_geo', 'zona'),
             'description': 'Directo = 100% a una zona. Proporcional = se distribuye entre zonas según venta.'
         }),
-        ('Adicionales', {
+        ('Proyección Anual', {
             'fields': ('indice_incremento',),
-            'classes': ('collapse',)
+            'description': 'Índice usado para proyectar este costo a años futuros.'
         }),
         ('Metadata', {
             'fields': ('fecha_creacion', 'fecha_modificacion'),
@@ -356,8 +360,8 @@ class PersonalLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
 @admin.register(Vehiculo, site=dxv_admin_site)
 class VehiculoAdmin(DuplicarMixin, admin.ModelAdmin):
     change_list_template = 'admin/core/change_list_with_total.html'
-    list_display = ('nombre_display', 'marca', 'escenario', 'tipo_vehiculo', 'esquema', 'cantidad', 'costo_mensual_estimado_formateado')
-    list_filter = ('escenario', 'marca', 'tipo_vehiculo', 'esquema', 'asignacion')
+    list_display = ('nombre_display', 'marca', 'escenario', 'tipo_vehiculo', 'esquema', 'cantidad', 'costo_mensual_estimado_formateado', 'asignacion', 'indice_incremento')
+    list_filter = ('escenario', 'marca', 'tipo_vehiculo', 'esquema', 'asignacion', 'indice_incremento')
     search_fields = ['nombre', 'marca__nombre', 'tipo_vehiculo', 'esquema']
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
     actions = ['duplicar_registros']
@@ -366,6 +370,14 @@ class VehiculoAdmin(DuplicarMixin, admin.ModelAdmin):
         ('Información Básica', {
             'fields': ('nombre', 'marca', 'escenario', 'tipo_vehiculo', 'esquema', 'cantidad'),
             'description': 'El campo "Nombre" permite identificar el vehículo de forma única (ej: "Turbo 01", "NKR Zona Norte")'
+        }),
+        ('Asignación por Marca', {
+            'fields': ('asignacion', 'porcentaje_uso', 'criterio_prorrateo'),
+            'description': 'Individual = 100% a esta marca. Compartido = se distribuye entre marcas según criterio.'
+        }),
+        ('Proyección Anual', {
+            'fields': ('indice_incremento',),
+            'description': 'Índice usado para proyectar este costo a años futuros.'
         }),
         ('Esquema: Renting', {
             'fields': ('canon_renting',),
@@ -394,10 +406,6 @@ class VehiculoAdmin(DuplicarMixin, admin.ModelAdmin):
         ('Personal del Vehículo', {
             'fields': ('cantidad_auxiliares',),
             'description': 'Auxiliares de entrega fijos asignados a este vehículo (normalmente 1)'
-        }),
-        ('Asignación y Proyecciones', {
-            'fields': ('asignacion', 'porcentaje_uso', 'criterio_prorrateo', 'indice_incremento'),
-            'classes': ('collapse',)
         }),
         ('Metadata', {
             'fields': ('fecha_creacion', 'fecha_modificacion'),
@@ -608,8 +616,8 @@ class FactorPrestacionalAdmin(DuplicarMixin, admin.ModelAdmin):
 @admin.register(PersonalAdministrativo, site=dxv_admin_site)
 class PersonalAdministrativoAdmin(DuplicarMixin, admin.ModelAdmin):
     change_list_template = 'admin/core/change_list_with_total.html'
-    list_display = ('nombre', 'marca', 'escenario', 'tipo', 'cantidad', 'asignacion', 'tipo_contrato', 'valor_mensual', 'costo_total_estimado')
-    list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'tipo_contrato')
+    list_display = ('nombre', 'marca', 'escenario', 'tipo', 'cantidad', 'asignacion', 'tipo_asignacion_geo', 'tipo_contrato', 'valor_mensual', 'costo_total_estimado', 'indice_incremento')
+    list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'tipo_asignacion_geo', 'indice_incremento', 'tipo_contrato')
     search_fields = ('nombre',)
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
     actions = ['duplicar_registros']
@@ -634,9 +642,9 @@ class PersonalAdministrativoAdmin(DuplicarMixin, admin.ModelAdmin):
             'fields': ('tipo_asignacion_geo',),
             'description': 'Típicamente Proporcional (se distribuye entre zonas según venta)'
         }),
-        ('Adicionales', {
+        ('Proyección Anual', {
             'fields': ('indice_incremento',),
-            'classes': ('collapse',)
+            'description': 'Índice usado para proyectar este costo a años futuros.'
         }),
         ('Metadata', {
             'fields': ('fecha_creacion', 'fecha_modificacion'),
@@ -703,8 +711,8 @@ class PersonalAdministrativoAdmin(DuplicarMixin, admin.ModelAdmin):
 @admin.register(GastoAdministrativo, site=dxv_admin_site)
 class GastoAdministrativoAdmin(DuplicarMixin, admin.ModelAdmin):
     change_list_template = 'admin/core/change_list_with_total.html'
-    list_display = ('nombre', 'marca', 'escenario', 'tipo', 'asignacion', 'valor_mensual_formateado', 'criterio_prorrateo')
-    list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'criterio_prorrateo')
+    list_display = ('nombre', 'marca', 'escenario', 'tipo', 'valor_mensual_formateado', 'asignacion', 'tipo_asignacion_geo', 'criterio_prorrateo', 'indice_incremento')
+    list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'tipo_asignacion_geo', 'indice_incremento', 'criterio_prorrateo')
     search_fields = ('nombre', 'notas')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
     actions = ['duplicar_registros']
@@ -721,8 +729,12 @@ class GastoAdministrativoAdmin(DuplicarMixin, admin.ModelAdmin):
             'fields': ('tipo_asignacion_geo',),
             'description': 'Típicamente Proporcional (se distribuye entre zonas según venta)'
         }),
-        ('Adicionales', {
-            'fields': ('indice_incremento', 'notas'),
+        ('Proyección Anual', {
+            'fields': ('indice_incremento',),
+            'description': 'Índice usado para proyectar este costo a años futuros.'
+        }),
+        ('Notas', {
+            'fields': ('notas',),
             'classes': ('collapse',)
         }),
         ('Metadata', {
@@ -755,8 +767,8 @@ class GastoAdministrativoAdmin(DuplicarMixin, admin.ModelAdmin):
 @admin.register(GastoComercial, site=dxv_admin_site)
 class GastoComercialAdmin(DuplicarMixin, admin.ModelAdmin):
     change_list_template = 'admin/core/change_list_with_total.html'
-    list_display = ('marca', 'escenario', 'nombre', 'tipo', 'valor_mensual_formateado', 'fecha_modificacion')
-    list_filter = ('escenario', 'marca', 'tipo')
+    list_display = ('marca', 'escenario', 'nombre', 'tipo', 'valor_mensual_formateado', 'asignacion', 'tipo_asignacion_geo', 'indice_incremento')
+    list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'tipo_asignacion_geo', 'indice_incremento')
     search_fields = ('nombre', 'notas')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
     actions = ['duplicar_registros']
@@ -773,8 +785,12 @@ class GastoComercialAdmin(DuplicarMixin, admin.ModelAdmin):
             'fields': ('tipo_asignacion_geo', 'zona'),
             'description': 'Directo = 100% a una zona. Proporcional = se distribuye entre zonas según venta.'
         }),
-        ('Adicionales', {
-            'fields': ('indice_incremento', 'notas'),
+        ('Proyección Anual', {
+            'fields': ('indice_incremento',),
+            'description': 'Índice usado para proyectar este costo a años futuros.'
+        }),
+        ('Notas', {
+            'fields': ('notas',),
             'classes': ('collapse',)
         }),
         ('Metadata', {
@@ -807,8 +823,8 @@ class GastoComercialAdmin(DuplicarMixin, admin.ModelAdmin):
 @admin.register(GastoLogistico, site=dxv_admin_site)
 class GastoLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
     change_list_template = 'admin/core/change_list_with_total.html'
-    list_display = ('marca', 'escenario', 'nombre', 'tipo', 'valor_mensual_formateado', 'fecha_modificacion')
-    list_filter = ('escenario', 'marca', 'tipo')
+    list_display = ('marca', 'escenario', 'nombre', 'tipo', 'valor_mensual_formateado', 'asignacion', 'tipo_asignacion_geo', 'indice_incremento')
+    list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'tipo_asignacion_geo', 'indice_incremento')
     search_fields = ('nombre', 'notas')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
     actions = ['duplicar_registros']
@@ -826,8 +842,12 @@ class GastoLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
             'fields': ('tipo_asignacion_geo', 'zona'),
             'description': 'Directo = 100% a una zona. Proporcional = se distribuye entre zonas según venta.'
         }),
-        ('Adicionales', {
-            'fields': ('indice_incremento', 'notas'),
+        ('Proyección Anual', {
+            'fields': ('indice_incremento',),
+            'description': 'Índice usado para proyectar este costo a años futuros.'
+        }),
+        ('Notas', {
+            'fields': ('notas',),
             'classes': ('collapse',)
         }),
         ('Metadata', {
