@@ -601,16 +601,12 @@ def calcular_pyg_todos_municipios(escenario, zona) -> List[Dict]:
     """
     Calcula P&G para todos los municipios de una zona.
 
-    Lógica de distribución de costos (Comerciales y Administrativos):
-    - Usa ZonaMunicipio.participacion_ventas que representa el peso del municipio
-      DENTRO de la zona (suma = 100% de la zona)
-    - Esto permite que un mismo municipio tenga diferentes participaciones
-      en diferentes zonas
+    Lógica: Toma el P&G de la zona (calculado con calcular_pyg_todas_zonas)
+    y lo distribuye proporcionalmente según ZonaMunicipio.participacion_ventas.
 
-    Logísticos: Por ahora también proporcional, luego se refinará con rutas.
+    Esto garantiza que la suma de municipios = total de la zona.
     """
     from core.models import ZonaMunicipio
-    from core.calculator_lejanias import CalculadoraLejanias
 
     marca = zona.marca
 
@@ -631,60 +627,62 @@ def calcular_pyg_todos_municipios(escenario, zona) -> List[Dict]:
         pesos_relativos[zm.municipio.id] = (zm.participacion_ventas or Decimal('0')) / 100
         ventas_proyectadas[zm.municipio.id] = zm.venta_proyectada or Decimal('0')
 
-    # Obtener P&G de la zona (costos totales)
-    pyg_zona = calcular_pyg_zona(escenario, zona)
+    # Obtener P&G de la zona usando la MISMA función que la vista de zonas
+    # Esto garantiza consistencia entre ambas vistas
+    pyg_todas_zonas = calcular_pyg_todas_zonas(escenario, marca)
+    pyg_zona = next((z for z in pyg_todas_zonas if z['zona']['id'] == zona.id), None)
 
-    # Obtener costos logísticos distribuidos por municipio
-    calc = CalculadoraLejanias(escenario)
-    costos_logisticos_zona = calc.distribuir_costos_logisticos_a_zonas(marca)
-
-    # Mapear costos logísticos por municipio_id para esta zona
-    costos_log_por_municipio = {}
-    if zona.id in costos_logisticos_zona:
-        for detalle in costos_logisticos_zona[zona.id].get('detalle_municipios', []):
-            costos_log_por_municipio[detalle['municipio_id']] = {
-                'flete': Decimal(str(detalle.get('flete_asignado', 0))),
-                'lejanias': Decimal(str(detalle.get('lejanias_asignado', 0))),
-                'total': Decimal(str(detalle.get('costo_asignado', 0)))
-            }
+    if not pyg_zona:
+        return []
 
     # Construir resultado para cada municipio
-    # Costos comerciales y administrativos: proporcionales según ZonaMunicipio.participacion_ventas
-    # Costos logísticos: por ahora también proporcional (se refinará con rutas)
+    # Todos los costos se distribuyen proporcionalmente según peso del municipio en la zona
     resultados = []
     for zm in zona_municipios:
         mun_id = zm.municipio.id
         peso = pesos_relativos.get(mun_id, Decimal('0'))
         venta_proy = ventas_proyectadas.get(mun_id, Decimal('0'))
 
-        # Costos comerciales: proporcionales al peso relativo dentro de la zona
+        # Convertir valores de pyg_zona a Decimal para cálculos precisos
+        comercial_personal = Decimal(str(pyg_zona['comercial']['personal']))
+        comercial_gastos = Decimal(str(pyg_zona['comercial']['gastos']))
+        comercial_lejanias = Decimal(str(pyg_zona['comercial'].get('lejanias', 0)))
+        comercial_total = Decimal(str(pyg_zona['comercial']['total']))
+
+        logistico_personal = Decimal(str(pyg_zona['logistico']['personal']))
+        logistico_gastos = Decimal(str(pyg_zona['logistico']['gastos']))
+        logistico_lejanias = Decimal(str(pyg_zona['logistico'].get('lejanias', 0)))
+        logistico_total = Decimal(str(pyg_zona['logistico']['total']))
+
+        admin_personal = Decimal(str(pyg_zona['administrativo']['personal']))
+        admin_gastos = Decimal(str(pyg_zona['administrativo']['gastos']))
+        admin_total = Decimal(str(pyg_zona['administrativo']['total']))
+
+        # Distribuir proporcionalmente por peso del municipio
         comercial = {
-            'personal': pyg_zona['comercial']['personal'] * peso,
-            'gastos': pyg_zona['comercial']['gastos'] * peso,
-            'lejanias': pyg_zona['comercial'].get('lejanias', Decimal('0')) * peso,
-            'total': pyg_zona['comercial']['total'] * peso
+            'personal': comercial_personal * peso,
+            'gastos': comercial_gastos * peso,
+            'lejanias': comercial_lejanias * peso,
+            'total': comercial_total * peso
         }
 
-        # Costos logísticos: proporcionales al peso relativo (TODO: refinar con rutas)
         logistico = {
-            'personal': pyg_zona['logistico']['personal'] * peso,
-            'gastos': pyg_zona['logistico']['gastos'] * peso,
-            'lejanias': pyg_zona['logistico'].get('lejanias', Decimal('0')) * peso,
-            'total': pyg_zona['logistico']['total'] * peso
+            'personal': logistico_personal * peso,
+            'gastos': logistico_gastos * peso,
+            'lejanias': logistico_lejanias * peso,
+            'total': logistico_total * peso
         }
 
-        # Costos administrativos: proporcionales al peso relativo dentro de la zona
         administrativo = {
-            'personal': pyg_zona['administrativo']['personal'] * peso,
-            'gastos': pyg_zona['administrativo']['gastos'] * peso,
-            'total': pyg_zona['administrativo']['total'] * peso
+            'personal': admin_personal * peso,
+            'gastos': admin_gastos * peso,
+            'total': admin_total * peso
         }
 
         total_mensual = comercial['total'] + logistico['total'] + administrativo['total']
 
         # Participación sobre la marca = participación_zona × peso_municipio_en_zona
-        # Ejemplo: Zona tiene 40% de marca, municipio tiene 50% de zona → 20% de marca
-        part_zona_decimal = (zona.participacion_ventas or Decimal('0')) / 100
+        part_zona_decimal = Decimal(str(pyg_zona['zona']['participacion_ventas'])) / 100
         part_total = part_zona_decimal * peso * 100  # Volver a %
 
         resultados.append({
