@@ -171,6 +171,7 @@ class RubroPersonal(Rubro):
     prestaciones: float = 0.0
     subsidio_transporte: float = 0.0
     factor_prestacional: float = 0.0
+    auxilio_adicional: float = 0.0  # Bonos/auxilios que NO generan prestaciones
 
     def __post_init__(self):
         """Calcula el costo total del personal."""
@@ -178,8 +179,8 @@ class RubroPersonal(Rubro):
         if self.prestaciones == 0.0 and self.factor_prestacional > 0.0:
             self.prestaciones = self.salario_base * self.factor_prestacional
 
-        # Calcular valor unitario
-        self.valor_unitario = self.salario_base + self.prestaciones + self.subsidio_transporte
+        # Calcular valor unitario (auxilio_adicional se suma al final, no afecta prestaciones)
+        self.valor_unitario = self.salario_base + self.prestaciones + self.subsidio_transporte + self.auxilio_adicional
 
         # Llamar al __post_init__ del padre
         super().__post_init__()
@@ -192,6 +193,7 @@ class RubroPersonal(Rubro):
             'prestaciones': self.prestaciones,
             'subsidio_transporte': self.subsidio_transporte,
             'factor_prestacional': self.factor_prestacional,
+            'auxilio_adicional': self.auxilio_adicional,
         })
         return base_dict
 
