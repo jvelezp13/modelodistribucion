@@ -67,7 +67,11 @@ div.breadcrumbs a:visited {
 .module h2,
 .module caption,
 .module table caption,
-caption {
+caption,
+#content-main .module h2,
+#content-main .module caption,
+#container .module h2,
+#container .module caption {
     background: #166534 !important;
     color: #fff !important;
 }
@@ -75,7 +79,11 @@ caption {
 /* App labels en el index (títulos de categorías) */
 .app-label,
 tr.model-label th,
-.section h2 {
+.section h2,
+table caption,
+caption a,
+.module caption a,
+.module h2 a {
     background: #166534 !important;
     color: #fff !important;
 }
