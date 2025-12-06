@@ -1938,7 +1938,11 @@ def diagnostico_comparar_pyg(
         from core.calculator_lejanias import CalculadoraLejanias
         from core.simulator import Simulator
         from utils.loaders_db import DataLoaderDB
-        from api.pyg_service import calcular_pyg_zona
+        from api.pyg_service import (
+            calcular_pyg_zona,
+            es_gasto_lejania_comercial,
+            es_gasto_lejania_logistica
+        )
         from decimal import Decimal
 
         escenario = Escenario.objects.get(pk=escenario_id)
