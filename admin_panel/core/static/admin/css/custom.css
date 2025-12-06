@@ -80,13 +80,28 @@ tr.model-label th,
     color: #fff !important;
 }
 
-/* Links generales */
+/* Links generales - verde más claro para mejor legibilidad */
 a:link, a:visited {
-    color: #166534;
+    color: #059669;
 }
 
 a:hover {
-    color: #15803D;
+    color: #10B981;
+}
+
+/* Links de "mostrar/ocultar" en fieldsets colapsables */
+fieldset.collapse a,
+.collapse-toggle,
+a.show,
+a.hide {
+    color: #059669 !important;
+}
+
+fieldset.collapse a:hover,
+.collapse-toggle:hover,
+a.show:hover,
+a.hide:hover {
+    color: #10B981 !important;
 }
 
 /* Botones */
