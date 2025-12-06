@@ -72,8 +72,9 @@ caption,
 #content-main .module caption,
 #container .module h2,
 #container .module caption {
-    background: #166534 !important;
+    background: #1f2937 !important;
     color: #fff !important;
+    text-shadow: none !important;
 }
 
 /* Forzar texto blanco en captions del sidebar */
@@ -82,14 +83,17 @@ table caption,
 .module caption,
 .module table caption {
     color: #fff !important;
-    background: #166534 !important;
+    background: #1f2937 !important;
 }
 
 caption *,
 table caption *,
 .module caption *,
-.module table caption * {
+.module table caption *,
+caption span,
+.module caption span {
     color: #fff !important;
+    -webkit-text-fill-color: #fff !important;
 }
 
 /* App labels en el index (títulos de categorías) */
@@ -99,8 +103,9 @@ tr.model-label th,
 caption a,
 .module caption a,
 .module h2 a {
-    background: #166534 !important;
+    background: #1f2937 !important;
     color: #fff !important;
+    -webkit-text-fill-color: #fff !important;
 }
 
 /* Links de modelos en el sidebar (Marcas, Escenarios, etc.) - negro sobrio */
