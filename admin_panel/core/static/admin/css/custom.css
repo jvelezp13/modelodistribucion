@@ -1,27 +1,43 @@
-/* LogiFlow - Tema Verde */
+/* LogiFlow - Tema Verde Oscuro */
 :root {
-    --primary: #16A34A;
-    --primary-dark: #15803D;
-    --primary-light: #22C55E;
-    --accent: #10B981;
+    --primary: #166534;
+    --primary-dark: #14532D;
+    --primary-hover: #15803D;
+    --link-color: #166534;
 }
 
-/* Header */
+/* Header - Verde oscuro fuerte */
 #header {
-    background: var(--primary);
+    background: var(--primary) !important;
 }
 
-#header a:link, #header a:visited {
+#header a:link, #header a:visited,
+#header #user-tools a {
+    color: #fff !important;
+}
+
+/* Breadcrumbs */
+div.breadcrumbs {
+    background: var(--primary-dark);
+}
+
+div.breadcrumbs a {
     color: #fff;
 }
 
-/* Links */
+/* Links generales */
 a:link, a:visited {
-    color: var(--primary-dark);
+    color: var(--link-color);
 }
 
 a:hover {
-    color: var(--primary);
+    color: var(--primary-hover);
+}
+
+/* Módulos/secciones del index */
+.module h2, .module caption {
+    background: var(--primary) !important;
+    color: #fff !important;
 }
 
 /* Botones */
@@ -30,8 +46,8 @@ input[type="submit"],
 button[type="submit"],
 .button,
 a.button {
-    background: var(--primary);
-    border-color: var(--primary-dark);
+    background: var(--primary) !important;
+    border-color: var(--primary-dark) !important;
 }
 
 .submit-row input[type="submit"]:hover,
@@ -39,7 +55,7 @@ input[type="submit"]:hover,
 button[type="submit"]:hover,
 .button:hover,
 a.button:hover {
-    background: var(--primary-dark);
+    background: var(--primary-dark) !important;
 }
 
 /* Botón default (guardar) */
@@ -51,44 +67,48 @@ a.button:hover {
     background: var(--primary-dark) !important;
 }
 
-/* Módulos del sidebar */
-.module h2, .module caption {
-    background: var(--primary);
+/* Object tools (botones superiores como "Añadir") */
+.object-tools a:link,
+.object-tools a:visited {
+    background: var(--primary) !important;
 }
 
-/* Breadcrumbs */
-div.breadcrumbs {
-    background: var(--primary-dark);
+.object-tools a:hover {
+    background: var(--primary-dark) !important;
 }
 
-/* Links del calendario/reloj */
-.calendar td a:hover,
-.timelist a:hover {
-    background: var(--primary-light);
-}
-
-/* Selector de filtros activo */
+/* Filtros activos */
 #changelist-filter li.selected a {
-    color: var(--primary);
+    color: var(--primary) !important;
+    font-weight: bold;
 }
 
-/* Checkbox y radio seleccionados */
+/* Checkbox y radio */
 input[type="checkbox"]:checked,
 input[type="radio"]:checked {
     accent-color: var(--primary);
 }
 
-/* Object tools (botones superiores) */
-.object-tools a:link,
-.object-tools a:visited {
-    background: var(--primary);
+/* Calendario/reloj */
+.calendar td a:hover,
+.timelist a:hover {
+    background: var(--primary-hover);
 }
 
-.object-tools a:hover {
-    background: var(--primary-dark);
+/* Acciones recientes - arreglar colores */
+.module.actions-recent a {
+    color: var(--link-color) !important;
 }
 
-/* Delete button mantener rojo */
-.deletelink {
-    background: #BA2121 !important;
+/* Delete button - mantener rojo */
+.deletelink,
+.delete-confirmation input[type="submit"] {
+    background: #DC2626 !important;
+    border-color: #B91C1C !important;
+}
+
+/* Tabs activas */
+.tabs .selected a {
+    background: var(--primary) !important;
+    color: #fff !important;
 }
