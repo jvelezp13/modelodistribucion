@@ -1,43 +1,92 @@
 /* LogiFlow - Tema Verde Oscuro */
+
+/* Sobreescribir variables nativas de Django Admin */
 :root {
     --primary: #166534;
-    --primary-dark: #14532D;
-    --primary-hover: #15803D;
-    --link-color: #166534;
+    --secondary: #14532D;
+    --accent: #15803D;
+    --primary-fg: #fff;
+
+    /* Variables nativas de Django que controlan colores */
+    --header-color: #fff;
+    --header-branding-color: #fff;
+    --header-bg: #166534;
+    --header-link-color: #fff;
+    --breadcrumbs-fg: #fff;
+    --breadcrumbs-link-fg: #fff;
+    --breadcrumbs-bg: #14532D;
+    --link-fg: #166534;
+    --link-hover-color: #15803D;
+    --link-selected-fg: #14532D;
+    --hairline-color: #e8e8e8;
+    --border-color: #ccc;
+    --darkened-bg: #f8f8f8;
+    --selected-bg: #e8f5e9;
+    --selected-row: #e8f5e9;
+    --button-fg: #fff;
+    --button-bg: #166534;
+    --button-hover-bg: #14532D;
+    --default-button-bg: #166534;
+    --default-button-hover-bg: #14532D;
+    --close-button-bg: #888;
+    --close-button-hover-bg: #747474;
+    --delete-button-bg: #DC2626;
+    --delete-button-hover-bg: #B91C1C;
+    --object-tools-fg: #fff;
+    --object-tools-bg: #166534;
+    --object-tools-hover-bg: #14532D;
 }
 
-/* Header - Verde oscuro fuerte */
+/* Header principal */
 #header {
-    background: var(--primary) !important;
+    background: #166534 !important;
 }
 
-#header a:link, #header a:visited,
-#header #user-tools a {
+#header a:link,
+#header a:visited,
+#header a:hover,
+#branding h1,
+#branding h1 a,
+#user-tools,
+#user-tools a {
     color: #fff !important;
 }
 
 /* Breadcrumbs */
 div.breadcrumbs {
-    background: var(--primary-dark);
+    background: #14532D !important;
+    color: #fff !important;
 }
 
-div.breadcrumbs a {
-    color: #fff;
+div.breadcrumbs a:link,
+div.breadcrumbs a:visited {
+    color: #fff !important;
+}
+
+/* Títulos de módulos/secciones en sidebar */
+.module h2,
+.module caption,
+.module table caption,
+caption {
+    background: #166534 !important;
+    color: #fff !important;
+}
+
+/* App labels en el index (títulos de categorías) */
+.app-label,
+tr.model-label th,
+.section h2 {
+    background: #166534 !important;
+    color: #fff !important;
 }
 
 /* Links generales */
 a:link, a:visited {
-    color: var(--link-color);
+    color: #166534;
 }
 
 a:hover {
-    color: var(--primary-hover);
-}
-
-/* Módulos/secciones del index */
-.module h2, .module caption {
-    background: var(--primary) !important;
-    color: #fff !important;
+    color: #15803D;
 }
 
 /* Botones */
@@ -46,8 +95,9 @@ input[type="submit"],
 button[type="submit"],
 .button,
 a.button {
-    background: var(--primary) !important;
-    border-color: var(--primary-dark) !important;
+    background: #166534 !important;
+    border-color: #14532D !important;
+    color: #fff !important;
 }
 
 .submit-row input[type="submit"]:hover,
@@ -55,60 +105,61 @@ input[type="submit"]:hover,
 button[type="submit"]:hover,
 .button:hover,
 a.button:hover {
-    background: var(--primary-dark) !important;
+    background: #14532D !important;
 }
 
 /* Botón default (guardar) */
-.default {
-    background: var(--primary) !important;
+input.default,
+.submit-row input.default {
+    background: #166534 !important;
+    border-color: #14532D !important;
 }
 
-.default:hover {
-    background: var(--primary-dark) !important;
+input.default:hover,
+.submit-row input.default:hover {
+    background: #14532D !important;
 }
 
-/* Object tools (botones superiores como "Añadir") */
+/* Object tools */
 .object-tools a:link,
 .object-tools a:visited {
-    background: var(--primary) !important;
+    background: #166534 !important;
+    color: #fff !important;
 }
 
 .object-tools a:hover {
-    background: var(--primary-dark) !important;
+    background: #14532D !important;
 }
 
 /* Filtros activos */
 #changelist-filter li.selected a {
-    color: var(--primary) !important;
+    color: #166534 !important;
     font-weight: bold;
 }
 
 /* Checkbox y radio */
 input[type="checkbox"]:checked,
 input[type="radio"]:checked {
-    accent-color: var(--primary);
+    accent-color: #166534;
 }
 
-/* Calendario/reloj */
-.calendar td a:hover,
-.timelist a:hover {
-    background: var(--primary-hover);
-}
-
-/* Acciones recientes - arreglar colores */
-.module.actions-recent a {
-    color: var(--link-color) !important;
+/* Filas seleccionadas */
+.row-selected,
+tr.selected {
+    background: #e8f5e9 !important;
 }
 
 /* Delete button - mantener rojo */
 .deletelink,
+a.deletelink,
 .delete-confirmation input[type="submit"] {
     background: #DC2626 !important;
     border-color: #B91C1C !important;
+    color: #fff !important;
 }
 
-/* Tabs activas */
+/* Tabs */
 .tabs .selected a {
-    background: var(--primary) !important;
+    background: #166534 !important;
     color: #fff !important;
 }
