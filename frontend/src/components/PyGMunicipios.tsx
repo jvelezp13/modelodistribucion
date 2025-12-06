@@ -382,7 +382,7 @@ export default function PyGMunicipios({ escenarioId, zonaId, zonaNombre, marcaId
                         </td>
                         <td className="text-right px-2 py-2">
                           <span className="px-1 py-0.5 rounded text-[9px] font-medium bg-green-100 text-green-700"
-                            title={`Part. marca: ${formatPercent(mun.municipio.participacion_ventas)}`}>
+                            title={`Part. marca: ${formatPercent(mun.municipio.participacion_total)}`}>
                             {formatPercent(getParticipacionZona(mun))}
                           </span>
                         </td>

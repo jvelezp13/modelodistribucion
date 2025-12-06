@@ -500,9 +500,9 @@ export interface PyGMunicipio {
     id: number;
     nombre: string;
     codigo_dane: string;
-    participacion_ventas: number;
-    participacion_zona: number;  // Peso relativo dentro de la zona
-    participacion_total: number;
+    venta_proyectada: number;  // Venta proyectada del municipio en esta zona
+    participacion_zona: number;  // Peso relativo dentro de la zona (%)
+    participacion_total: number;  // Peso sobre la marca total (%)
   };
   zona: {
     id: number;

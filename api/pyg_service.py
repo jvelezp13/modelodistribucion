@@ -601,18 +601,20 @@ def calcular_pyg_todos_municipios(escenario, zona) -> List[Dict]:
     """
     Calcula P&G para todos los municipios de una zona.
 
-    Lógica de distribución de costos:
-    - Comerciales y Administrativos: Peso relativo de participación de ventas
-      (suma participaciones de municipios de la zona, calcula peso de cada uno)
-    - Logísticos: Desde distribuir_costos_logisticos_a_zonas que calcula
-      por rutas, flete, combustible, peajes, etc.
+    Lógica de distribución de costos (Comerciales y Administrativos):
+    - Usa ZonaMunicipio.participacion_ventas que representa el peso del municipio
+      DENTRO de la zona (suma = 100% de la zona)
+    - Esto permite que un mismo municipio tenga diferentes participaciones
+      en diferentes zonas
+
+    Logísticos: Por ahora también proporcional, luego se refinará con rutas.
     """
-    from core.models import ZonaMunicipio, VentaMunicipio
+    from core.models import ZonaMunicipio
     from core.calculator_lejanias import CalculadoraLejanias
 
     marca = zona.marca
 
-    # Obtener municipios de la zona
+    # Obtener municipios de la zona con su participación ya calculada
     zona_municipios = ZonaMunicipio.objects.filter(
         zona=zona
     ).select_related('municipio').order_by('municipio__nombre')
@@ -620,30 +622,14 @@ def calcular_pyg_todos_municipios(escenario, zona) -> List[Dict]:
     if not zona_municipios.exists():
         return []
 
-    # Obtener participaciones de ventas desde VentaMunicipio
-    participaciones = {}
-    for zm in zona_municipios:
-        try:
-            venta_mun = VentaMunicipio.objects.get(
-                marca=marca,
-                escenario=escenario,
-                municipio=zm.municipio
-            )
-            participaciones[zm.municipio.id] = venta_mun.participacion_ventas or Decimal('0')
-        except VentaMunicipio.DoesNotExist:
-            participaciones[zm.municipio.id] = Decimal('0')
-
-    # Calcular suma total de participaciones de municipios de la zona
-    suma_participaciones = sum(participaciones.values())
-
-    # Calcular peso relativo de cada municipio dentro de la zona
+    # Usar directamente ZonaMunicipio.participacion_ventas
+    # Este campo ya contiene el peso relativo dentro de la zona (suma = 100%)
     pesos_relativos = {}
-    for mun_id, part in participaciones.items():
-        if suma_participaciones > 0:
-            pesos_relativos[mun_id] = part / suma_participaciones
-        else:
-            # Si no hay participaciones, distribuir equitativamente
-            pesos_relativos[mun_id] = Decimal('1') / len(participaciones)
+    ventas_proyectadas = {}
+    for zm in zona_municipios:
+        # participacion_ventas ya está en % (0-100), convertir a decimal (0-1)
+        pesos_relativos[zm.municipio.id] = (zm.participacion_ventas or Decimal('0')) / 100
+        ventas_proyectadas[zm.municipio.id] = zm.venta_proyectada or Decimal('0')
 
     # Obtener P&G de la zona (costos totales)
     pyg_zona = calcular_pyg_zona(escenario, zona)
@@ -663,15 +649,15 @@ def calcular_pyg_todos_municipios(escenario, zona) -> List[Dict]:
             }
 
     # Construir resultado para cada municipio
-    # Todos los costos se distribuyen proporcionalmente según el peso relativo
-    # para que la suma de municipios = total de la zona
+    # Costos comerciales y administrativos: proporcionales según ZonaMunicipio.participacion_ventas
+    # Costos logísticos: por ahora también proporcional (se refinará con rutas)
     resultados = []
     for zm in zona_municipios:
         mun_id = zm.municipio.id
         peso = pesos_relativos.get(mun_id, Decimal('0'))
-        participacion = participaciones.get(mun_id, Decimal('0'))
+        venta_proy = ventas_proyectadas.get(mun_id, Decimal('0'))
 
-        # Costos comerciales: proporcionales al peso relativo
+        # Costos comerciales: proporcionales al peso relativo dentro de la zona
         comercial = {
             'personal': pyg_zona['comercial']['personal'] * peso,
             'gastos': pyg_zona['comercial']['gastos'] * peso,
@@ -679,7 +665,7 @@ def calcular_pyg_todos_municipios(escenario, zona) -> List[Dict]:
             'total': pyg_zona['comercial']['total'] * peso
         }
 
-        # Costos logísticos: proporcionales al peso relativo
+        # Costos logísticos: proporcionales al peso relativo (TODO: refinar con rutas)
         logistico = {
             'personal': pyg_zona['logistico']['personal'] * peso,
             'gastos': pyg_zona['logistico']['gastos'] * peso,
@@ -687,7 +673,7 @@ def calcular_pyg_todos_municipios(escenario, zona) -> List[Dict]:
             'total': pyg_zona['logistico']['total'] * peso
         }
 
-        # Costos administrativos: proporcionales al peso relativo
+        # Costos administrativos: proporcionales al peso relativo dentro de la zona
         administrativo = {
             'personal': pyg_zona['administrativo']['personal'] * peso,
             'gastos': pyg_zona['administrativo']['gastos'] * peso,
@@ -696,17 +682,19 @@ def calcular_pyg_todos_municipios(escenario, zona) -> List[Dict]:
 
         total_mensual = comercial['total'] + logistico['total'] + administrativo['total']
 
-        # Participación total (sobre marca)
-        part_total = (zona.participacion_ventas or Decimal('0')) * peso
+        # Participación sobre la marca = participación_zona × peso_municipio_en_zona
+        # Ejemplo: Zona tiene 40% de marca, municipio tiene 50% de zona → 20% de marca
+        part_zona_decimal = (zona.participacion_ventas or Decimal('0')) / 100
+        part_total = part_zona_decimal * peso * 100  # Volver a %
 
         resultados.append({
             'municipio': {
                 'id': mun_id,
                 'nombre': zm.municipio.nombre,
                 'codigo_dane': zm.municipio.codigo_dane,
-                'participacion_ventas': float(participacion),
-                'participacion_zona': float(peso * 100),  # Peso dentro de la zona
-                'participacion_total': float(part_total),
+                'venta_proyectada': float(venta_proy),
+                'participacion_zona': float(peso * 100),  # % dentro de la zona
+                'participacion_total': float(part_total),  # % sobre la marca
             },
             'zona': {
                 'id': zona.id,
