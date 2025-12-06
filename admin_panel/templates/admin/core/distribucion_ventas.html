@@ -1,4 +1,4 @@
-{% extends "admin/base.html" %}
+{% extends "admin/base_site.html" %}
 {% load humanize %}
 
 {% block title %}Distribución de Ventas{% endblock %}
@@ -6,6 +6,13 @@
 {% block extrahead %}
 {{ block.super }}
 <style>
+    /* Variables heredadas del tema */
+    :root {
+        --lf-primary: #166534;
+        --lf-primary-dark: #14532D;
+        --lf-primary-light: #059669;
+        --lf-bg-light: #e8f5e9;
+    }
     .distribucion-container {
         padding: 20px;
     }
@@ -37,7 +44,7 @@
     }
     .filtros-form button {
         padding: 8px 20px;
-        background: #166534;
+        background: var(--lf-primary);
         color: white;
         border: none;
         border-radius: 4px;
@@ -45,7 +52,7 @@
         font-size: 14px;
     }
     .filtros-form button:hover {
-        background: #14532D;
+        background: var(--lf-primary-dark);
     }
 
     .tabs {
@@ -70,7 +77,7 @@
         background: #e0e0e0;
     }
     .tab.active {
-        background: #166534;
+        background: var(--lf-primary);
         color: white;
     }
 
@@ -117,21 +124,21 @@
     }
     .tabla-distribucion input[type="number"]:focus {
         outline: none;
-        border-color: #166534;
+        border-color: var(--lf-primary);
         box-shadow: 0 0 0 2px rgba(22, 101, 52, 0.2);
     }
 
     .participacion {
         font-weight: bold;
-        color: #166534;
+        color: var(--lf-primary);
     }
 
     .totales-row {
-        background: #e8f5e9 !important;
+        background: var(--lf-bg-light) !important;
         font-weight: bold;
     }
     .totales-row td {
-        border-top: 2px solid #166534;
+        border-top: 2px solid var(--lf-primary);
         padding: 15px 12px;
     }
 
@@ -196,17 +203,17 @@
     }
 
     .zona-header {
-        background: #e8f5e9 !important;
+        background: var(--lf-bg-light) !important;
         font-weight: bold;
     }
     .zona-header td {
-        color: #166534;
+        color: var(--lf-primary);
         padding-top: 15px;
     }
 
     .btn-agregar {
         padding: 10px 20px;
-        background: #166534;
+        background: var(--lf-primary);
         color: white;
         border: none;
         border-radius: 4px;
@@ -215,7 +222,7 @@
         margin-bottom: 15px;
     }
     .btn-agregar:hover {
-        background: #14532D;
+        background: var(--lf-primary-dark);
     }
 
     /* Modal */
@@ -442,7 +449,7 @@
 
         {% for zona_data in zonas_municipios %}
         <div class="zona-municipios-card" style="margin-bottom: 25px; border: 1px solid #ddd; border-radius: 8px; overflow: hidden;">
-            <div class="zona-header-card" style="background: #166534; color: white; padding: 12px 15px; display: flex; justify-content: space-between; align-items: center;">
+            <div class="zona-header-card" style="background: var(--lf-primary); color: white; padding: 12px 15px; display: flex; justify-content: space-between; align-items: center;">
                 <div>
                     <strong>{{ zona_data.zona.nombre }}</strong>
                     <span style="opacity: 0.8; margin-left: 10px; font-size: 12px;">
