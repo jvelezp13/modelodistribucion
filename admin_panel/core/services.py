@@ -5,9 +5,8 @@ Incluye:
 - EscenarioService: duplicación y proyección de escenarios
 """
 from decimal import Decimal
-from typing import Dict, List, Optional
+from typing import Dict, List
 from django.db import transaction
-from django.db.models import Sum, Q
 
 from .models import (
     Escenario, ParametrosMacro, PersonalComercial, PersonalLogistico,

@@ -1409,79 +1409,7 @@ def diagnosticar_rubros_detallado(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/api/debug/diferencia-pyg")
-def diagnosticar_diferencia_pyg(
-    escenario_id: int,
-    marca_id: str
-) -> Dict[str, Any]:
-    """
-    Diagnostica diferencias entre P&G Detallado y P&G por Zonas.
-    """
-    try:
-        from core.models import (
-            Escenario, Marca, Zona,
-            PersonalComercial, GastoComercial
-        )
-        from api.pyg_service import calcular_pyg_todas_zonas
-        from decimal import Decimal
-
-        escenario = Escenario.objects.get(pk=escenario_id)
-        marca = Marca.objects.get(marca_id=marca_id)
-
-        # TOTAL DETALLADO
-        personal_comercial = PersonalComercial.objects.filter(escenario=escenario, marca=marca)
-        total_personal = sum(float(p.calcular_costo_mensual()) for p in personal_comercial)
-
-        gastos_comerciales = GastoComercial.objects.filter(escenario=escenario, marca=marca)
-        total_gastos = sum(float(g.valor_mensual) for g in gastos_comerciales)
-
-        total_detallado = total_personal + total_gastos
-
-        # TOTAL ZONAS
-        zonas_pyg = calcular_pyg_todas_zonas(escenario, marca)
-        total_zonas = sum(float(z['comercial']['total']) for z in zonas_pyg)
-
-        # DIFERENCIA
-        diferencia = total_detallado - total_zonas
-
-        # PARTICIPACIONES
-        zonas_activas = Zona.objects.filter(escenario=escenario, marca=marca, activo=True)
-        suma_participaciones = sum(float(z.participacion_ventas or 0) for z in zonas_activas)
-
-        # POR TIPO
-        personal_por_tipo = {}
-        for tipo in ['directo', 'proporcional', 'compartido']:
-            qs = personal_comercial.filter(tipo_asignacion_geo=tipo)
-            personal_por_tipo[tipo] = {
-                'count': qs.count(),
-                'total': sum(float(p.calcular_costo_mensual()) for p in qs)
-            }
-
-        gastos_por_tipo = {}
-        for tipo in ['directo', 'proporcional', 'compartido']:
-            qs = gastos_comerciales.filter(tipo_asignacion_geo=tipo)
-            gastos_por_tipo[tipo] = {
-                'count': qs.count(),
-                'total': sum(float(g.valor_mensual) for g in qs)
-            }
-
-        return {
-            'escenario': escenario.nombre,
-            'marca': marca.nombre,
-            'total_detallado': total_detallado,
-            'total_personal': total_personal,
-            'total_gastos': total_gastos,
-            'total_zonas': total_zonas,
-            'diferencia': diferencia,
-            'diferencia_porcentaje': (diferencia / total_detallado * 100) if total_detallado > 0 else 0,
-            'suma_participaciones': suma_participaciones,
-            'personal_por_tipo': personal_por_tipo,
-            'gastos_por_tipo': gastos_por_tipo,
-        }
-
-    except Exception as e:
-        logger.error(f"Error en diagnóstico: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+# ELIMINADO: /api/debug/diferencia-pyg - Redundante con /api/diagnostico/comparar-pyg
 
 
 @app.get("/api/pyg/zona/{zona_id}")
@@ -1928,37 +1856,21 @@ def diagnostico_personal_detallado(
                 'diferencia': float(total - total_distribuido)
             }
 
-        # Filtros para excluir lejanías y flota (ya calculados aparte)
-        def es_lejania_comercial(nombre):
-            return nombre.startswith('Combustible Lejanía') or nombre.startswith('Viáticos Pernocta')
-
-        def es_lejania_logistica(nombre):
-            # Excluir TODOS los gastos de rutas - se calculan dinámicamente
-            return (
-                nombre.startswith('Combustible - ') or
-                nombre.startswith('Peajes - ') or
-                nombre.startswith('Viáticos Ruta - ') or
-                nombre.startswith('Flete Base Tercero - ')
-            )
-
-        def es_flota_vehiculos(gasto):
-            """Excluir gastos de flota que ya están en P&G Detallado como rubros tipo=vehiculo"""
-            nombre = gasto.nombre or ''
-            tipo = gasto.tipo or ''
-            tipos_flota = ['canon_renting', 'depreciacion_vehiculo', 'mantenimiento_vehiculos',
-                          'lavado_vehiculos', 'parqueadero_vehiculos', 'monitoreo_satelital']
-            nombres_flota = ['Canon Renting Flota', 'Depreciación Flota Propia', 'Mantenimiento Flota Propia',
-                            'Seguros Flota Propia', 'Aseo y Limpieza Vehículos', 'Parqueaderos',
-                            'Monitoreo Satelital (GPS)', 'Seguro de Mercancía']
-            return tipo in tipos_flota or nombre in nombres_flota
+        # Filtros importados de pyg_service (centralizados)
+        from api.pyg_service import (
+            es_gasto_lejania_comercial,
+            es_gasto_lejania_logistica,
+            es_gasto_flota_vehiculos
+        )
 
         def filtro_logistico(gasto):
             nombre = gasto.nombre or ''
-            return es_lejania_logistica(nombre) or es_flota_vehiculos(gasto)
+            tipo = gasto.tipo or ''
+            return es_gasto_lejania_logistica(nombre) or es_gasto_flota_vehiculos(nombre, tipo)
 
         # Procesar cada categoría
         comercial_personal = procesar_personal(PersonalComercial, 'comercial')
-        comercial_gastos = procesar_gastos(GastoComercial, 'comercial', lambda g: es_lejania_comercial(g.nombre or ''))
+        comercial_gastos = procesar_gastos(GastoComercial, 'comercial', lambda g: es_gasto_lejania_comercial(g.nombre or ''))
 
         logistico_personal = procesar_personal(PersonalLogistico, 'logistico')
         logistico_gastos = procesar_gastos(GastoLogistico, 'logistico', filtro_logistico)

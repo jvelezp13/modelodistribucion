@@ -98,84 +98,70 @@ def calcular_pyg_zona(escenario, zona, admin_totales: Dict = None) -> Dict:
     }
 
 
-def _es_gasto_lejania_logistica(gasto) -> bool:
+# =============================================================================
+# FILTROS DE GASTOS - Funciones centralizadas para identificar tipos de gastos
+# Usadas por pyg_service.py y main.py para evitar duplicación
+# =============================================================================
+
+# Constantes para filtros de flota
+TIPOS_FLOTA = [
+    'canon_renting',
+    'depreciacion_vehiculo',
+    'mantenimiento_vehiculos',
+    'lavado_vehiculos',
+    'parqueadero_vehiculos',
+    'monitoreo_satelital',
+]
+
+NOMBRES_FLOTA = [
+    'Canon Renting Flota',
+    'Depreciación Flota Propia',
+    'Mantenimiento Flota Propia',
+    'Seguros Flota Propia',
+    'Aseo y Limpieza Vehículos',
+    'Parqueaderos',
+    'Monitoreo Satelital (GPS)',
+    'Seguro de Mercancía',
+]
+
+
+def es_gasto_lejania_logistica(nombre: str) -> bool:
     """
     Identifica gastos que son parte de rutas logísticas y NO deben sumarse
     porque ya están calculados dinámicamente por CalculadoraLejanias.
-
-    Estos gastos son creados por signals cuando se configura una ruta,
-    pero pueden estar desincronizados con el cálculo real.
-    Por eso excluimos TODOS los gastos de rutas y usamos el cálculo dinámico.
 
     Se excluyen:
     - Combustible de rutas
     - Peajes de rutas
     - Viáticos/Pernocta de rutas
-    - Flete Base Tercero (ya incluido en el cálculo de lejanías totales)
+    - Flete Base Tercero
+    - Flete Transporte (Tercero)
     """
-    nombre = gasto.nombre or ''
     return (
         nombre.startswith('Combustible - ') or
         nombre.startswith('Peajes - ') or
         nombre.startswith('Viáticos Ruta - ') or
-        nombre.startswith('Flete Base Tercero - ')
+        nombre.startswith('Flete Base Tercero - ') or
+        nombre == 'Flete Transporte (Tercero)'
     )
 
 
-def _es_gasto_flota_vehiculos(gasto) -> bool:
+def es_gasto_flota_vehiculos(nombre: str, tipo: str = '') -> bool:
     """
     Identifica gastos que corresponden a la Flota de Vehículos.
 
     Estos gastos se crean automáticamente desde la tabla Vehiculo por signals
     y NO deben sumarse en 'gastos' porque ya están contabilizados en P&G Detallado
     como rubros de tipo='vehiculo'.
-
-    Los gastos de flota incluyen:
-    - Canon Renting
-    - Depreciación
-    - Mantenimiento
-    - Seguros
-    - Monitoreo GPS
-    - Lavado/Parqueadero
     """
-    nombre = gasto.nombre or ''
-    tipo = gasto.tipo or ''
-
-    # Excluir por tipo de gasto (todos los relacionados con vehículos)
-    tipos_flota = [
-        'canon_renting',
-        'depreciacion_vehiculo',
-        'mantenimiento_vehiculos',
-        'lavado_vehiculos',
-        'parqueadero_vehiculos',
-        'monitoreo_satelital',
-    ]
-    if tipo in tipos_flota:
-        return True
-
-    # Excluir por nombre específico (creados por signals)
-    nombres_flota = [
-        'Canon Renting Flota',
-        'Depreciación Flota Propia',
-        'Mantenimiento Flota Propia',
-        'Seguros Flota Propia',
-        'Aseo y Limpieza Vehículos',
-        'Parqueaderos',
-        'Monitoreo Satelital (GPS)',
-        'Seguro de Mercancía',
-    ]
-    if nombre in nombres_flota:
-        return True
-
-    return False
+    return tipo in TIPOS_FLOTA or nombre in NOMBRES_FLOTA
 
 
-def _es_gasto_lejania_comercial(gasto) -> bool:
+def es_gasto_lejania_comercial(nombre: str) -> bool:
     """
     Identifica gastos que son parte de lejanías comerciales y NO deben sumarse
     porque ya están calculados en el simulador como parte de Zona comercial.
     """
-    nombre = gasto.nombre or ''
     return (
         nombre.startswith('Combustible Lejanía') or
         nombre.startswith('Viáticos Pernocta')
@@ -291,15 +277,17 @@ def _distribuir_costos_a_zona(
         marca=marca
     )
     for g in gastos_qs:
+        nombre = g.nombre or ''
+        tipo = g.tipo or ''
+
         # Excluir gastos de lejanías que ya están en el cálculo dinámico
-        if modelo_gasto == GastoLogistico and _es_gasto_lejania_logistica(g):
+        if modelo_gasto == GastoLogistico and es_gasto_lejania_logistica(nombre):
             continue
-        if modelo_gasto == GastoComercial and _es_gasto_lejania_comercial(g):
+        if modelo_gasto == GastoComercial and es_gasto_lejania_comercial(nombre):
             continue
 
         # Excluir gastos de flota de vehículos (se calculan desde tabla Vehiculo)
-        # Esto evita doble conteo ya que _calcular_lejanias_zona incluye costos de vehículos
-        if modelo_gasto == GastoLogistico and _es_gasto_flota_vehiculos(g):
+        if modelo_gasto == GastoLogistico and es_gasto_flota_vehiculos(nombre, tipo):
             continue
 
         asignacion_geo = getattr(g, 'tipo_asignacion_geo', 'proporcional')
@@ -424,19 +412,6 @@ def calcular_pyg_todas_zonas(escenario, marca) -> List[Dict]:
                 else:
                     admin_gastos_marca += valor
 
-    # Funciones de filtrado para excluir gastos que se calculan en lejanías
-    def es_gasto_logistico_filtrable(nombre: str) -> bool:
-        return (
-            nombre.startswith('Combustible - ') or
-            nombre.startswith('Peajes - ') or
-            nombre.startswith('Viáticos Ruta - ') or
-            nombre.startswith('Flete Base Tercero - ') or
-            nombre == 'Flete Transporte (Tercero)'
-        )
-
-    def es_gasto_comercial_lejania(nombre: str) -> bool:
-        return 'Combustible Lejanía' in nombre or 'Viáticos Pernocta' in nombre
-
     # Función para distribuir un costo según tipo_asignacion_geo
     def distribuir_costo(costo: Decimal, tipo_asignacion: str, zona_asignada_id: int, zona: Zona) -> Decimal:
         participacion = (zona.participacion_ventas or Decimal('0')) / 100
@@ -508,7 +483,7 @@ def calcular_pyg_todas_zonas(escenario, marca) -> List[Dict]:
 
         # Gastos logísticos (excluyendo los que se calculan en lejanías)
         for g in GastoLogistico.objects.filter(escenario=escenario, marca=marca):
-            if es_gasto_logistico_filtrable(g.nombre or ''):
+            if es_gasto_lejania_logistica(g.nombre or ''):
                 continue
             costo = g.valor_mensual or Decimal('0')
             tipo_asignacion = getattr(g, 'tipo_asignacion_geo', 'proporcional')
