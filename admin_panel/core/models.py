@@ -300,7 +300,14 @@ class PersonalLogistico(models.Model):
     salario_base = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Salario Base")
     perfil_prestacional = models.CharField(max_length=20, choices=PERFIL_CHOICES, default='logistico_calle')
     asignacion = models.CharField(max_length=20, choices=ASIGNACION_CHOICES, default='individual')
-    
+    auxilio_adicional = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        verbose_name="Auxilio Adicional",
+        help_text="Bonos o auxilios que NO generan prestaciones (rodamiento, alimentación, etc.)"
+    )
+
     # Índice de incremento para proyecciones
     indice_incremento = models.CharField(
         max_length=20,
@@ -386,7 +393,7 @@ class PersonalLogistico(models.Model):
                 salario_base=self.salario_base,
                 factores=factor,
                 subsidio_transporte=subsidio_transporte,
-                auxilio_adicional=Decimal('0'),
+                auxilio_adicional=self.auxilio_adicional or Decimal('0'),
                 cantidad=self.cantidad,
             )
             return resultado.costo_total
@@ -925,10 +932,17 @@ class PersonalAdministrativo(models.Model):
     # Para nómina
     salario_base = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, verbose_name="Salario Base")
     perfil_prestacional = models.CharField(max_length=20, choices=PERFIL_CHOICES, default='administrativo', verbose_name="Perfil")
+    auxilio_adicional = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        verbose_name="Auxilio Adicional",
+        help_text="Bonos o auxilios que NO generan prestaciones (rodamiento, alimentación, etc.)"
+    )
 
     # Para honorarios
     honorarios_mensuales = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, verbose_name="Honorarios Mensuales")
-    
+
     # Índice de incremento para proyecciones
     indice_incremento = models.CharField(
         max_length=20,
@@ -1010,7 +1024,7 @@ class PersonalAdministrativo(models.Model):
                 salario_base=self.salario_base,
                 factores=factor,
                 subsidio_transporte=subsidio_transporte,
-                auxilio_adicional=Decimal('0'),
+                auxilio_adicional=self.auxilio_adicional or Decimal('0'),
                 cantidad=self.cantidad,
             )
             return resultado.costo_total

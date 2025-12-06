@@ -295,6 +295,10 @@ class PersonalLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
         ('Información Básica', {
             'fields': ('marca', 'escenario', 'nombre', 'tipo', 'cantidad', 'salario_base', 'perfil_prestacional')
         }),
+        ('Auxilios Adicionales', {
+            'fields': ('auxilio_adicional',),
+            'description': 'Bonos o auxilios que NO generan prestaciones (rodamiento, alimentación, etc.)'
+        }),
         ('Asignación por Marca', {
             'fields': ('asignacion', 'porcentaje_dedicacion', 'criterio_prorrateo'),
             'description': 'Individual = 100% a esta marca. Compartido = se distribuye entre marcas según criterio.'
@@ -328,6 +332,10 @@ class PersonalLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
                         total += macro.subsidio_transporte
                 except ParametrosMacro.DoesNotExist:
                     pass
+
+            # Sumar auxilio adicional (sin prestaciones)
+            if obj.auxilio_adicional:
+                total += obj.auxilio_adicional
 
             return f"${total:,.0f}"
         except FactorPrestacional.DoesNotExist:
@@ -627,8 +635,8 @@ class PersonalAdministrativoAdmin(DuplicarMixin, admin.ModelAdmin):
             'fields': ('marca', 'escenario', 'nombre', 'tipo', 'cantidad', 'tipo_contrato')
         }),
         ('Nómina', {
-            'fields': ('salario_base', 'perfil_prestacional'),
-            'description': 'Diligenciar solo si tipo de contrato es Nómina'
+            'fields': ('salario_base', 'perfil_prestacional', 'auxilio_adicional'),
+            'description': 'Diligenciar solo si tipo de contrato es Nómina. El auxilio adicional NO genera prestaciones.'
         }),
         ('Honorarios', {
             'fields': ('honorarios_mensuales',),
@@ -679,6 +687,10 @@ class PersonalAdministrativoAdmin(DuplicarMixin, admin.ModelAdmin):
                         total += macro.subsidio_transporte
                 except ParametrosMacro.DoesNotExist:
                     pass
+
+            # Sumar auxilio adicional (sin prestaciones)
+            if obj.auxilio_adicional:
+                total += obj.auxilio_adicional
 
             return f"${total:,.0f}"
         except FactorPrestacional.DoesNotExist:
