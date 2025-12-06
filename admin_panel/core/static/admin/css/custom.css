@@ -63,12 +63,12 @@ div.breadcrumbs a:visited {
     color: #fff !important;
 }
 
-/* Títulos de módulos/secciones en sidebar - negro sobrio */
+/* Títulos de módulos/secciones en sidebar */
 .module h2,
 .module caption,
 .module table caption,
 caption {
-    background: #1f2937 !important;
+    background: #166534 !important;
     color: #fff !important;
 }
 
@@ -76,8 +76,19 @@ caption {
 .app-label,
 tr.model-label th,
 .section h2 {
-    background: #1f2937 !important;
+    background: #166534 !important;
     color: #fff !important;
+}
+
+/* Links de modelos en el sidebar (Marcas, Escenarios, etc.) - negro sobrio */
+.module table a,
+.module ul a {
+    color: #1f2937 !important;
+}
+
+.module table a:hover,
+.module ul a:hover {
+    color: #166534 !important;
 }
 
 /* Links generales - verde más claro para mejor legibilidad */
