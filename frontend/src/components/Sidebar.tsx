@@ -7,8 +7,7 @@ import {
   ChevronRight,
   MapPin,
   Truck,
-  Map,
-  Building
+  Map
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -26,8 +25,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { id: 'pyg', label: 'P&G Detallado', icon: FileText },
-  { id: 'pyg-zonas', label: 'P&G por Zonas', icon: Map },
-  { id: 'pyg-municipios', label: 'P&G por Municipios', icon: Building },
+  { id: 'pyg-zonas', label: 'P&G Zonas y Municipios', icon: Map },
   { id: 'lejanias-comercial', label: 'Lejanías Comerciales', icon: MapPin },
   { id: 'lejanias-logistica', label: 'Lejanías Logísticas', icon: Truck },
 ];
