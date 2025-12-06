@@ -63,7 +63,7 @@ div.breadcrumbs a:visited {
     color: #fff !important;
 }
 
-/* Títulos de módulos/secciones en sidebar - verde muy oscuro */
+/* Títulos de módulos/secciones en sidebar */
 .module h2,
 .module caption,
 .module table caption,
@@ -72,7 +72,23 @@ caption,
 #content-main .module caption,
 #container .module h2,
 #container .module caption {
-    background: #0f4c2d !important;
+    background: #166534 !important;
+    color: #fff !important;
+}
+
+/* Forzar texto blanco en captions del sidebar */
+caption,
+table caption,
+.module caption,
+.module table caption {
+    color: #fff !important;
+    background: #166534 !important;
+}
+
+caption *,
+table caption *,
+.module caption *,
+.module table caption * {
     color: #fff !important;
 }
 
@@ -80,11 +96,10 @@ caption,
 .app-label,
 tr.model-label th,
 .section h2,
-table caption,
 caption a,
 .module caption a,
 .module h2 a {
-    background: #0f4c2d !important;
+    background: #166534 !important;
     color: #fff !important;
 }
 
