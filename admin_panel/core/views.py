@@ -9,7 +9,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 import json
 
-from .models import Marca, Escenario, Zona, VentaMunicipio, Municipio
+from .models import Marca, Escenario, Zona, ZonaMunicipio, VentaMunicipio, Municipio
 
 
 @staff_member_required
@@ -30,8 +30,10 @@ def distribucion_ventas(request):
     escenario_seleccionado = None
     zonas = []
     municipios = []
+    zonas_municipios = []  # Lista de zonas con sus municipios
     total_venta_zonas = Decimal('0')
     total_venta_municipios = Decimal('0')
+    total_venta_zonas_municipios = Decimal('0')
 
     if marca_id and escenario_id:
         try:
@@ -54,6 +56,21 @@ def distribucion_ventas(request):
             ).select_related('municipio').order_by('municipio__departamento', 'municipio__nombre')
 
             total_venta_municipios = sum(m.venta_proyectada for m in municipios)
+
+            # Obtener zonas con sus municipios (ZonaMunicipio)
+            for zona in zonas:
+                zona_municipios = ZonaMunicipio.objects.filter(
+                    zona=zona
+                ).select_related('municipio').order_by('municipio__nombre')
+
+                total_zona = sum(zm.venta_proyectada for zm in zona_municipios)
+                total_venta_zonas_municipios += total_zona
+
+                zonas_municipios.append({
+                    'zona': zona,
+                    'municipios': zona_municipios,
+                    'total': total_zona,
+                })
 
         except (Marca.DoesNotExist, Escenario.DoesNotExist):
             pass
@@ -82,9 +99,11 @@ def distribucion_ventas(request):
         'escenario_seleccionado': escenario_seleccionado,
         'zonas': zonas,
         'municipios': municipios,
+        'zonas_municipios': zonas_municipios,
         'municipios_disponibles': municipios_disponibles,
         'total_venta_zonas': total_venta_zonas,
         'total_venta_municipios': total_venta_municipios,
+        'total_venta_zonas_municipios': total_venta_zonas_municipios,
     })
 
     return render(request, 'admin/core/distribucion_ventas.html', context)
@@ -122,6 +141,20 @@ def guardar_distribucion_ventas(request):
             if items:
                 primer_vm = VentaMunicipio.objects.get(pk=items[0]['id'])
                 primer_vm._recalcular_participaciones()
+
+        elif tipo == 'zonas_municipios':
+            # Guardar ventas de ZonaMunicipio (por zona)
+            zona_id = data.get('zona_id')
+            for item in items:
+                zm_id = item.get('id')
+                venta = Decimal(str(item.get('venta', 0)))
+                ZonaMunicipio.objects.filter(pk=zm_id).update(venta_proyectada=venta)
+
+            # Recalcular participaciones de la zona
+            if items and zona_id:
+                primer_zm = ZonaMunicipio.objects.filter(zona_id=zona_id).first()
+                if primer_zm:
+                    primer_zm._recalcular_participaciones_zona()
 
         return JsonResponse({'success': True})
 

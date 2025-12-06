@@ -1210,7 +1210,8 @@ class ZonaMunicipioInline(admin.TabularInline):
     model = ZonaMunicipio
     extra = 1
     autocomplete_fields = ['municipio']
-    fields = ('municipio', 'visitas_por_periodo')
+    fields = ('municipio', 'visitas_por_periodo', 'venta_proyectada', 'participacion_ventas')
+    readonly_fields = ('participacion_ventas',)
 
 
 @admin.register(Zona, site=dxv_admin_site)
