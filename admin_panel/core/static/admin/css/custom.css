@@ -1,0 +1,94 @@
+/* LogiFlow - Tema Verde */
+:root {
+    --primary: #16A34A;
+    --primary-dark: #15803D;
+    --primary-light: #22C55E;
+    --accent: #10B981;
+}
+
+/* Header */
+#header {
+    background: var(--primary);
+}
+
+#header a:link, #header a:visited {
+    color: #fff;
+}
+
+/* Links */
+a:link, a:visited {
+    color: var(--primary-dark);
+}
+
+a:hover {
+    color: var(--primary);
+}
+
+/* Botones */
+.submit-row input[type="submit"],
+input[type="submit"],
+button[type="submit"],
+.button,
+a.button {
+    background: var(--primary);
+    border-color: var(--primary-dark);
+}
+
+.submit-row input[type="submit"]:hover,
+input[type="submit"]:hover,
+button[type="submit"]:hover,
+.button:hover,
+a.button:hover {
+    background: var(--primary-dark);
+}
+
+/* Botón default (guardar) */
+.default {
+    background: var(--primary) !important;
+}
+
+.default:hover {
+    background: var(--primary-dark) !important;
+}
+
+/* Módulos del sidebar */
+.module h2, .module caption {
+    background: var(--primary);
+}
+
+/* Breadcrumbs */
+div.breadcrumbs {
+    background: var(--primary-dark);
+}
+
+/* Links del calendario/reloj */
+.calendar td a:hover,
+.timelist a:hover {
+    background: var(--primary-light);
+}
+
+/* Selector de filtros activo */
+#changelist-filter li.selected a {
+    color: var(--primary);
+}
+
+/* Checkbox y radio seleccionados */
+input[type="checkbox"]:checked,
+input[type="radio"]:checked {
+    accent-color: var(--primary);
+}
+
+/* Object tools (botones superiores) */
+.object-tools a:link,
+.object-tools a:visited {
+    background: var(--primary);
+}
+
+.object-tools a:hover {
+    background: var(--primary-dark);
+}
+
+/* Delete button mantener rojo */
+.deletelink {
+    background: #BA2121 !important;
+}
