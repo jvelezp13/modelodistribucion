@@ -110,6 +110,6 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Admin site customization
-ADMIN_SITE_HEADER = "Sistema DxV - Panel de Administración"
-ADMIN_SITE_TITLE = "DxV Admin"
-ADMIN_INDEX_TITLE = "Bienvenido al Panel de Administración DxV"
+ADMIN_SITE_HEADER = "LogiFlow - Planeación"
+ADMIN_SITE_TITLE = "LogiFlow - Planeación"
+ADMIN_INDEX_TITLE = ""

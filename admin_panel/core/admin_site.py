@@ -7,9 +7,9 @@ from django.urls import path
 
 
 class DxVAdminSite(admin.AdminSite):
-    site_header = "Sistema DxV - Panel de Administración"
-    site_title = "DxV Admin"
-    index_title = "Gestión de Distribución y Ventas"
+    site_header = "LogiFlow - Planeación"
+    site_title = "LogiFlow - Planeación"
+    index_title = ""
 
     def get_urls(self):
         """Agregar URLs personalizadas"""
