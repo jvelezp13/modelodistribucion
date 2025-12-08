@@ -233,16 +233,13 @@ class MarcaOperacion(models.Model):
     def __str__(self):
         return f"{self.marca.nombre} en {self.operacion.nombre}"
 
-    def calcular_venta_proyectada(self):
+    def obtener_ventas_mensuales(self):
         """
-        Calcula la venta proyectada basada en:
-        - ProyeccionVentasConfig de la marca (promedio mensual)
-        - participacion_ventas de esta MarcaOperacion
+        Obtiene las ventas de la marca desde ProyeccionVentasConfig.
+        Retorna dict con {'enero': valor, 'febrero': valor, ...}
         """
-        from decimal import Decimal
-
         if not self.marca or not self.operacion or not self.operacion.escenario:
-            return Decimal('0')
+            return {}
 
         try:
             config = ProyeccionVentasConfig.objects.get(
@@ -250,17 +247,51 @@ class MarcaOperacion(models.Model):
                 escenario=self.operacion.escenario,
                 anio=self.operacion.escenario.anio
             )
-            # Obtener promedio mensual de ventas
-            ventas_mensuales = config.calcular_ventas_mensuales()
-            if ventas_mensuales:
-                promedio_mensual = sum(ventas_mensuales.values()) / len(ventas_mensuales)
-            else:
-                promedio_mensual = Decimal('0')
-
-            # Aplicar participación
-            return promedio_mensual * (self.participacion_ventas / Decimal('100'))
+            return config.calcular_ventas_mensuales()
         except ProyeccionVentasConfig.DoesNotExist:
-            return Decimal('0')
+            return {}
+
+    def calcular_venta_mes(self, mes):
+        """
+        Calcula la venta de esta operación para un mes específico.
+
+        Args:
+            mes: Nombre del mes en español (ej: 'enero', 'febrero')
+
+        Returns:
+            Decimal con la venta del mes aplicando la participación
+        """
+        ventas = self.obtener_ventas_mensuales()
+        venta_mes = Decimal(str(ventas.get(mes, 0)))
+        return venta_mes * (self.participacion_ventas / Decimal('100'))
+
+    def calcular_ventas_mensuales_operacion(self):
+        """
+        Calcula las ventas para cada mes aplicando la participación.
+
+        Returns:
+            Dict con {'enero': venta_enero, 'febrero': venta_febrero, ...}
+        """
+        ventas_marca = self.obtener_ventas_mensuales()
+        factor = self.participacion_ventas / Decimal('100')
+        return {mes: Decimal(str(val)) * factor for mes, val in ventas_marca.items()}
+
+    def calcular_venta_proyectada(self):
+        """
+        Calcula la venta proyectada (promedio mensual) basada en:
+        - ProyeccionVentasConfig de la marca
+        - participacion_ventas de esta MarcaOperacion
+
+        Nota: Este valor es el promedio mensual. Para ventas por mes específico,
+        usar calcular_venta_mes() o calcular_ventas_mensuales_operacion().
+        """
+        ventas_mensuales = self.obtener_ventas_mensuales()
+        if ventas_mensuales:
+            promedio_mensual = sum(Decimal(str(v)) for v in ventas_mensuales.values()) / len(ventas_mensuales)
+        else:
+            promedio_mensual = Decimal('0')
+
+        return promedio_mensual * (self.participacion_ventas / Decimal('100'))
 
     def save(self, *args, **kwargs):
         # Calcular venta proyectada antes de guardar
@@ -2425,24 +2456,65 @@ class Zona(models.Model):
     def __str__(self):
         return f"{self.nombre} - {self.marca}"
 
-    def calcular_venta_proyectada(self):
-        """
-        Calcula la venta proyectada basada en:
-        - MarcaOperacion.venta_proyectada (venta de la marca en la operación)
-        - participacion_ventas de esta zona (% dentro de la operación)
-        """
+    def obtener_marca_operacion(self):
+        """Obtiene el MarcaOperacion correspondiente a esta zona."""
         if not self.marca or not self.operacion:
-            return Decimal('0')
-
+            return None
         try:
-            marca_op = MarcaOperacion.objects.get(
+            return MarcaOperacion.objects.get(
                 marca=self.marca,
                 operacion=self.operacion,
                 activo=True
             )
-            return marca_op.venta_proyectada * (self.participacion_ventas / Decimal('100'))
         except MarcaOperacion.DoesNotExist:
+            return None
+
+    def calcular_venta_mes(self, mes):
+        """
+        Calcula la venta de esta zona para un mes específico.
+
+        Args:
+            mes: Nombre del mes en español (ej: 'enero', 'febrero')
+
+        Returns:
+            Decimal con la venta del mes aplicando la participación
+        """
+        marca_op = self.obtener_marca_operacion()
+        if not marca_op:
             return Decimal('0')
+
+        venta_operacion_mes = marca_op.calcular_venta_mes(mes)
+        return venta_operacion_mes * (self.participacion_ventas / Decimal('100'))
+
+    def calcular_ventas_mensuales_zona(self):
+        """
+        Calcula las ventas para cada mes aplicando la participación.
+
+        Returns:
+            Dict con {'enero': venta_enero, 'febrero': venta_febrero, ...}
+        """
+        marca_op = self.obtener_marca_operacion()
+        if not marca_op:
+            return {}
+
+        ventas_operacion = marca_op.calcular_ventas_mensuales_operacion()
+        factor = self.participacion_ventas / Decimal('100')
+        return {mes: val * factor for mes, val in ventas_operacion.items()}
+
+    def calcular_venta_proyectada(self):
+        """
+        Calcula la venta proyectada (promedio mensual) basada en:
+        - MarcaOperacion.venta_proyectada (promedio mensual de la operación)
+        - participacion_ventas de esta zona (% dentro de la operación)
+
+        Nota: Este valor es el promedio mensual. Para ventas por mes específico,
+        usar calcular_venta_mes() o calcular_ventas_mensuales_zona().
+        """
+        marca_op = self.obtener_marca_operacion()
+        if not marca_op:
+            return Decimal('0')
+
+        return marca_op.venta_proyectada * (self.participacion_ventas / Decimal('100'))
 
     def save(self, *args, **kwargs):
         # Calcular venta proyectada antes de guardar
@@ -2532,11 +2604,44 @@ class ZonaMunicipio(models.Model):
         """Calcula visitas comerciales mensuales"""
         return self.visitas_por_periodo * self.zona.periodos_por_mes()
 
+    def calcular_venta_mes(self, mes):
+        """
+        Calcula la venta de este municipio para un mes específico.
+
+        Args:
+            mes: Nombre del mes en español (ej: 'enero', 'febrero')
+
+        Returns:
+            Decimal con la venta del mes aplicando la participación
+        """
+        if not self.zona:
+            return Decimal('0')
+
+        venta_zona_mes = self.zona.calcular_venta_mes(mes)
+        return venta_zona_mes * (self.participacion_ventas / Decimal('100'))
+
+    def calcular_ventas_mensuales_municipio(self):
+        """
+        Calcula las ventas para cada mes aplicando la participación.
+
+        Returns:
+            Dict con {'enero': venta_enero, 'febrero': venta_febrero, ...}
+        """
+        if not self.zona:
+            return {}
+
+        ventas_zona = self.zona.calcular_ventas_mensuales_zona()
+        factor = self.participacion_ventas / Decimal('100')
+        return {mes: val * factor for mes, val in ventas_zona.items()}
+
     def calcular_venta_proyectada(self):
         """
-        Calcula la venta proyectada basada en:
-        - Zona.venta_proyectada (venta de la zona)
+        Calcula la venta proyectada (promedio mensual) basada en:
+        - Zona.venta_proyectada (promedio mensual de la zona)
         - participacion_ventas de este municipio (% dentro de la zona)
+
+        Nota: Este valor es el promedio mensual. Para ventas por mes específico,
+        usar calcular_venta_mes() o calcular_ventas_mensuales_municipio().
         """
         if not self.zona:
             return Decimal('0')
