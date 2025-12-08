@@ -135,6 +135,12 @@ def ejecutar_simulacion(
                     'aplica_cesantia_comercial': False,
                 }
 
+        # Agregar tasa ICA ponderada por marca (basada en las operaciones de sus zonas)
+        tasas_ica = obtener_tasa_ica_ponderada_por_marca(marcas_seleccionadas, escenario_id)
+        for marca_data in resultado_dict['marcas']:
+            marca_id = marca_data['marca_id']
+            marca_data['tasa_ica'] = tasas_ica.get(marca_id, 0.0)
+
         logger.info(f"Simulación completada exitosamente")
         return resultado_dict
 
@@ -241,6 +247,67 @@ def obtener_configuracion_descuentos_por_marca(
 
     except Exception as e:
         logger.warning(f"Error obteniendo configuración de descuentos: {e}")
+        return {}
+
+
+def obtener_tasa_ica_ponderada_por_marca(
+    marcas_ids: List[str],
+    escenario_id: Optional[int] = None
+) -> Dict[str, float]:
+    """
+    Calcula la tasa ICA ponderada para cada marca basada en las operaciones de sus zonas.
+
+    La tasa se pondera por la participación de ventas de cada zona.
+
+    Returns:
+        Dict con marca_id como key y tasa_ica_ponderada (decimal 0-1) como value
+    """
+    try:
+        from core.models import Marca, Zona
+        from decimal import Decimal
+
+        resultado = {}
+
+        for marca_id in marcas_ids:
+            try:
+                marca = Marca.objects.get(marca_id=marca_id)
+
+                # Obtener zonas de la marca con sus operaciones
+                zonas = Zona.objects.filter(
+                    marca=marca,
+                    activo=True
+                ).select_related('operacion')
+
+                if not zonas.exists():
+                    resultado[marca_id] = 0.0
+                    continue
+
+                # Calcular tasa ICA ponderada por participación de ventas
+                tasa_ponderada = Decimal('0')
+                total_participacion = Decimal('0')
+
+                for zona in zonas:
+                    participacion = zona.participacion_ventas or Decimal('0')
+                    total_participacion += participacion
+
+                    if zona.operacion and zona.operacion.tasa_ica:
+                        # tasa_ica está en porcentaje (0-100), convertir a decimal
+                        tasa_zona = zona.operacion.tasa_ica / Decimal('100')
+                        tasa_ponderada += participacion * tasa_zona
+
+                # Normalizar por total de participación (debería ser 100, pero por seguridad)
+                if total_participacion > 0:
+                    tasa_ponderada = tasa_ponderada / total_participacion * Decimal('100')
+
+                resultado[marca_id] = float(tasa_ponderada)
+
+            except Marca.DoesNotExist:
+                resultado[marca_id] = 0.0
+
+        return resultado
+
+    except Exception as e:
+        logger.warning(f"Error calculando tasa ICA ponderada: {e}")
         return {}
 
 

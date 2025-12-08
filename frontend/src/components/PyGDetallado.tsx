@@ -101,27 +101,24 @@ export default function PyGDetallado({ marca: marcaProp, escenarioId, marcaId, o
   const [loadingLejanias, setLoadingLejanias] = useState(false);
   const [mesSeleccionado, setMesSeleccionado] = useState<string>(getMesActual());
   const [tasaImpuestoRenta, setTasaImpuestoRenta] = useState<number>(0.33); // Default 33%
-  const [tasaICA, setTasaICA] = useState<number>(0); // Default 0 (no aplica)
   const [provisionesExpandidas, setProvisionesExpandidas] = useState<Set<string>>(new Set());
 
-  // Cargar tasas de impuestos desde el backend
+  // Tasa ICA viene de la marca (ponderada por zonas/operaciones)
+  const tasaICA = marca?.tasa_ica || 0;
+
+  // Cargar tasa de impuesto de renta desde el backend
   useEffect(() => {
-    const fetchTasas = async () => {
+    const fetchTasaRenta = async () => {
       try {
-        const [rentaResponse, icaResponse] = await Promise.all([
-          apiClient.obtenerTasaRenta(),
-          apiClient.obtenerTasaICA()
-        ]);
+        const rentaResponse = await apiClient.obtenerTasaRenta();
         setTasaImpuestoRenta(rentaResponse.tasa);
-        setTasaICA(icaResponse.tasa);
       } catch (error) {
-        console.error('Error cargando tasas de impuestos:', error);
+        console.error('Error cargando tasa de renta:', error);
         setTasaImpuestoRenta(0.33);
-        setTasaICA(0);
       }
     };
 
-    fetchTasas();
+    fetchTasaRenta();
   }, []);
 
   // Cargar datos de lejanías logísticas

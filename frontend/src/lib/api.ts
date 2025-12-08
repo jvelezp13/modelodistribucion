@@ -121,6 +121,7 @@ export interface Marca {
   ventas_netas_mensuales?: number;
   ventas_mensuales_desglose?: VentasMensualesDesglose;
   configuracion_descuentos?: ConfiguracionDescuentos;
+  tasa_ica?: number;  // Tasa ICA ponderada por zonas (decimal 0-1)
   // Campos legacy (pueden eliminarse después)
   descuento_pie_factura?: number;
   rebate?: number;
