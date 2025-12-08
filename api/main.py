@@ -2370,6 +2370,196 @@ def diagnostico_logistico_detallado(
         raise HTTPException(status_code=500, detail=f"{str(e)}\n{traceback.format_exc()}")
 
 
+# =============================================================================
+# OPERACIONES - Endpoints para P&G por Centro de Costos / Operación
+# =============================================================================
+
+@app.get("/api/operaciones")
+def obtener_operaciones(escenario_id: int) -> Dict[str, Any]:
+    """
+    Lista todas las operaciones de un escenario.
+
+    Args:
+        escenario_id: ID del escenario
+
+    Returns:
+        Lista de operaciones con información básica
+    """
+    try:
+        from core.models import Escenario
+        from api.pyg_service import listar_operaciones
+
+        escenario = Escenario.objects.get(pk=escenario_id)
+        operaciones = listar_operaciones(escenario)
+
+        return {
+            'escenario_id': escenario_id,
+            'escenario_nombre': escenario.nombre,
+            'operaciones': operaciones
+        }
+
+    except Escenario.DoesNotExist:
+        raise HTTPException(status_code=404, detail=f"Escenario no encontrado: {escenario_id}")
+    except Exception as e:
+        logger.error(f"Error listando operaciones: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/pyg/operaciones")
+def obtener_pyg_operaciones(escenario_id: int) -> Dict[str, Any]:
+    """
+    Obtiene el P&G consolidado de todas las operaciones de un escenario.
+
+    Args:
+        escenario_id: ID del escenario
+
+    Returns:
+        Lista de P&G por operación con totales consolidados
+    """
+    try:
+        from core.models import Escenario
+        from api.pyg_service import calcular_pyg_todas_operaciones
+
+        escenario = Escenario.objects.get(pk=escenario_id)
+        operaciones_pyg = calcular_pyg_todas_operaciones(escenario)
+
+        # Serializar cada operación
+        operaciones_serializadas = []
+        for op in operaciones_pyg:
+            operaciones_serializadas.append({
+                'operacion_id': op['operacion_id'],
+                'operacion_nombre': op['operacion_nombre'],
+                'operacion_codigo': op['operacion_codigo'],
+                'cantidad_zonas': op['cantidad_zonas'],
+                'cantidad_marcas': op['cantidad_marcas'],
+                'pyg': _serializar_pyg(op['pyg'])
+            })
+
+        # Calcular totales del escenario
+        total_mensual = sum(op['pyg'].get('total_mensual', 0) for op in operaciones_pyg)
+        total_anual = sum(op['pyg'].get('total_anual', 0) for op in operaciones_pyg)
+
+        return {
+            'escenario_id': escenario_id,
+            'escenario_nombre': escenario.nombre,
+            'operaciones': operaciones_serializadas,
+            'totales': {
+                'total_mensual': float(total_mensual),
+                'total_anual': float(total_anual),
+                'cantidad_operaciones': len(operaciones_serializadas)
+            }
+        }
+
+    except Escenario.DoesNotExist:
+        raise HTTPException(status_code=404, detail=f"Escenario no encontrado: {escenario_id}")
+    except Exception as e:
+        logger.error(f"Error obteniendo P&G de operaciones: {e}")
+        import traceback
+        raise HTTPException(status_code=500, detail=f"{str(e)}\n{traceback.format_exc()}")
+
+
+@app.get("/api/pyg/operacion/{operacion_id}")
+def obtener_pyg_operacion(operacion_id: int) -> Dict[str, Any]:
+    """
+    Obtiene el P&G detallado de una operación específica.
+
+    Args:
+        operacion_id: ID de la operación
+
+    Returns:
+        P&G consolidado de la operación con desglose por marca
+    """
+    try:
+        from core.models import Operacion
+        from api.pyg_service import calcular_pyg_operacion
+
+        operacion = Operacion.objects.select_related('escenario').get(pk=operacion_id)
+        pyg_resultado = calcular_pyg_operacion(operacion.escenario, operacion)
+
+        # Serializar marcas
+        marcas_serializadas = []
+        for marca_pyg in pyg_resultado.get('marcas', []):
+            marcas_serializadas.append({
+                'marca_id': marca_pyg['marca_id'],
+                'marca_nombre': marca_pyg['marca_nombre'],
+                'cantidad_zonas': marca_pyg['cantidad_zonas'],
+                'pyg': _serializar_pyg(marca_pyg['pyg'])
+            })
+
+        return {
+            'operacion_id': operacion_id,
+            'operacion_nombre': operacion.nombre,
+            'operacion_codigo': operacion.codigo,
+            'escenario_id': operacion.escenario.id,
+            'escenario_nombre': operacion.escenario.nombre,
+            'cantidad_marcas': len(marcas_serializadas),
+            'marcas': marcas_serializadas,
+            'pyg_consolidado': _serializar_pyg(pyg_resultado.get('consolidado', {}))
+        }
+
+    except Operacion.DoesNotExist:
+        raise HTTPException(status_code=404, detail=f"Operación no encontrada: {operacion_id}")
+    except Exception as e:
+        logger.error(f"Error obteniendo P&G de operación: {e}")
+        import traceback
+        raise HTTPException(status_code=500, detail=f"{str(e)}\n{traceback.format_exc()}")
+
+
+@app.get("/api/pyg/marca/{marca_id}/operaciones")
+def obtener_pyg_marca_por_operaciones(
+    marca_id: str,
+    escenario_id: int
+) -> Dict[str, Any]:
+    """
+    Obtiene el P&G de una marca desglosado por operación.
+
+    Args:
+        marca_id: ID de la marca
+        escenario_id: ID del escenario
+
+    Returns:
+        P&G de la marca con desglose por cada operación donde opera
+    """
+    try:
+        from core.models import Escenario, Marca
+        from api.pyg_service import calcular_pyg_marca_por_operaciones
+
+        escenario = Escenario.objects.get(pk=escenario_id)
+        marca = Marca.objects.get(marca_id=marca_id)
+
+        pyg_resultado = calcular_pyg_marca_por_operaciones(escenario, marca)
+
+        # Serializar operaciones
+        operaciones_serializadas = []
+        for op_pyg in pyg_resultado.get('operaciones', []):
+            operaciones_serializadas.append({
+                'operacion_id': op_pyg['operacion_id'],
+                'operacion_nombre': op_pyg['operacion_nombre'],
+                'operacion_codigo': op_pyg['operacion_codigo'],
+                'cantidad_zonas': op_pyg['cantidad_zonas'],
+                'pyg': _serializar_pyg(op_pyg['pyg'])
+            })
+
+        return {
+            'escenario_id': escenario_id,
+            'escenario_nombre': escenario.nombre,
+            'marca_id': marca_id,
+            'marca_nombre': marca.nombre,
+            'cantidad_operaciones': len(operaciones_serializadas),
+            'operaciones': operaciones_serializadas,
+            'pyg_consolidado': _serializar_pyg(pyg_resultado.get('consolidado', {}))
+        }
+
+    except Escenario.DoesNotExist:
+        raise HTTPException(status_code=404, detail=f"Escenario no encontrado: {escenario_id}")
+    except Marca.DoesNotExist:
+        raise HTTPException(status_code=404, detail=f"Marca no encontrada: {marca_id}")
+    except Exception as e:
+        logger.error(f"Error obteniendo P&G de marca por operaciones: {e}")
+        import traceback
+        raise HTTPException(status_code=500, detail=f"{str(e)}\n{traceback.format_exc()}")
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

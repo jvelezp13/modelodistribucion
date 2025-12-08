@@ -43,6 +43,18 @@ TIPO_ASIGNACION_GEO_CHOICES = [
     ('compartido', 'Compartido Equitativo'),
 ]
 
+# Choices globales para asignación por operación (P&G por operación/centro de costos)
+TIPO_ASIGNACION_OPERACION_CHOICES = [
+    ('individual', 'Individual a Operación'),
+    ('compartido', 'Compartido entre Operaciones'),
+]
+
+CRITERIO_PRORRATEO_OPERACION_CHOICES = [
+    ('ventas', 'Por Ventas'),
+    ('zonas', 'Por Cantidad de Zonas'),
+    ('equitativo', 'Equitativo'),
+]
+
 
 class Marca(models.Model):
     """Modelo para las marcas del sistema"""
@@ -113,6 +125,89 @@ class Escenario(models.Model):
             periodo_str = f" {meses[self.periodo_numero]}"
         
         return f"{self.nombre} ({self.anio}{periodo_str})"
+
+
+class Operacion(models.Model):
+    """
+    Operación / Centro de Costos.
+    Agrupa operaciones geográficas dentro de un escenario.
+    Ej: 'Operación Oriente', 'Operación Suroeste'
+    """
+    nombre = models.CharField(max_length=100, verbose_name="Nombre")
+    codigo = models.CharField(max_length=20, verbose_name="Código", help_text="Código corto. Ej: 'ORI', 'SUR'")
+    escenario = models.ForeignKey(
+        'Escenario',
+        on_delete=models.CASCADE,
+        related_name='operaciones',
+        verbose_name="Escenario"
+    )
+    municipio_base = models.ForeignKey(
+        'Municipio',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='operaciones_base',
+        verbose_name="Municipio Base (CEDI)",
+        help_text="Ubicación de la bodega/CEDI principal de esta operación"
+    )
+    activa = models.BooleanField(default=True, verbose_name="Activa")
+    color = models.CharField(max_length=7, default="#3498db", verbose_name="Color (hex)")
+    notas = models.TextField(blank=True, verbose_name="Notas")
+
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_modificacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'dxv_operacion'
+        verbose_name = "Operación"
+        verbose_name_plural = "Operaciones"
+        ordering = ['escenario', 'nombre']
+        unique_together = [['escenario', 'codigo']]
+
+    def __str__(self):
+        return f"{self.nombre} ({self.escenario.nombre})"
+
+
+class MarcaOperacion(models.Model):
+    """
+    Relación M:N entre Marca y Operación.
+    Define qué marcas operan en cada operación dentro de un escenario.
+    """
+    marca = models.ForeignKey(
+        'Marca',
+        on_delete=models.CASCADE,
+        related_name='operaciones_asociadas',
+        verbose_name="Marca"
+    )
+    operacion = models.ForeignKey(
+        'Operacion',
+        on_delete=models.CASCADE,
+        related_name='marcas_asociadas',
+        verbose_name="Operación"
+    )
+    participacion_ventas = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        verbose_name="Participación Ventas %",
+        help_text="Calculado: (venta_marca_operacion / venta_total_operacion) * 100",
+        editable=False
+    )
+    activo = models.BooleanField(default=True, verbose_name="Activo")
+
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_modificacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'dxv_marca_operacion'
+        verbose_name = "Marca por Operación"
+        verbose_name_plural = "Marcas por Operación"
+        unique_together = [['marca', 'operacion']]
+        ordering = ['operacion', 'marca']
+
+    def __str__(self):
+        return f"{self.marca.nombre} en {self.operacion.nombre}"
 
 
 class PersonalComercial(models.Model):
@@ -212,6 +307,32 @@ class PersonalComercial(models.Model):
         related_name='personal_comercial',
         verbose_name="Zona",
         help_text="Zona asignada (solo si asignación es 'Directo a Zona')"
+    )
+
+    # Asignación por operación (para P&G por operación/centro de costos)
+    operacion = models.ForeignKey(
+        'Operacion',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='personal_comercial',
+        verbose_name="Operación",
+        help_text="Operación asignada (si tipo_asignacion_operacion es 'individual')"
+    )
+    tipo_asignacion_operacion = models.CharField(
+        max_length=20,
+        choices=TIPO_ASIGNACION_OPERACION_CHOICES,
+        default='individual',
+        verbose_name="Asignación Operación",
+        help_text="Cómo se asigna este costo entre operaciones"
+    )
+    criterio_prorrateo_operacion = models.CharField(
+        max_length=20,
+        choices=CRITERIO_PRORRATEO_OPERACION_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name="Criterio Prorrateo Operación",
+        help_text="Solo aplica si tipo_asignacion_operacion es 'compartido'"
     )
 
     fecha_creacion = models.DateTimeField(auto_now_add=True)
@@ -381,6 +502,32 @@ class PersonalLogistico(models.Model):
         related_name='personal_logistico',
         verbose_name="Zona",
         help_text="Zona asignada (solo si asignación es 'Directo a Zona')"
+    )
+
+    # Asignación por operación (para P&G por operación/centro de costos)
+    operacion = models.ForeignKey(
+        'Operacion',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='personal_logistico',
+        verbose_name="Operación",
+        help_text="Operación asignada (si tipo_asignacion_operacion es 'individual')"
+    )
+    tipo_asignacion_operacion = models.CharField(
+        max_length=20,
+        choices=TIPO_ASIGNACION_OPERACION_CHOICES,
+        default='individual',
+        verbose_name="Asignación Operación",
+        help_text="Cómo se asigna este costo entre operaciones"
+    )
+    criterio_prorrateo_operacion = models.CharField(
+        max_length=20,
+        choices=CRITERIO_PRORRATEO_OPERACION_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name="Criterio Prorrateo Operación",
+        help_text="Solo aplica si tipo_asignacion_operacion es 'compartido'"
     )
 
     fecha_creacion = models.DateTimeField(auto_now_add=True)
@@ -554,6 +701,32 @@ class Vehiculo(models.Model):
         default='volumen',
         null=True,
         blank=True
+    )
+
+    # Asignación por operación (para P&G por operación/centro de costos)
+    operacion = models.ForeignKey(
+        'Operacion',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='vehiculos',
+        verbose_name="Operación",
+        help_text="Operación asignada (si tipo_asignacion_operacion es 'individual')"
+    )
+    tipo_asignacion_operacion = models.CharField(
+        max_length=20,
+        choices=TIPO_ASIGNACION_OPERACION_CHOICES,
+        default='individual',
+        verbose_name="Asignación Operación",
+        help_text="Cómo se asigna este vehículo entre operaciones"
+    )
+    criterio_prorrateo_operacion = models.CharField(
+        max_length=20,
+        choices=CRITERIO_PRORRATEO_OPERACION_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name="Criterio Prorrateo Operación",
+        help_text="Solo aplica si tipo_asignacion_operacion es 'compartido'"
     )
 
     fecha_creacion = models.DateTimeField(auto_now_add=True)
@@ -1022,6 +1195,34 @@ class PersonalAdministrativo(models.Model):
         help_text="Cómo se asigna este costo a las zonas. Personal admin se distribuye equitativamente."
     )
 
+    # Asignación por operación (para P&G por operación/centro de costos)
+    # Personal administrativo típicamente se comparte entre operaciones
+    operacion = models.ForeignKey(
+        'Operacion',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='personal_administrativo',
+        verbose_name="Operación",
+        help_text="Operación asignada (si tipo_asignacion_operacion es 'individual')"
+    )
+    tipo_asignacion_operacion = models.CharField(
+        max_length=20,
+        choices=TIPO_ASIGNACION_OPERACION_CHOICES,
+        default='compartido',
+        verbose_name="Asignación Operación",
+        help_text="Cómo se asigna este costo entre operaciones. Personal admin típicamente compartido."
+    )
+    criterio_prorrateo_operacion = models.CharField(
+        max_length=20,
+        choices=CRITERIO_PRORRATEO_OPERACION_CHOICES,
+        default='equitativo',
+        null=True,
+        blank=True,
+        verbose_name="Criterio Prorrateo Operación",
+        help_text="Solo aplica si tipo_asignacion_operacion es 'compartido'"
+    )
+
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_modificacion = models.DateTimeField(auto_now=True)
 
@@ -1175,6 +1376,33 @@ class GastoAdministrativo(models.Model):
         help_text="Cómo se asigna este gasto a las zonas. Gastos admin se distribuyen equitativamente."
     )
 
+    # Asignación por operación (para P&G por operación/centro de costos)
+    operacion = models.ForeignKey(
+        'Operacion',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='gastos_administrativos',
+        verbose_name="Operación",
+        help_text="Operación asignada (si tipo_asignacion_operacion es 'individual')"
+    )
+    tipo_asignacion_operacion = models.CharField(
+        max_length=20,
+        choices=TIPO_ASIGNACION_OPERACION_CHOICES,
+        default='compartido',
+        verbose_name="Asignación Operación",
+        help_text="Cómo se asigna este gasto entre operaciones. Gastos admin típicamente compartidos."
+    )
+    criterio_prorrateo_operacion = models.CharField(
+        max_length=20,
+        choices=CRITERIO_PRORRATEO_OPERACION_CHOICES,
+        default='equitativo',
+        null=True,
+        blank=True,
+        verbose_name="Criterio Prorrateo Operación",
+        help_text="Solo aplica si tipo_asignacion_operacion es 'compartido'"
+    )
+
     notas = models.TextField(blank=True, verbose_name="Notas")
 
     fecha_creacion = models.DateTimeField(auto_now_add=True)
@@ -1265,6 +1493,32 @@ class GastoComercial(models.Model):
         related_name='gastos_comerciales',
         verbose_name="Zona",
         help_text="Zona asignada (solo si asignación es 'Directo a Zona')"
+    )
+
+    # Asignación por operación (para P&G por operación/centro de costos)
+    operacion = models.ForeignKey(
+        'Operacion',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='gastos_comerciales',
+        verbose_name="Operación",
+        help_text="Operación asignada (si tipo_asignacion_operacion es 'individual')"
+    )
+    tipo_asignacion_operacion = models.CharField(
+        max_length=20,
+        choices=TIPO_ASIGNACION_OPERACION_CHOICES,
+        default='individual',
+        verbose_name="Asignación Operación",
+        help_text="Cómo se asigna este gasto entre operaciones"
+    )
+    criterio_prorrateo_operacion = models.CharField(
+        max_length=20,
+        choices=CRITERIO_PRORRATEO_OPERACION_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name="Criterio Prorrateo Operación",
+        help_text="Solo aplica si tipo_asignacion_operacion es 'compartido'"
     )
 
     notas = models.TextField(blank=True, verbose_name="Notas")
@@ -1365,6 +1619,32 @@ class GastoLogistico(models.Model):
         related_name='gastos_logisticos',
         verbose_name="Zona",
         help_text="Zona asignada (solo si asignación es 'Directo a Zona')"
+    )
+
+    # Asignación por operación (para P&G por operación/centro de costos)
+    operacion = models.ForeignKey(
+        'Operacion',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='gastos_logisticos',
+        verbose_name="Operación",
+        help_text="Operación asignada (si tipo_asignacion_operacion es 'individual')"
+    )
+    tipo_asignacion_operacion = models.CharField(
+        max_length=20,
+        choices=TIPO_ASIGNACION_OPERACION_CHOICES,
+        default='individual',
+        verbose_name="Asignación Operación",
+        help_text="Cómo se asigna este gasto entre operaciones"
+    )
+    criterio_prorrateo_operacion = models.CharField(
+        max_length=20,
+        choices=CRITERIO_PRORRATEO_OPERACION_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name="Criterio Prorrateo Operación",
+        help_text="Solo aplica si tipo_asignacion_operacion es 'compartido'"
     )
 
     notas = models.TextField(blank=True, verbose_name="Notas")
@@ -1983,6 +2263,15 @@ class Zona(models.Model):
         'Escenario',
         on_delete=models.CASCADE,
         verbose_name="Escenario"
+    )
+    operacion = models.ForeignKey(
+        'Operacion',
+        on_delete=models.CASCADE,
+        related_name='zonas',
+        verbose_name="Operación",
+        null=True,
+        blank=True,
+        help_text="Operación/Centro de Costos al que pertenece esta zona"
     )
 
     # Base del vendedor (para calcular rutas comerciales)

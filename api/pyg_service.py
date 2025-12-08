@@ -678,3 +678,258 @@ def calcular_pyg_todos_municipios(escenario, zona) -> List[Dict]:
         })
 
     return resultados
+
+
+# =============================================================================
+# FUNCIONES P&G POR OPERACIÓN
+# =============================================================================
+
+def calcular_pyg_operacion(escenario, operacion) -> Dict:
+    """
+    Calcula P&G consolidado para una operación (todas las marcas).
+
+    1. Obtiene todas las marcas de la operación (vía MarcaOperacion)
+    2. Para cada marca: calcula P&G de sus zonas en la operación
+    3. Consolida totales
+
+    Args:
+        escenario: Escenario activo
+        operacion: Operación a calcular
+
+    Returns:
+        Dict con P&G por marca y consolidado de la operación
+    """
+    from core.models import MarcaOperacion, Zona
+
+    # Obtener marcas de esta operación
+    marcas_operacion = MarcaOperacion.objects.filter(
+        operacion=operacion,
+        activo=True
+    ).select_related('marca')
+
+    resultado_por_marca = {}
+    totales = {
+        'comercial': {'personal': Decimal('0'), 'gastos': Decimal('0'), 'lejanias': Decimal('0'), 'total': Decimal('0')},
+        'logistico': {'personal': Decimal('0'), 'gastos': Decimal('0'), 'lejanias': Decimal('0'), 'total': Decimal('0')},
+        'administrativo': {'personal': Decimal('0'), 'gastos': Decimal('0'), 'total': Decimal('0')},
+    }
+
+    for mo in marcas_operacion:
+        marca = mo.marca
+
+        # Obtener zonas de esta marca en esta operación
+        zonas = Zona.objects.filter(
+            escenario=escenario,
+            marca=marca,
+            operacion=operacion,
+            activo=True
+        )
+
+        if not zonas.exists():
+            continue
+
+        # Calcular P&G para cada zona y sumar
+        marca_totales = {
+            'comercial': {'personal': Decimal('0'), 'gastos': Decimal('0'), 'lejanias': Decimal('0'), 'total': Decimal('0')},
+            'logistico': {'personal': Decimal('0'), 'gastos': Decimal('0'), 'lejanias': Decimal('0'), 'total': Decimal('0')},
+            'administrativo': {'personal': Decimal('0'), 'gastos': Decimal('0'), 'total': Decimal('0')},
+        }
+
+        for zona in zonas:
+            pyg_zona = calcular_pyg_zona(escenario, zona)
+
+            # Sumar a totales de marca
+            for cat in ['comercial', 'logistico']:
+                marca_totales[cat]['personal'] += Decimal(str(pyg_zona[cat]['personal']))
+                marca_totales[cat]['gastos'] += Decimal(str(pyg_zona[cat]['gastos']))
+                marca_totales[cat]['lejanias'] += Decimal(str(pyg_zona[cat].get('lejanias', 0)))
+                marca_totales[cat]['total'] += Decimal(str(pyg_zona[cat]['total']))
+
+            marca_totales['administrativo']['personal'] += Decimal(str(pyg_zona['administrativo']['personal']))
+            marca_totales['administrativo']['gastos'] += Decimal(str(pyg_zona['administrativo']['gastos']))
+            marca_totales['administrativo']['total'] += Decimal(str(pyg_zona['administrativo']['total']))
+
+        resultado_por_marca[marca.marca_id] = {
+            'marca': {
+                'id': marca.marca_id,
+                'nombre': marca.nombre,
+            },
+            **marca_totales,
+            'total_mensual': marca_totales['comercial']['total'] + marca_totales['logistico']['total'] + marca_totales['administrativo']['total'],
+        }
+
+        # Acumular en totales de operación
+        for cat in ['comercial', 'logistico']:
+            totales[cat]['personal'] += marca_totales[cat]['personal']
+            totales[cat]['gastos'] += marca_totales[cat]['gastos']
+            totales[cat]['lejanias'] += marca_totales[cat]['lejanias']
+            totales[cat]['total'] += marca_totales[cat]['total']
+
+        totales['administrativo']['personal'] += marca_totales['administrativo']['personal']
+        totales['administrativo']['gastos'] += marca_totales['administrativo']['gastos']
+        totales['administrativo']['total'] += marca_totales['administrativo']['total']
+
+    total_mensual = totales['comercial']['total'] + totales['logistico']['total'] + totales['administrativo']['total']
+
+    return {
+        'operacion': {
+            'id': operacion.id,
+            'nombre': operacion.nombre,
+            'codigo': operacion.codigo,
+        },
+        'por_marca': resultado_por_marca,
+        'consolidado': totales,
+        'total_mensual': total_mensual,
+        'total_anual': total_mensual * 12
+    }
+
+
+def calcular_pyg_todas_operaciones(escenario) -> List[Dict]:
+    """
+    Calcula P&G para todas las operaciones de un escenario.
+
+    Args:
+        escenario: Escenario activo
+
+    Returns:
+        Lista de Dict con P&G por operación
+    """
+    from core.models import Operacion
+
+    operaciones = Operacion.objects.filter(
+        escenario=escenario,
+        activa=True
+    ).order_by('nombre')
+
+    return [calcular_pyg_operacion(escenario, op) for op in operaciones]
+
+
+def calcular_pyg_marca_por_operaciones(escenario, marca) -> Dict:
+    """
+    Calcula P&G de una marca desglosado por operación.
+
+    Retorna el consolidado de la marca y el desglose por cada operación donde opera.
+
+    Args:
+        escenario: Escenario activo
+        marca: Marca a calcular
+
+    Returns:
+        Dict con P&G por operación y consolidado de la marca
+    """
+    from core.models import MarcaOperacion, Zona
+
+    # Obtener operaciones donde participa esta marca
+    marcas_operacion = MarcaOperacion.objects.filter(
+        marca=marca,
+        operacion__escenario=escenario,
+        operacion__activa=True,
+        activo=True
+    ).select_related('operacion')
+
+    resultado_por_operacion = {}
+    totales = {
+        'comercial': {'personal': Decimal('0'), 'gastos': Decimal('0'), 'lejanias': Decimal('0'), 'total': Decimal('0')},
+        'logistico': {'personal': Decimal('0'), 'gastos': Decimal('0'), 'lejanias': Decimal('0'), 'total': Decimal('0')},
+        'administrativo': {'personal': Decimal('0'), 'gastos': Decimal('0'), 'total': Decimal('0')},
+    }
+
+    for mo in marcas_operacion:
+        operacion = mo.operacion
+
+        # Obtener zonas de esta marca en esta operación
+        zonas = Zona.objects.filter(
+            escenario=escenario,
+            marca=marca,
+            operacion=operacion,
+            activo=True
+        )
+
+        if not zonas.exists():
+            continue
+
+        # Calcular P&G para cada zona y sumar
+        op_totales = {
+            'comercial': {'personal': Decimal('0'), 'gastos': Decimal('0'), 'lejanias': Decimal('0'), 'total': Decimal('0')},
+            'logistico': {'personal': Decimal('0'), 'gastos': Decimal('0'), 'lejanias': Decimal('0'), 'total': Decimal('0')},
+            'administrativo': {'personal': Decimal('0'), 'gastos': Decimal('0'), 'total': Decimal('0')},
+        }
+
+        for zona in zonas:
+            pyg_zona = calcular_pyg_zona(escenario, zona)
+
+            # Sumar a totales de operación
+            for cat in ['comercial', 'logistico']:
+                op_totales[cat]['personal'] += Decimal(str(pyg_zona[cat]['personal']))
+                op_totales[cat]['gastos'] += Decimal(str(pyg_zona[cat]['gastos']))
+                op_totales[cat]['lejanias'] += Decimal(str(pyg_zona[cat].get('lejanias', 0)))
+                op_totales[cat]['total'] += Decimal(str(pyg_zona[cat]['total']))
+
+            op_totales['administrativo']['personal'] += Decimal(str(pyg_zona['administrativo']['personal']))
+            op_totales['administrativo']['gastos'] += Decimal(str(pyg_zona['administrativo']['gastos']))
+            op_totales['administrativo']['total'] += Decimal(str(pyg_zona['administrativo']['total']))
+
+        resultado_por_operacion[operacion.codigo] = {
+            'operacion': {
+                'id': operacion.id,
+                'nombre': operacion.nombre,
+                'codigo': operacion.codigo,
+            },
+            'participacion_ventas': float(mo.participacion_ventas),
+            **op_totales,
+            'total_mensual': op_totales['comercial']['total'] + op_totales['logistico']['total'] + op_totales['administrativo']['total'],
+        }
+
+        # Acumular en totales de marca
+        for cat in ['comercial', 'logistico']:
+            totales[cat]['personal'] += op_totales[cat]['personal']
+            totales[cat]['gastos'] += op_totales[cat]['gastos']
+            totales[cat]['lejanias'] += op_totales[cat]['lejanias']
+            totales[cat]['total'] += op_totales[cat]['total']
+
+        totales['administrativo']['personal'] += op_totales['administrativo']['personal']
+        totales['administrativo']['gastos'] += op_totales['administrativo']['gastos']
+        totales['administrativo']['total'] += op_totales['administrativo']['total']
+
+    total_mensual = totales['comercial']['total'] + totales['logistico']['total'] + totales['administrativo']['total']
+
+    return {
+        'marca': {
+            'id': marca.marca_id,
+            'nombre': marca.nombre,
+        },
+        'por_operacion': resultado_por_operacion,
+        'consolidado': totales,
+        'total_mensual': total_mensual,
+        'total_anual': total_mensual * 12
+    }
+
+
+def listar_operaciones(escenario) -> List[Dict]:
+    """
+    Lista todas las operaciones de un escenario con información básica.
+
+    Args:
+        escenario: Escenario activo
+
+    Returns:
+        Lista de Dict con información de cada operación
+    """
+    from core.models import Operacion
+
+    operaciones = Operacion.objects.filter(
+        escenario=escenario,
+        activa=True
+    ).order_by('nombre')
+
+    return [
+        {
+            'id': op.id,
+            'nombre': op.nombre,
+            'codigo': op.codigo,
+            'municipio_base': op.municipio_base.nombre if op.municipio_base else None,
+            'cantidad_marcas': op.marcas_asociadas.filter(activo=True).count(),
+            'cantidad_zonas': op.zonas.filter(activo=True).count(),
+        }
+        for op in operaciones
+    ]

@@ -45,6 +45,8 @@ class DxVAdminSite(admin.AdminSite):
         'Configuración Base': [
             'Marca',
             'Escenario',
+            'Operacion',
+            'MarcaOperacion',
             'ParametrosMacro',
             'FactorPrestacional',
             'Impuesto',

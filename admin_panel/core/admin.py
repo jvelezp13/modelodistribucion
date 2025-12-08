@@ -13,6 +13,8 @@ from .models import (
     GastoComercial, GastoLogistico, Impuesto,
     ConfiguracionDescuentos, TramoDescuentoFactura,
     Escenario, PoliticaRecursosHumanos,
+    # Módulo de Operaciones (Centros de Costos)
+    Operacion, MarcaOperacion,
     # Módulo de Lejanías Comerciales
     Municipio, MatrizDesplazamiento, ConfiguracionLejania,
     Zona, ZonaMunicipio,
@@ -165,6 +167,89 @@ class EscenarioAdmin(admin.ModelAdmin):
             )
 
     proyectar_escenario.short_description = "Proyectar al Siguiente Año"
+
+
+# =============================================================================
+# OPERACIONES (CENTROS DE COSTOS)
+# =============================================================================
+
+class MarcaOperacionInline(admin.TabularInline):
+    """Inline para ver/editar marcas asociadas a una operación"""
+    model = MarcaOperacion
+    extra = 1
+    autocomplete_fields = ['marca']
+    readonly_fields = ['participacion_ventas']
+
+
+@admin.register(Operacion, site=dxv_admin_site)
+class OperacionAdmin(admin.ModelAdmin):
+    """
+    Admin para Operaciones (Centros de Costos).
+    Permite gestionar operaciones geográficas dentro de un escenario.
+    """
+    list_display = ('nombre', 'codigo', 'escenario', 'municipio_base', 'activa', 'cantidad_marcas', 'cantidad_zonas')
+    list_filter = ('escenario', 'activa')
+    search_fields = ('nombre', 'codigo', 'escenario__nombre')
+    readonly_fields = ('fecha_creacion', 'fecha_modificacion')
+    autocomplete_fields = ['escenario', 'municipio_base']
+    inlines = [MarcaOperacionInline]
+
+    fieldsets = (
+        ('Información Básica', {
+            'fields': ('nombre', 'codigo', 'escenario', 'activa', 'color')
+        }),
+        ('Ubicación', {
+            'fields': ('municipio_base',),
+            'description': 'Ubicación de la bodega/CEDI principal de esta operación'
+        }),
+        ('Notas', {
+            'fields': ('notas',),
+            'classes': ('collapse',)
+        }),
+        ('Metadata', {
+            'fields': ('fecha_creacion', 'fecha_modificacion'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def cantidad_marcas(self, obj):
+        return obj.marcas_asociadas.filter(activo=True).count()
+    cantidad_marcas.short_description = 'Marcas'
+
+    def cantidad_zonas(self, obj):
+        return obj.zonas.filter(activo=True).count()
+    cantidad_zonas.short_description = 'Zonas'
+
+
+@admin.register(MarcaOperacion, site=dxv_admin_site)
+class MarcaOperacionAdmin(admin.ModelAdmin):
+    """
+    Admin para la relación Marca-Operación.
+    Permite gestionar qué marcas operan en cada operación.
+    """
+    list_display = ('marca', 'operacion', 'escenario_display', 'participacion_ventas', 'activo')
+    list_filter = ('operacion__escenario', 'operacion', 'marca', 'activo')
+    search_fields = ('marca__nombre', 'operacion__nombre', 'operacion__escenario__nombre')
+    readonly_fields = ('participacion_ventas', 'fecha_creacion', 'fecha_modificacion')
+    autocomplete_fields = ['marca', 'operacion']
+
+    fieldsets = (
+        ('Relación', {
+            'fields': ('marca', 'operacion', 'activo')
+        }),
+        ('Participación', {
+            'fields': ('participacion_ventas',),
+            'description': 'Este campo se calcula automáticamente basado en las ventas de las zonas.'
+        }),
+        ('Metadata', {
+            'fields': ('fecha_creacion', 'fecha_modificacion'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def escenario_display(self, obj):
+        return obj.operacion.escenario.nombre
+    escenario_display.short_description = 'Escenario'
 
 
 @admin.register(Marca, site=dxv_admin_site)
