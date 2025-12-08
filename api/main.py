@@ -117,9 +117,10 @@ def ejecutar_simulacion(request: SimulacionRequest) -> Dict[str, Any]:
         resultado_dict = serializar_resultado(resultado)
 
         # Agregar desglose mensual de ventas desde ProyeccionVentasConfig
+        # Si hay operacion_ids, aplicar las participaciones de esas operaciones
         if escenario_id:
             ventas_mensuales_por_marca = obtener_ventas_mensuales_por_marca(
-                escenario_id, marcas_seleccionadas
+                escenario_id, marcas_seleccionadas, operacion_ids
             )
             # Agregar a cada marca su desglose mensual
             for marca_data in resultado_dict['marcas']:
@@ -170,16 +171,26 @@ def ejecutar_simulacion(request: SimulacionRequest) -> Dict[str, Any]:
 
 def obtener_ventas_mensuales_por_marca(
     escenario_id: int,
-    marcas_ids: List[str]
+    marcas_ids: List[str],
+    operacion_ids: Optional[List[int]] = None
 ) -> Dict[str, Dict[str, float]]:
     """
-    Obtiene el desglose mensual de ventas para cada marca desde ProyeccionVentasConfig.
+    Obtiene el desglose mensual de ventas para cada marca.
+
+    Si se especifican operacion_ids, aplica las participaciones de esas operaciones
+    para obtener las ventas filtradas. Si no, devuelve las ventas totales de la marca.
+
+    Args:
+        escenario_id: ID del escenario
+        marcas_ids: Lista de marca_id
+        operacion_ids: Lista opcional de IDs de operaciones para filtrar
 
     Returns:
         Dict con marca_id como key y dict de ventas mensuales como value
     """
     try:
-        from core.models import Escenario, Marca, ProyeccionVentasConfig
+        from core.models import Escenario, Marca, ProyeccionVentasConfig, MarcaOperacion
+        from decimal import Decimal
 
         escenario = Escenario.objects.get(pk=escenario_id)
         resultado = {}
@@ -192,8 +203,33 @@ def obtener_ventas_mensuales_por_marca(
                     escenario=escenario,
                     anio=escenario.anio
                 )
-                ventas = config.calcular_ventas_mensuales()
-                resultado[marca_id] = {k: float(v) for k, v in ventas.items()}
+                ventas_totales = config.calcular_ventas_mensuales()
+
+                if operacion_ids:
+                    # Calcular ventas aplicando participación de las operaciones seleccionadas
+                    # Sumar participaciones de las operaciones filtradas
+                    marcas_op = MarcaOperacion.objects.filter(
+                        marca=marca,
+                        operacion__escenario=escenario,
+                        operacion_id__in=operacion_ids,
+                        activo=True
+                    )
+
+                    # Sumar participaciones (cada operación tiene su % de la marca)
+                    participacion_total = sum(
+                        mo.participacion_ventas for mo in marcas_op
+                    ) / Decimal('100')  # Convertir de % a decimal
+
+                    # Aplicar participación a cada mes
+                    ventas_filtradas = {}
+                    for mes, venta in ventas_totales.items():
+                        ventas_filtradas[mes] = float(Decimal(str(venta)) * participacion_total)
+
+                    resultado[marca_id] = ventas_filtradas
+                else:
+                    # Sin filtro de operaciones, devolver ventas totales
+                    resultado[marca_id] = {k: float(v) for k, v in ventas_totales.items()}
+
             except (Marca.DoesNotExist, ProyeccionVentasConfig.DoesNotExist):
                 resultado[marca_id] = {}
 
