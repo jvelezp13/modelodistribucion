@@ -9,13 +9,24 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 import json
 
-from .models import Marca, Escenario, Zona, ZonaMunicipio, VentaMunicipio, Municipio
+from .models import (
+    Marca, Escenario, Zona, ZonaMunicipio, VentaMunicipio, Municipio,
+    Operacion, MarcaOperacion, ProyeccionVentasConfig
+)
 
 
 @staff_member_required
 def distribucion_ventas(request):
     """
-    Vista para distribuir ventas proyectadas entre zonas y municipios
+    Vista para distribuir ventas proyectadas entre operaciones, zonas y municipios.
+
+    Flujo de configuración:
+    1. ProyeccionVentasConfig → Venta total mensual de la marca
+    2. MarcaOperacion.participacion_ventas → % por operación
+    3. Zona.participacion_ventas → % dentro de la operación
+    4. ZonaMunicipio.participacion_ventas → % dentro de la zona
+
+    Las ventas se calculan automáticamente en cascada.
     """
     from .admin_site import dxv_admin_site
 
@@ -25,14 +36,21 @@ def distribucion_ventas(request):
     # Obtener filtros seleccionados
     marca_id = request.GET.get('marca')
     escenario_id = request.GET.get('escenario')
+    operacion_id = request.GET.get('operacion')
 
     marca_seleccionada = None
     escenario_seleccionado = None
+    operacion_seleccionada = None
+    operaciones = []  # Operaciones disponibles para el escenario
+    marcas_operacion = []  # MarcaOperacion para distribución por operación
     zonas = []
-    municipios = []
     zonas_municipios = []  # Lista de zonas con sus municipios
+
+    # Totales
+    venta_total_marca = Decimal('0')  # Venta mensual de ProyeccionVentasConfig
+    total_participacion_operaciones = Decimal('0')
+    total_participacion_zonas = Decimal('0')
     total_venta_zonas = Decimal('0')
-    total_venta_municipios = Decimal('0')
     total_venta_zonas_municipios = Decimal('0')
 
     if marca_id and escenario_id:
@@ -40,22 +58,54 @@ def distribucion_ventas(request):
             marca_seleccionada = Marca.objects.get(pk=marca_id)
             escenario_seleccionado = Escenario.objects.get(pk=escenario_id)
 
-            # Obtener zonas de esta marca y escenario
-            zonas = Zona.objects.filter(
+            # Obtener operaciones del escenario
+            operaciones = Operacion.objects.filter(
+                escenario=escenario_seleccionado,
+                activa=True
+            ).order_by('nombre')
+
+            # Obtener venta total mensual de la marca desde ProyeccionVentasConfig
+            try:
+                config = ProyeccionVentasConfig.objects.get(
+                    marca=marca_seleccionada,
+                    escenario=escenario_seleccionado,
+                    anio=escenario_seleccionado.anio
+                )
+                ventas_mensuales = config.calcular_ventas_mensuales()
+                if ventas_mensuales:
+                    venta_total_marca = sum(ventas_mensuales.values()) / len(ventas_mensuales)
+            except ProyeccionVentasConfig.DoesNotExist:
+                pass
+
+            # Obtener MarcaOperacion para distribución por operación
+            marcas_operacion = MarcaOperacion.objects.filter(
+                marca=marca_seleccionada,
+                operacion__escenario=escenario_seleccionado,
+                activo=True
+            ).select_related('operacion').order_by('operacion__nombre')
+
+            total_participacion_operaciones = sum(mo.participacion_ventas for mo in marcas_operacion)
+
+            # Si hay operación seleccionada, filtrar zonas por ella
+            if operacion_id:
+                try:
+                    operacion_seleccionada = Operacion.objects.get(pk=operacion_id)
+                except Operacion.DoesNotExist:
+                    operacion_seleccionada = None
+
+            # Obtener zonas (filtradas por operación si está seleccionada)
+            zonas_qs = Zona.objects.filter(
                 marca=marca_seleccionada,
                 escenario=escenario_seleccionado,
                 activo=True
-            ).order_by('nombre')
+            ).select_related('operacion').order_by('operacion__nombre', 'nombre')
 
+            if operacion_seleccionada:
+                zonas_qs = zonas_qs.filter(operacion=operacion_seleccionada)
+
+            zonas = list(zonas_qs)
+            total_participacion_zonas = sum(z.participacion_ventas for z in zonas)
             total_venta_zonas = sum(z.venta_proyectada for z in zonas)
-
-            # Obtener ventas por municipio (listado plano, independiente de zonas)
-            municipios = VentaMunicipio.objects.filter(
-                marca=marca_seleccionada,
-                escenario=escenario_seleccionado
-            ).select_related('municipio').order_by('municipio__departamento', 'municipio__nombre')
-
-            total_venta_municipios = sum(m.venta_proyectada for m in municipios)
 
             # Obtener zonas con sus municipios (ZonaMunicipio)
             for zona in zonas:
@@ -63,31 +113,19 @@ def distribucion_ventas(request):
                     zona=zona
                 ).select_related('municipio').order_by('municipio__nombre')
 
-                total_zona = sum(zm.venta_proyectada for zm in zona_municipios)
-                total_venta_zonas_municipios += total_zona
+                total_participacion_zona = sum(zm.participacion_ventas for zm in zona_municipios)
+                total_venta_zona = sum(zm.venta_proyectada for zm in zona_municipios)
+                total_venta_zonas_municipios += total_venta_zona
 
                 zonas_municipios.append({
                     'zona': zona,
                     'municipios': zona_municipios,
-                    'total': total_zona,
+                    'total_participacion': total_participacion_zona,
+                    'total_venta': total_venta_zona,
                 })
 
         except (Marca.DoesNotExist, Escenario.DoesNotExist):
             pass
-
-    # Obtener municipios disponibles para agregar (que no estén ya en VentaMunicipio)
-    municipios_disponibles = []
-    if marca_seleccionada and escenario_seleccionado:
-        municipios_ya_agregados = VentaMunicipio.objects.filter(
-            marca=marca_seleccionada,
-            escenario=escenario_seleccionado
-        ).values_list('municipio_id', flat=True)
-
-        municipios_disponibles = Municipio.objects.filter(
-            activo=True
-        ).exclude(
-            id__in=municipios_ya_agregados
-        ).order_by('departamento', 'nombre')
 
     # Obtener contexto base del admin (incluye app_list para sidebar)
     context = dxv_admin_site.each_context(request)
@@ -95,14 +133,17 @@ def distribucion_ventas(request):
         'title': 'Distribución de Ventas',
         'marcas': marcas,
         'escenarios': escenarios,
+        'operaciones': operaciones,
         'marca_seleccionada': marca_seleccionada,
         'escenario_seleccionado': escenario_seleccionado,
+        'operacion_seleccionada': operacion_seleccionada,
+        'venta_total_marca': venta_total_marca,
+        'marcas_operacion': marcas_operacion,
+        'total_participacion_operaciones': total_participacion_operaciones,
         'zonas': zonas,
-        'municipios': municipios,
         'zonas_municipios': zonas_municipios,
-        'municipios_disponibles': municipios_disponibles,
+        'total_participacion_zonas': total_participacion_zonas,
         'total_venta_zonas': total_venta_zonas,
-        'total_venta_municipios': total_venta_municipios,
         'total_venta_zonas_municipios': total_venta_zonas_municipios,
     })
 
@@ -113,48 +154,49 @@ def distribucion_ventas(request):
 @require_POST
 def guardar_distribucion_ventas(request):
     """
-    API para guardar los cambios de distribución de ventas
+    API para guardar los cambios de distribución de ventas (participaciones %).
+
+    Flujo:
+    - Usuario edita participacion_ventas (%)
+    - Al guardar, se actualiza participacion_ventas
+    - El modelo.save() calcula automáticamente venta_proyectada
+    - La cascada propaga los cambios hacia abajo
     """
     try:
         data = json.loads(request.body)
-        tipo = data.get('tipo')  # 'zonas' o 'municipios'
+        tipo = data.get('tipo')  # 'operaciones', 'zonas', 'zonas_municipios'
         items = data.get('items', [])
 
-        if tipo == 'zonas':
+        if tipo == 'operaciones':
+            # Guardar participaciones de MarcaOperacion
+            for item in items:
+                mo_id = item.get('id')
+                participacion = Decimal(str(item.get('participacion', 0)))
+                # Usar save() para que recalcule venta_proyectada y propague a zonas
+                mo = MarcaOperacion.objects.get(pk=mo_id)
+                mo.participacion_ventas = participacion
+                mo.save()
+
+        elif tipo == 'zonas':
+            # Guardar participaciones de Zona
             for item in items:
                 zona_id = item.get('id')
-                venta = Decimal(str(item.get('venta', 0)))
-                Zona.objects.filter(pk=zona_id).update(venta_proyectada=venta)
-
-            # Recalcular participaciones
-            if items:
-                primera_zona = Zona.objects.get(pk=items[0]['id'])
-                primera_zona._recalcular_participaciones_marca()
-
-        elif tipo == 'municipios':
-            for item in items:
-                vm_id = item.get('id')
-                venta = Decimal(str(item.get('venta', 0)))
-                VentaMunicipio.objects.filter(pk=vm_id).update(venta_proyectada=venta)
-
-            # Recalcular participaciones
-            if items:
-                primer_vm = VentaMunicipio.objects.get(pk=items[0]['id'])
-                primer_vm._recalcular_participaciones()
+                participacion = Decimal(str(item.get('participacion', 0)))
+                # Usar save() para que recalcule venta_proyectada y propague a municipios
+                zona = Zona.objects.get(pk=zona_id)
+                zona.participacion_ventas = participacion
+                zona.save()
 
         elif tipo == 'zonas_municipios':
-            # Guardar ventas de ZonaMunicipio (por zona)
+            # Guardar participaciones de ZonaMunicipio (por zona)
             zona_id = data.get('zona_id')
             for item in items:
                 zm_id = item.get('id')
-                venta = Decimal(str(item.get('venta', 0)))
-                ZonaMunicipio.objects.filter(pk=zm_id).update(venta_proyectada=venta)
-
-            # Recalcular participaciones de la zona
-            if items and zona_id:
-                primer_zm = ZonaMunicipio.objects.filter(zona_id=zona_id).first()
-                if primer_zm:
-                    primer_zm._recalcular_participaciones_zona()
+                participacion = Decimal(str(item.get('participacion', 0)))
+                # Usar save() para que recalcule venta_proyectada
+                zm = ZonaMunicipio.objects.get(pk=zm_id)
+                zm.participacion_ventas = participacion
+                zm.save()
 
         return JsonResponse({'success': True})
 

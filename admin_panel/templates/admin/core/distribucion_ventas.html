@@ -24,6 +24,7 @@
         display: flex;
         gap: 20px;
         align-items: end;
+        flex-wrap: wrap;
     }
     .filtros-form .field {
         display: flex;
@@ -53,6 +54,35 @@
     }
     .filtros-form button:hover {
         background: var(--lf-primary-dark);
+    }
+
+    /* Info box para contexto */
+    .info-box {
+        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+        border: 1px solid #90caf9;
+        border-radius: 8px;
+        padding: 15px 20px;
+        margin-bottom: 20px;
+        display: flex;
+        gap: 30px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    .info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+    .info-item .label {
+        font-size: 11px;
+        color: #1565c0;
+        text-transform: uppercase;
+        font-weight: 600;
+    }
+    .info-item .value {
+        font-size: 18px;
+        font-weight: bold;
+        color: #0d47a1;
     }
 
     .tabs {
@@ -115,7 +145,7 @@
         background: #f9f9f9;
     }
     .tabla-distribucion input[type="number"] {
-        width: 150px;
+        width: 100px;
         padding: 6px 10px;
         border: 1px solid #ccc;
         border-radius: 4px;
@@ -128,9 +158,10 @@
         box-shadow: 0 0 0 2px rgba(22, 101, 52, 0.2);
     }
 
-    .participacion {
+    .venta-calculada {
         font-weight: bold;
-        color: var(--lf-primary);
+        color: #1565c0;
+        font-size: 14px;
     }
 
     .totales-row {
@@ -144,9 +175,9 @@
 
     .total-box {
         display: inline-block;
-        padding: 8px 16px;
+        padding: 6px 12px;
         border-radius: 4px;
-        font-size: 16px;
+        font-size: 14px;
     }
     .total-box.ok {
         background: #d4edda;
@@ -155,6 +186,10 @@
     .total-box.warning {
         background: #fff3cd;
         color: #856404;
+    }
+    .total-box.error {
+        background: #f8d7da;
+        color: #721c24;
     }
 
     .btn-guardar {
@@ -202,145 +237,41 @@
         color: #333;
     }
 
-    .zona-header {
-        background: var(--lf-bg-light) !important;
-        font-weight: bold;
-    }
-    .zona-header td {
-        color: var(--lf-primary);
-        padding-top: 15px;
-    }
-
-    .btn-agregar {
-        padding: 10px 20px;
+    .zona-header-card {
         background: var(--lf-primary);
         color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 14px;
-        margin-bottom: 15px;
-    }
-    .btn-agregar:hover {
-        background: var(--lf-primary-dark);
-    }
-
-    /* Modal */
-    .modal-overlay {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0,0,0,0.5);
-        z-index: 1000;
-        justify-content: center;
-        align-items: center;
-    }
-    .modal-overlay.active {
-        display: flex;
-    }
-    .modal {
-        background: white;
-        border-radius: 8px;
-        width: 600px;
-        max-height: 80vh;
-        display: flex;
-        flex-direction: column;
-    }
-    .modal-header {
-        padding: 15px 20px;
-        border-bottom: 1px solid #ddd;
+        padding: 12px 15px;
         display: flex;
         justify-content: space-between;
         align-items: center;
-    }
-    .modal-header h3 {
-        margin: 0;
-    }
-    .modal-close {
-        background: none;
-        border: none;
-        font-size: 24px;
-        cursor: pointer;
-        color: #666;
-    }
-    .modal-body {
-        padding: 20px;
-        overflow-y: auto;
-        flex: 1;
-    }
-    .modal-footer {
-        padding: 15px 20px;
-        border-top: 1px solid #ddd;
-        display: flex;
-        justify-content: flex-end;
+        flex-wrap: wrap;
         gap: 10px;
-    }
-    .modal-footer button {
-        padding: 10px 20px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 14px;
-    }
-    .modal-footer .btn-cancelar {
-        background: #f0f0f0;
-        border: 1px solid #ccc;
-        color: #333;
-    }
-    .modal-footer .btn-confirmar {
-        background: #28a745;
-        border: none;
-        color: white;
     }
 
-    .municipios-lista {
-        max-height: 400px;
-        overflow-y: auto;
-        border: 1px solid #ddd;
+    .operacion-tag {
+        display: inline-block;
+        padding: 2px 8px;
+        background: rgba(255,255,255,0.2);
         border-radius: 4px;
+        font-size: 11px;
+        margin-left: 10px;
     }
-    .municipio-item {
-        padding: 10px 15px;
-        border-bottom: 1px solid #eee;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-    .municipio-item:last-child {
-        border-bottom: none;
-    }
-    .municipio-item:hover {
-        background: #f9f9f9;
-    }
-    .municipio-item input[type="checkbox"] {
-        width: 18px;
-        height: 18px;
-    }
-    .municipio-depto {
-        color: #666;
+
+    .help-text {
         font-size: 12px;
-    }
-    .buscar-municipio {
-        width: 100%;
+        color: #666;
+        margin-bottom: 15px;
         padding: 10px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        margin-bottom: 10px;
-        font-size: 14px;
-    }
-    .seleccionar-todos {
-        padding: 10px 15px;
         background: #f5f5f5;
-        border-bottom: 1px solid #ddd;
+        border-radius: 4px;
+        border-left: 3px solid var(--lf-primary);
     }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="distribucion-container">
-    <h1>Distribución de Ventas Proyectadas</h1>
+    <h1>Distribucion de Ventas por Participacion</h1>
 
     <div id="mensaje-container"></div>
 
@@ -368,69 +299,187 @@
                 {% endfor %}
             </select>
         </div>
+        {% if operaciones %}
+        <div class="field">
+            <label for="operacion">Operacion (opcional):</label>
+            <select name="operacion" id="operacion">
+                <option value="">-- Todas --</option>
+                {% for op in operaciones %}
+                <option value="{{ op.id }}" {% if operacion_seleccionada and op.id == operacion_seleccionada.id %}selected{% endif %}>
+                    {{ op.nombre }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
         <button type="submit">Cargar</button>
     </form>
 
     {% if marca_seleccionada and escenario_seleccionado %}
+
+    <!-- Info Box con contexto de ventas -->
+    <div class="info-box">
+        <div class="info-item">
+            <span class="label">Venta Mensual Total (Marca)</span>
+            <span class="value">${{ venta_total_marca|floatformat:0|intcomma }}</span>
+        </div>
+        {% if marcas_operacion %}
+        <div class="info-item">
+            <span class="label">Operaciones Configuradas</span>
+            <span class="value">{{ marcas_operacion|length }}</span>
+        </div>
+        {% endif %}
+        <div class="info-item">
+            <span class="label">Zonas</span>
+            <span class="value">{{ zonas|length }}</span>
+        </div>
+    </div>
+
     <!-- Tabs -->
     <div class="tabs">
-        <button type="button" class="tab active" data-tab="zonas">
+        <button type="button" class="tab active" data-tab="operaciones">
+            Operaciones ({{ marcas_operacion|length }})
+        </button>
+        <button type="button" class="tab" data-tab="zonas">
             Zonas ({{ zonas|length }})
         </button>
         <button type="button" class="tab" data-tab="zonas-municipios">
-            Zona → Municipio
-        </button>
-        <button type="button" class="tab" data-tab="municipios">
-            Municipios ({{ municipios|length }})
+            Zona - Municipio
         </button>
     </div>
 
-    <!-- Tab Zonas -->
-    <div id="tab-zonas" class="tab-content active">
-        {% if zonas %}
-        <table class="tabla-distribucion" id="tabla-zonas">
+    <!-- Tab Operaciones -->
+    <div id="tab-operaciones" class="tab-content active">
+        <div class="help-text">
+            Configure el porcentaje de participacion de cada operacion. La suma debe ser 100%.
+            La venta se calcula automaticamente: Venta Total Marca x Participacion%.
+        </div>
+
+        {% if marcas_operacion %}
+        <table class="tabla-distribucion" id="tabla-operaciones">
             <thead>
                 <tr>
-                    <th style="width: 40%">Zona</th>
-                    <th style="width: 30%">Venta Proyectada</th>
-                    <th style="width: 30%">Participación %</th>
+                    <th style="width: 35%">Operacion</th>
+                    <th style="width: 15%">Tasa ICA</th>
+                    <th style="width: 20%">Participacion %</th>
+                    <th style="width: 30%">Venta Calculada</th>
                 </tr>
             </thead>
             <tbody>
-                {% for zona in zonas %}
-                <tr data-id="{{ zona.id }}">
-                    <td>{{ zona.nombre }}</td>
+                {% for mo in marcas_operacion %}
+                <tr data-id="{{ mo.id }}">
+                    <td>
+                        <strong>{{ mo.operacion.nombre }}</strong>
+                        <span style="color: #999; font-size: 12px; margin-left: 5px;">({{ mo.operacion.codigo }})</span>
+                    </td>
+                    <td>{{ mo.operacion.tasa_ica }}%</td>
                     <td>
                         <input type="number"
-                               class="venta-input"
-                               data-tipo="zona"
-                               data-id="{{ zona.id }}"
-                               value="{{ zona.venta_proyectada|floatformat:0 }}"
+                               class="participacion-input"
+                               data-tipo="operacion"
+                               data-id="{{ mo.id }}"
+                               data-operacion-id="{{ mo.operacion.id }}"
+                               value="{{ mo.participacion_ventas|floatformat:2 }}"
                                min="0"
-                               step="1000">
+                               max="100"
+                               step="0.01">
+                        %
                     </td>
-                    <td class="participacion">
-                        <span class="participacion-valor">{{ zona.participacion_ventas|floatformat:2 }}</span>%
+                    <td class="venta-calculada">
+                        $<span class="venta-valor">{{ mo.venta_proyectada|floatformat:0|intcomma }}</span>
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
             <tfoot>
                 <tr class="totales-row">
-                    <td><strong>TOTAL</strong></td>
+                    <td colspan="2"><strong>TOTAL</strong></td>
                     <td>
-                        <span class="total-box" id="total-zonas-box">
-                            $<span id="total-zonas">{{ total_venta_zonas|floatformat:0|intcomma }}</span>
+                        <span class="total-box" id="total-operaciones-box">
+                            <span id="total-participacion-operaciones">{{ total_participacion_operaciones|floatformat:2 }}</span>%
                         </span>
                     </td>
-                    <td class="participacion">
-                        <span id="total-participacion-zonas">100.00</span>%
+                    <td class="venta-calculada">
+                        $<span id="total-venta-operaciones">0</span>
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+        <button type="button" class="btn-guardar" id="guardar-operaciones">
+            Guardar Distribucion por Operaciones
+        </button>
+        {% else %}
+        <div class="empty-state">
+            <h3>No hay operaciones configuradas</h3>
+            <p>Primero debes crear operaciones y asociarlas a esta marca desde el admin.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Tab Zonas -->
+    <div id="tab-zonas" class="tab-content">
+        <div class="help-text">
+            Configure el porcentaje de participacion de cada zona dentro de su operacion.
+            La suma de zonas por operacion debe ser 100%.
+        </div>
+
+        {% if zonas %}
+        <table class="tabla-distribucion" id="tabla-zonas">
+            <thead>
+                <tr>
+                    <th style="width: 30%">Zona</th>
+                    <th style="width: 20%">Operacion</th>
+                    <th style="width: 20%">Participacion %</th>
+                    <th style="width: 30%">Venta Calculada</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for zona in zonas %}
+                <tr data-id="{{ zona.id }}" data-operacion="{{ zona.operacion.id|default:'' }}">
+                    <td><strong>{{ zona.nombre }}</strong></td>
+                    <td>
+                        {% if zona.operacion %}
+                        <span class="operacion-tag" style="background: {{ zona.operacion.color }}20; color: {{ zona.operacion.color }}; border: 1px solid {{ zona.operacion.color }};">
+                            {{ zona.operacion.nombre }}
+                        </span>
+                        {% else %}
+                        <span style="color: #999;">Sin operacion</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <input type="number"
+                               class="participacion-input"
+                               data-tipo="zona"
+                               data-id="{{ zona.id }}"
+                               data-operacion="{{ zona.operacion.id|default:'' }}"
+                               value="{{ zona.participacion_ventas|floatformat:2 }}"
+                               min="0"
+                               max="100"
+                               step="0.01">
+                        %
+                    </td>
+                    <td class="venta-calculada">
+                        $<span class="venta-valor">{{ zona.venta_proyectada|floatformat:0|intcomma }}</span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr class="totales-row">
+                    <td colspan="2"><strong>TOTAL</strong></td>
+                    <td>
+                        <span class="total-box" id="total-zonas-box">
+                            <span id="total-participacion-zonas">{{ total_participacion_zonas|floatformat:2 }}</span>%
+                        </span>
+                    </td>
+                    <td class="venta-calculada">
+                        $<span id="total-venta-zonas">{{ total_venta_zonas|floatformat:0|intcomma }}</span>
                     </td>
                 </tr>
             </tfoot>
         </table>
         <button type="button" class="btn-guardar" id="guardar-zonas">
-            Guardar Distribución de Zonas
+            Guardar Distribucion de Zonas
         </button>
         {% else %}
         <div class="empty-state">
@@ -442,16 +491,20 @@
 
     <!-- Tab Zonas-Municipios -->
     <div id="tab-zonas-municipios" class="tab-content">
-        {% if zonas_municipios %}
-        <p style="margin-bottom: 15px; color: #666; font-size: 13px;">
-            Distribuye las ventas de cada zona entre sus municipios. La suma de municipios debe igualar la venta de la zona.
-        </p>
+        <div class="help-text">
+            Configure el porcentaje de participacion de cada municipio dentro de su zona.
+            La suma de municipios por zona debe ser 100%.
+        </div>
 
+        {% if zonas_municipios %}
         {% for zona_data in zonas_municipios %}
         <div class="zona-municipios-card" style="margin-bottom: 25px; border: 1px solid #ddd; border-radius: 8px; overflow: hidden;">
-            <div class="zona-header-card" style="background: var(--lf-primary); color: white; padding: 12px 15px; display: flex; justify-content: space-between; align-items: center;">
+            <div class="zona-header-card">
                 <div>
                     <strong>{{ zona_data.zona.nombre }}</strong>
+                    {% if zona_data.zona.operacion %}
+                    <span class="operacion-tag">{{ zona_data.zona.operacion.nombre }}</span>
+                    {% endif %}
                     <span style="opacity: 0.8; margin-left: 10px; font-size: 12px;">
                         ({{ zona_data.municipios|length }} municipios)
                     </span>
@@ -466,8 +519,8 @@
                 <thead>
                     <tr>
                         <th style="width: 40%">Municipio</th>
-                        <th style="width: 30%">Venta Proyectada</th>
-                        <th style="width: 30%">Participación % (en zona)</th>
+                        <th style="width: 25%">Participacion %</th>
+                        <th style="width: 35%">Venta Calculada</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -476,16 +529,18 @@
                         <td>{{ zm.municipio.nombre }} <span style="color: #999; font-size: 11px;">({{ zm.municipio.departamento }})</span></td>
                         <td>
                             <input type="number"
-                                   class="venta-input venta-zona-mun"
+                                   class="participacion-input participacion-zona-mun"
                                    data-tipo="zona-municipio"
                                    data-id="{{ zm.id }}"
                                    data-zona-id="{{ zona_data.zona.id }}"
-                                   value="{{ zm.venta_proyectada|floatformat:0 }}"
+                                   value="{{ zm.participacion_ventas|floatformat:2 }}"
                                    min="0"
-                                   step="1000">
+                                   max="100"
+                                   step="0.01">
+                            %
                         </td>
-                        <td class="participacion">
-                            <span class="participacion-valor">{{ zm.participacion_ventas|floatformat:2 }}</span>%
+                        <td class="venta-calculada">
+                            $<span class="venta-valor">{{ zm.venta_proyectada|floatformat:0|intcomma }}</span>
                         </td>
                     </tr>
                     {% endfor %}
@@ -494,13 +549,12 @@
                     <tr class="totales-row">
                         <td><strong>TOTAL</strong></td>
                         <td>
-                            <span class="total-box" id="total-zona-{{ zona_data.zona.id }}-box">
-                                $<span id="total-zona-{{ zona_data.zona.id }}">{{ zona_data.total|floatformat:0|intcomma }}</span>
+                            <span class="total-box" id="total-participacion-zona-{{ zona_data.zona.id }}-box">
+                                <span id="total-participacion-zona-{{ zona_data.zona.id }}">{{ zona_data.total_participacion|floatformat:2 }}</span>%
                             </span>
-                            <span class="diferencia-zona" id="diferencia-zona-{{ zona_data.zona.id }}" style="margin-left: 10px; font-size: 11px;"></span>
                         </td>
-                        <td class="participacion">
-                            <span id="total-participacion-zona-{{ zona_data.zona.id }}">100.00</span>%
+                        <td class="venta-calculada">
+                            $<span id="total-venta-zona-{{ zona_data.zona.id }}">{{ zona_data.total_venta|floatformat:0|intcomma }}</span>
                         </td>
                     </tr>
                 </tfoot>
@@ -532,114 +586,10 @@
         {% endif %}
     </div>
 
-    <!-- Tab Municipios -->
-    <div id="tab-municipios" class="tab-content">
-        {% if municipios_disponibles %}
-        <button type="button" class="btn-agregar" id="btn-agregar-municipios">
-            + Agregar Municipios
-        </button>
-        {% endif %}
-
-        {% if municipios %}
-        <table class="tabla-distribucion" id="tabla-municipios">
-            <thead>
-                <tr>
-                    <th style="width: 20%">Departamento</th>
-                    <th style="width: 30%">Municipio</th>
-                    <th style="width: 25%">Venta Proyectada</th>
-                    <th style="width: 25%">Participación %</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for vm in municipios %}
-                <tr data-id="{{ vm.id }}">
-                    <td>{{ vm.municipio.departamento }}</td>
-                    <td>{{ vm.municipio.nombre }}</td>
-                    <td>
-                        <input type="number"
-                               class="venta-input"
-                               data-tipo="municipio"
-                               data-id="{{ vm.id }}"
-                               value="{{ vm.venta_proyectada|floatformat:0 }}"
-                               min="0"
-                               step="1000">
-                    </td>
-                    <td class="participacion">
-                        <span class="participacion-valor">{{ vm.participacion_ventas|floatformat:2 }}</span>%
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-            <tfoot>
-                <tr class="totales-row">
-                    <td colspan="2"><strong>TOTAL</strong></td>
-                    <td>
-                        <span class="total-box" id="total-municipios-box">
-                            $<span id="total-municipios">{{ total_venta_municipios|floatformat:0|intcomma }}</span>
-                        </span>
-                    </td>
-                    <td class="participacion">
-                        <span id="total-participacion-municipios">100.00</span>%
-                    </td>
-                </tr>
-            </tfoot>
-        </table>
-        <button type="button" class="btn-guardar" id="guardar-municipios">
-            Guardar Distribución de Municipios
-        </button>
-        {% else %}
-        <div class="empty-state">
-            <h3>No hay municipios configurados</h3>
-            <p>Agrega municipios para distribuir las ventas geográficamente.</p>
-            {% if municipios_disponibles %}
-            <button type="button" class="btn-agregar" id="btn-agregar-municipios-empty" style="margin-top: 15px;">
-                + Agregar Municipios
-            </button>
-            {% endif %}
-        </div>
-        {% endif %}
-    </div>
-
-    <!-- Modal Agregar Municipios -->
-    {% if municipios_disponibles %}
-    <div class="modal-overlay" id="modal-municipios">
-        <div class="modal">
-            <div class="modal-header">
-                <h3>Agregar Municipios</h3>
-                <button type="button" class="modal-close" id="modal-close">&times;</button>
-            </div>
-            <div class="modal-body">
-                <input type="text" class="buscar-municipio" id="buscar-municipio" placeholder="Buscar municipio...">
-                <div class="seleccionar-todos">
-                    <label>
-                        <input type="checkbox" id="seleccionar-todos"> Seleccionar todos
-                    </label>
-                </div>
-                <div class="municipios-lista" id="municipios-lista">
-                    {% regroup municipios_disponibles by departamento as municipios_por_depto %}
-                    {% for depto in municipios_por_depto %}
-                    {% for mun in depto.list %}
-                    <div class="municipio-item" data-nombre="{{ mun.nombre|lower }}" data-depto="{{ mun.departamento|lower }}">
-                        <input type="checkbox" name="municipio" value="{{ mun.id }}">
-                        <span>{{ mun.nombre }}</span>
-                        <span class="municipio-depto">{{ mun.departamento }}</span>
-                    </div>
-                    {% endfor %}
-                    {% endfor %}
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn-cancelar" id="modal-cancelar">Cancelar</button>
-                <button type="button" class="btn-confirmar" id="modal-confirmar">Agregar Seleccionados</button>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
     {% else %}
     <div class="empty-state">
         <h3>Selecciona una marca y escenario</h3>
-        <p>Para ver y editar la distribución de ventas, primero selecciona una marca y un escenario activo.</p>
+        <p>Para ver y editar la distribucion de ventas, primero selecciona una marca y un escenario activo.</p>
     </div>
     {% endif %}
 </div>
@@ -649,139 +599,196 @@
 {{ block.super }}
 <script>
 (function() {
+    const VENTA_TOTAL_MARCA = {{ venta_total_marca|default:0 }};
+
     // Manejo de tabs
     document.querySelectorAll('.tab').forEach(function(tab) {
         tab.addEventListener('click', function() {
-            // Desactivar todos los tabs
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-
-            // Activar el tab clickeado
             this.classList.add('active');
             document.getElementById('tab-' + this.dataset.tab).classList.add('active');
         });
     });
 
-    // Recalcular participaciones al cambiar valores
-    function recalcularParticipaciones(tipo) {
-        const tabla = document.getElementById('tabla-' + tipo);
-        if (!tabla) return;
+    // Formatear numero con separadores de miles
+    function formatNumber(num) {
+        return Math.round(num).toLocaleString('es-CO');
+    }
 
-        const inputs = tabla.querySelectorAll('.venta-input');
-        let total = 0;
-
-        inputs.forEach(function(input) {
-            total += parseFloat(input.value) || 0;
-        });
-
-        // Actualizar participaciones
-        inputs.forEach(function(input) {
-            const valor = parseFloat(input.value) || 0;
-            const participacion = total > 0 ? (valor / total * 100) : 0;
-            const row = input.closest('tr');
-            const partSpan = row.querySelector('.participacion-valor');
-            if (partSpan) {
-                partSpan.textContent = participacion.toFixed(2);
-            }
-        });
-
-        // Actualizar total
-        const totalSpan = document.getElementById('total-' + tipo);
-        if (totalSpan) {
-            totalSpan.textContent = total.toLocaleString('es-CO', {maximumFractionDigits: 0});
-        }
-
-        // Actualizar participación total
-        const totalPartSpan = document.getElementById('total-participacion-' + tipo);
-        if (totalPartSpan) {
-            totalPartSpan.textContent = total > 0 ? '100.00' : '0.00';
+    // Actualizar clase del total-box segun el porcentaje
+    function updateTotalBoxClass(box, total) {
+        box.classList.remove('ok', 'warning', 'error');
+        if (Math.abs(total - 100) < 0.01) {
+            box.classList.add('ok');
+        } else if (total > 100) {
+            box.classList.add('error');
+        } else {
+            box.classList.add('warning');
         }
     }
 
-    // Event listeners para inputs
-    document.querySelectorAll('.venta-input').forEach(function(input) {
-        input.addEventListener('input', function() {
-            if (this.dataset.tipo === 'zona-municipio') {
-                recalcularParticipacionesZonaMunicipio(this.dataset.zonaId);
-            } else {
-                const tipo = this.dataset.tipo === 'zona' ? 'zonas' : 'municipios';
-                recalcularParticipaciones(tipo);
+    // ========== OPERACIONES ==========
+    function recalcularOperaciones() {
+        const tabla = document.getElementById('tabla-operaciones');
+        if (!tabla) return;
+
+        const inputs = tabla.querySelectorAll('.participacion-input');
+        let totalParticipacion = 0;
+        let totalVenta = 0;
+
+        inputs.forEach(function(input) {
+            const participacion = parseFloat(input.value) || 0;
+            const venta = VENTA_TOTAL_MARCA * (participacion / 100);
+            totalParticipacion += participacion;
+            totalVenta += venta;
+
+            // Actualizar venta calculada en la fila
+            const row = input.closest('tr');
+            const ventaSpan = row.querySelector('.venta-valor');
+            if (ventaSpan) {
+                ventaSpan.textContent = formatNumber(venta);
             }
         });
+
+        // Actualizar totales
+        const totalPartSpan = document.getElementById('total-participacion-operaciones');
+        if (totalPartSpan) totalPartSpan.textContent = totalParticipacion.toFixed(2);
+
+        const totalVentaSpan = document.getElementById('total-venta-operaciones');
+        if (totalVentaSpan) totalVentaSpan.textContent = formatNumber(totalVenta);
+
+        const totalBox = document.getElementById('total-operaciones-box');
+        if (totalBox) updateTotalBoxClass(totalBox, totalParticipacion);
+    }
+
+    // ========== ZONAS ==========
+    // Mapa de operacion_id a MarcaOperacion (para buscar venta de operacion)
+    const operacionVentaMap = {};
+    document.querySelectorAll('#tabla-operaciones tbody tr').forEach(function(row) {
+        const input = row.querySelector('.participacion-input');
+        if (input) {
+            const operacionId = input.dataset.operacionId;  // ID de la Operacion
+            if (operacionId) {
+                operacionVentaMap[operacionId] = input;
+            }
+        }
     });
 
-    // Recalcular participaciones para Zona-Municipio
-    function recalcularParticipacionesZonaMunicipio(zonaId) {
+    function recalcularZonas() {
+        const tabla = document.getElementById('tabla-zonas');
+        if (!tabla) return;
+
+        // Para zonas, necesitamos saber la venta de su operacion
+        const inputs = tabla.querySelectorAll('.participacion-input');
+        let totalParticipacion = 0;
+        let totalVenta = 0;
+
+        inputs.forEach(function(input) {
+            const participacion = parseFloat(input.value) || 0;
+            const operacionId = input.dataset.operacion;
+            let ventaOperacion = 0;
+
+            // Buscar venta de la operacion usando el mapa
+            if (operacionId && operacionVentaMap[operacionId]) {
+                const opInput = operacionVentaMap[operacionId];
+                const opParticipacion = parseFloat(opInput.value) || 0;
+                ventaOperacion = VENTA_TOTAL_MARCA * (opParticipacion / 100);
+            }
+
+            const venta = ventaOperacion * (participacion / 100);
+            totalParticipacion += participacion;
+            totalVenta += venta;
+
+            // Actualizar venta calculada en la fila
+            const row = input.closest('tr');
+            const ventaSpan = row.querySelector('.venta-valor');
+            if (ventaSpan) {
+                ventaSpan.textContent = formatNumber(venta);
+            }
+        });
+
+        // Actualizar totales
+        const totalPartSpan = document.getElementById('total-participacion-zonas');
+        if (totalPartSpan) totalPartSpan.textContent = totalParticipacion.toFixed(2);
+
+        const totalVentaSpan = document.getElementById('total-venta-zonas');
+        if (totalVentaSpan) totalVentaSpan.textContent = formatNumber(totalVenta);
+
+        // Nota: Para zonas, el 100% es por operacion, no global
+        // Por ahora mostramos el total acumulado
+    }
+
+    // ========== ZONAS-MUNICIPIOS ==========
+    function recalcularZonaMunicipios(zonaId) {
         const tabla = document.getElementById('tabla-zona-' + zonaId);
         if (!tabla) return;
 
         const ventaZona = parseFloat(tabla.dataset.zonaVenta) || 0;
-        const inputs = tabla.querySelectorAll('.venta-zona-mun');
-        let totalMunicipios = 0;
+        const inputs = tabla.querySelectorAll('.participacion-zona-mun');
+        let totalParticipacion = 0;
+        let totalVenta = 0;
 
         inputs.forEach(function(input) {
-            totalMunicipios += parseFloat(input.value) || 0;
-        });
+            const participacion = parseFloat(input.value) || 0;
+            const venta = ventaZona * (participacion / 100);
+            totalParticipacion += participacion;
+            totalVenta += venta;
 
-        // Actualizar participaciones
-        inputs.forEach(function(input) {
-            const valor = parseFloat(input.value) || 0;
-            const participacion = totalMunicipios > 0 ? (valor / totalMunicipios * 100) : 0;
+            // Actualizar venta calculada en la fila
             const row = input.closest('tr');
-            const partSpan = row.querySelector('.participacion-valor');
-            if (partSpan) {
-                partSpan.textContent = participacion.toFixed(2);
+            const ventaSpan = row.querySelector('.venta-valor');
+            if (ventaSpan) {
+                ventaSpan.textContent = formatNumber(venta);
             }
         });
 
-        // Actualizar total
-        const totalSpan = document.getElementById('total-zona-' + zonaId);
-        if (totalSpan) {
-            totalSpan.textContent = totalMunicipios.toLocaleString('es-CO', {maximumFractionDigits: 0});
-        }
-
-        // Mostrar diferencia con la venta de la zona
-        const diferenciaSpan = document.getElementById('diferencia-zona-' + zonaId);
-        const totalBox = document.getElementById('total-zona-' + zonaId + '-box');
-        if (diferenciaSpan && totalBox) {
-            const diferencia = totalMunicipios - ventaZona;
-            if (Math.abs(diferencia) < 1) {
-                diferenciaSpan.textContent = '✓ Coincide';
-                diferenciaSpan.style.color = '#28a745';
-                totalBox.classList.remove('warning');
-                totalBox.classList.add('ok');
-            } else {
-                const signo = diferencia > 0 ? '+' : '';
-                diferenciaSpan.textContent = '(' + signo + diferencia.toLocaleString('es-CO', {maximumFractionDigits: 0}) + ')';
-                diferenciaSpan.style.color = '#dc3545';
-                totalBox.classList.remove('ok');
-                totalBox.classList.add('warning');
-            }
-        }
-
-        // Actualizar participación total
+        // Actualizar totales
         const totalPartSpan = document.getElementById('total-participacion-zona-' + zonaId);
-        if (totalPartSpan) {
-            totalPartSpan.textContent = totalMunicipios > 0 ? '100.00' : '0.00';
-        }
+        if (totalPartSpan) totalPartSpan.textContent = totalParticipacion.toFixed(2);
+
+        const totalVentaSpan = document.getElementById('total-venta-zona-' + zonaId);
+        if (totalVentaSpan) totalVentaSpan.textContent = formatNumber(totalVenta);
+
+        const totalBox = document.getElementById('total-participacion-zona-' + zonaId + '-box');
+        if (totalBox) updateTotalBoxClass(totalBox, totalParticipacion);
 
         // Actualizar total general
         actualizarTotalGeneralZonasMunicipios();
     }
 
-    // Actualizar total general de zonas-municipios
     function actualizarTotalGeneralZonasMunicipios() {
         let totalGeneral = 0;
-        document.querySelectorAll('.venta-zona-mun').forEach(function(input) {
-            totalGeneral += parseFloat(input.value) || 0;
+        document.querySelectorAll('.participacion-zona-mun').forEach(function(input) {
+            const zonaId = input.dataset.zonaId;
+            const tabla = document.getElementById('tabla-zona-' + zonaId);
+            if (tabla) {
+                const ventaZona = parseFloat(tabla.dataset.zonaVenta) || 0;
+                const participacion = parseFloat(input.value) || 0;
+                totalGeneral += ventaZona * (participacion / 100);
+            }
         });
         const spanTotal = document.getElementById('total-general-zonas-municipios');
         if (spanTotal) {
-            spanTotal.textContent = totalGeneral.toLocaleString('es-CO', {maximumFractionDigits: 0});
+            spanTotal.textContent = formatNumber(totalGeneral);
         }
     }
 
-    // Función para mostrar mensajes
+    // Event listeners para inputs
+    document.querySelectorAll('.participacion-input').forEach(function(input) {
+        input.addEventListener('input', function() {
+            if (this.dataset.tipo === 'operacion') {
+                recalcularOperaciones();
+                recalcularZonas(); // Tambien recalcular zonas porque dependen de operaciones
+            } else if (this.dataset.tipo === 'zona') {
+                recalcularZonas();
+            } else if (this.dataset.tipo === 'zona-municipio') {
+                recalcularZonaMunicipios(this.dataset.zonaId);
+            }
+        });
+    });
+
+    // Funcion para mostrar mensajes
     function mostrarMensaje(texto, tipo) {
         const container = document.getElementById('mensaje-container');
         container.innerHTML = '<div class="mensaje ' + tipo + '">' + texto + '</div>';
@@ -790,15 +797,61 @@
         }, 5000);
     }
 
-    // Guardar zonas
+    // ========== GUARDAR OPERACIONES ==========
+    const btnGuardarOperaciones = document.getElementById('guardar-operaciones');
+    if (btnGuardarOperaciones) {
+        btnGuardarOperaciones.addEventListener('click', function() {
+            const items = [];
+            document.querySelectorAll('#tabla-operaciones .participacion-input').forEach(function(input) {
+                items.push({
+                    id: parseInt(input.dataset.id),
+                    participacion: parseFloat(input.value) || 0
+                });
+            });
+
+            this.disabled = true;
+            this.textContent = 'Guardando...';
+
+            fetch('{% url "admin:guardar_distribucion_ventas" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    tipo: 'operaciones',
+                    items: items
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    mostrarMensaje('Distribucion por operaciones guardada correctamente.', 'success');
+                    // Recargar para ver ventas actualizadas
+                    setTimeout(() => window.location.reload(), 1500);
+                } else {
+                    mostrarMensaje('Error: ' + data.error, 'error');
+                }
+            })
+            .catch(error => {
+                mostrarMensaje('Error al guardar: ' + error, 'error');
+            })
+            .finally(() => {
+                this.disabled = false;
+                this.textContent = 'Guardar Distribucion por Operaciones';
+            });
+        });
+    }
+
+    // ========== GUARDAR ZONAS ==========
     const btnGuardarZonas = document.getElementById('guardar-zonas');
     if (btnGuardarZonas) {
         btnGuardarZonas.addEventListener('click', function() {
             const items = [];
-            document.querySelectorAll('#tabla-zonas .venta-input').forEach(function(input) {
+            document.querySelectorAll('#tabla-zonas .participacion-input').forEach(function(input) {
                 items.push({
                     id: parseInt(input.dataset.id),
-                    venta: parseFloat(input.value) || 0
+                    participacion: parseFloat(input.value) || 0
                 });
             });
 
@@ -819,7 +872,8 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    mostrarMensaje('Distribución de zonas guardada correctamente.', 'success');
+                    mostrarMensaje('Distribucion de zonas guardada correctamente.', 'success');
+                    setTimeout(() => window.location.reload(), 1500);
                 } else {
                     mostrarMensaje('Error: ' + data.error, 'error');
                 }
@@ -829,66 +883,10 @@
             })
             .finally(() => {
                 this.disabled = false;
-                this.textContent = 'Guardar Distribución de Zonas';
+                this.textContent = 'Guardar Distribucion de Zonas';
             });
         });
     }
-
-    // Guardar municipios
-    const btnGuardarMunicipios = document.getElementById('guardar-municipios');
-    if (btnGuardarMunicipios) {
-        btnGuardarMunicipios.addEventListener('click', function() {
-            const items = [];
-            document.querySelectorAll('#tabla-municipios .venta-input').forEach(function(input) {
-                items.push({
-                    id: parseInt(input.dataset.id),
-                    venta: parseFloat(input.value) || 0
-                });
-            });
-
-            this.disabled = true;
-            this.textContent = 'Guardando...';
-
-            fetch('{% url "admin:guardar_distribucion_ventas" %}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}'
-                },
-                body: JSON.stringify({
-                    tipo: 'municipios',
-                    items: items
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    mostrarMensaje('Distribución de municipios guardada correctamente.', 'success');
-                } else {
-                    mostrarMensaje('Error: ' + data.error, 'error');
-                }
-            })
-            .catch(error => {
-                mostrarMensaje('Error al guardar: ' + error, 'error');
-            })
-            .finally(() => {
-                this.disabled = false;
-                this.textContent = 'Guardar Distribución de Municipios';
-            });
-        });
-    }
-
-    // Calcular participaciones iniciales
-    recalcularParticipaciones('zonas');
-    recalcularParticipaciones('municipios');
-
-    // Calcular participaciones iniciales para cada zona-municipio
-    document.querySelectorAll('[id^="tabla-zona-"]').forEach(function(tabla) {
-        const zonaId = tabla.dataset.zonaId;
-        if (zonaId) {
-            recalcularParticipacionesZonaMunicipio(zonaId);
-        }
-    });
 
     // ========== GUARDAR ZONAS-MUNICIPIOS ==========
     document.querySelectorAll('.btn-guardar-zona').forEach(function(btn) {
@@ -898,10 +896,10 @@
             if (!tabla) return;
 
             const items = [];
-            tabla.querySelectorAll('.venta-zona-mun').forEach(function(input) {
+            tabla.querySelectorAll('.participacion-zona-mun').forEach(function(input) {
                 items.push({
                     id: parseInt(input.dataset.id),
-                    venta: parseFloat(input.value) || 0
+                    participacion: parseFloat(input.value) || 0
                 });
             });
 
@@ -924,7 +922,7 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    mostrarMensaje('Distribución guardada correctamente.', 'success');
+                    mostrarMensaje('Distribucion guardada correctamente.', 'success');
                 } else {
                     mostrarMensaje('Error: ' + data.error, 'error');
                 }
@@ -939,127 +937,15 @@
         });
     });
 
-    // ========== MODAL AGREGAR MUNICIPIOS ==========
-    const modal = document.getElementById('modal-municipios');
-    const btnAgregar = document.getElementById('btn-agregar-municipios');
-    const btnAgregarEmpty = document.getElementById('btn-agregar-municipios-empty');
-    const btnClose = document.getElementById('modal-close');
-    const btnCancelar = document.getElementById('modal-cancelar');
-    const btnConfirmar = document.getElementById('modal-confirmar');
-    const buscarInput = document.getElementById('buscar-municipio');
-    const selectTodos = document.getElementById('seleccionar-todos');
-
-    function abrirModal() {
-        if (modal) modal.classList.add('active');
-    }
-
-    function cerrarModal() {
-        if (modal) {
-            modal.classList.remove('active');
-            // Limpiar selección
-            document.querySelectorAll('#municipios-lista input[type="checkbox"]').forEach(function(cb) {
-                cb.checked = false;
-            });
-            if (buscarInput) buscarInput.value = '';
-            if (selectTodos) selectTodos.checked = false;
-            filtrarMunicipios('');
+    // Calculos iniciales
+    recalcularOperaciones();
+    recalcularZonas();
+    document.querySelectorAll('[id^="tabla-zona-"]').forEach(function(tabla) {
+        const zonaId = tabla.dataset.zonaId;
+        if (zonaId) {
+            recalcularZonaMunicipios(zonaId);
         }
-    }
-
-    if (btnAgregar) btnAgregar.addEventListener('click', abrirModal);
-    if (btnAgregarEmpty) btnAgregarEmpty.addEventListener('click', abrirModal);
-    if (btnClose) btnClose.addEventListener('click', cerrarModal);
-    if (btnCancelar) btnCancelar.addEventListener('click', cerrarModal);
-
-    // Cerrar al hacer clic fuera del modal
-    if (modal) {
-        modal.addEventListener('click', function(e) {
-            if (e.target === modal) cerrarModal();
-        });
-    }
-
-    // Filtrar municipios
-    function filtrarMunicipios(texto) {
-        const items = document.querySelectorAll('.municipio-item');
-        texto = texto.toLowerCase();
-        items.forEach(function(item) {
-            const nombre = item.dataset.nombre || '';
-            const depto = item.dataset.depto || '';
-            if (nombre.includes(texto) || depto.includes(texto)) {
-                item.style.display = 'flex';
-            } else {
-                item.style.display = 'none';
-            }
-        });
-    }
-
-    if (buscarInput) {
-        buscarInput.addEventListener('input', function() {
-            filtrarMunicipios(this.value);
-        });
-    }
-
-    // Seleccionar todos
-    if (selectTodos) {
-        selectTodos.addEventListener('change', function() {
-            const checked = this.checked;
-            document.querySelectorAll('.municipio-item').forEach(function(item) {
-                if (item.style.display !== 'none') {
-                    item.querySelector('input[type="checkbox"]').checked = checked;
-                }
-            });
-        });
-    }
-
-    // Confirmar agregar municipios
-    if (btnConfirmar) {
-        btnConfirmar.addEventListener('click', function() {
-            const seleccionados = [];
-            document.querySelectorAll('#municipios-lista input[type="checkbox"]:checked').forEach(function(cb) {
-                seleccionados.push(parseInt(cb.value));
-            });
-
-            if (seleccionados.length === 0) {
-                alert('Selecciona al menos un municipio');
-                return;
-            }
-
-            this.disabled = true;
-            this.textContent = 'Agregando...';
-
-            fetch('{% url "admin:agregar_municipios_venta" %}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}'
-                },
-                body: JSON.stringify({
-                    marca_id: {{ marca_seleccionada.id|default:"null" }},
-                    escenario_id: {{ escenario_seleccionado.id|default:"null" }},
-                    municipio_ids: seleccionados
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    mostrarMensaje('Se agregaron ' + data.creados + ' municipio(s).', 'success');
-                    // Recargar la página para ver los nuevos municipios
-                    setTimeout(function() {
-                        window.location.reload();
-                    }, 1000);
-                } else {
-                    mostrarMensaje('Error: ' + data.error, 'error');
-                    this.disabled = false;
-                    this.textContent = 'Agregar Seleccionados';
-                }
-            })
-            .catch(error => {
-                mostrarMensaje('Error al agregar: ' + error, 'error');
-                this.disabled = false;
-                this.textContent = 'Agregar Seleccionados';
-            });
-        });
-    }
+    });
 })();
 </script>
 {% endblock %}
