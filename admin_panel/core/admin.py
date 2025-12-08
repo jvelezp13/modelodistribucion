@@ -202,6 +202,10 @@ class OperacionAdmin(admin.ModelAdmin):
             'fields': ('municipio_base',),
             'description': 'Ubicación de la bodega/CEDI principal de esta operación'
         }),
+        ('Impuestos', {
+            'fields': ('tasa_ica',),
+            'description': 'Tasa de ICA (Industria y Comercio) para esta operación. Ej: 0.007 para 0.7%'
+        }),
         ('Notas', {
             'fields': ('notas',),
             'classes': ('collapse',)
