@@ -154,6 +154,16 @@ class Operacion(models.Model):
     color = models.CharField(max_length=7, default="#3498db", verbose_name="Color (hex)")
     notas = models.TextField(blank=True, verbose_name="Notas")
 
+    # Tasa de ICA (Industria y Comercio) para esta operación
+    tasa_ica = models.DecimalField(
+        max_digits=6,
+        decimal_places=4,
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(1)],
+        verbose_name="Tasa ICA",
+        help_text="Tasa de ICA en decimal. Ej: 0.007 para 0.7%"
+    )
+
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_modificacion = models.DateTimeField(auto_now=True)
 

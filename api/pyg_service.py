@@ -84,11 +84,24 @@ def calcular_pyg_zona(escenario, zona, admin_totales: Dict = None) -> Dict:
 
     total_mensual = comercial['total'] + logistico['total'] + administrativo['total']
 
+    # Obtener información de la operación (si existe)
+    operacion_info = None
+    tasa_ica = Decimal('0')
+    if zona.operacion:
+        operacion_info = {
+            'id': zona.operacion.id,
+            'nombre': zona.operacion.nombre,
+            'codigo': zona.operacion.codigo,
+        }
+        tasa_ica = zona.operacion.tasa_ica or Decimal('0')
+
     return {
         'zona': {
             'id': zona.id,
             'nombre': zona.nombre,
             'participacion_ventas': float(zona.participacion_ventas or 0),
+            'operacion': operacion_info,
+            'tasa_ica': float(tasa_ica),
         },
         'comercial': comercial,
         'logistico': logistico,

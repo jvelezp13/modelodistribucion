@@ -1269,18 +1269,8 @@ def obtener_pyg_zonas(
         except Exception:
             pass
 
-        # Obtener tasa de ICA (sobre ventas)
-        tasa_ica = 0.0  # Default (no aplica si no está configurado)
-        try:
-            impuesto_ica = Impuesto.objects.filter(
-                tipo='ica',
-                aplicacion='sobre_ventas',
-                activo=True
-            ).first()
-            if impuesto_ica:
-                tasa_ica = float(impuesto_ica.porcentaje) / 100
-        except Exception:
-            pass
+        # ICA ahora se calcula por zona usando la tasa de su operación
+        # (cada zona tiene zona['zona']['tasa_ica'] desde pyg_service)
 
         # Calcular utilidad neta por zona para ordenar (usar mes actual como referencia)
         from datetime import datetime
@@ -1308,8 +1298,9 @@ def obtener_pyg_zonas(
             # Utilidad antes de impuestos
             utilidad_antes_impuestos = utilidad_operacional + otros_ingresos
 
-            # ICA (sobre ventas)
-            ica = ventas_zona * tasa_ica
+            # ICA (sobre ventas) - usar tasa de la operación de la zona
+            tasa_ica_zona = zona['zona'].get('tasa_ica', 0)
+            ica = ventas_zona * tasa_ica_zona
 
             # Utilidad neta (después de impuestos)
             utilidad_despues_ica = utilidad_antes_impuestos - ica
@@ -1339,7 +1330,7 @@ def obtener_pyg_zonas(
             'ventas_mensuales': ventas_mensuales,
             'configuracion_descuentos': config_descuentos,
             'tasa_impuesto_renta': tasa_impuesto,
-            'tasa_ica': tasa_ica,
+            # tasa_ica ahora está en cada zona (zona['zona']['tasa_ica'])
         }
 
     except Escenario.DoesNotExist:
@@ -2558,6 +2549,84 @@ def obtener_pyg_marca_por_operaciones(
         logger.error(f"Error obteniendo P&G de marca por operaciones: {e}")
         import traceback
         raise HTTPException(status_code=500, detail=f"{str(e)}\n{traceback.format_exc()}")
+
+
+@app.get("/api/marcas/por-operaciones")
+def obtener_marcas_por_operaciones(
+    escenario_id: int,
+    operacion_ids: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Lista las marcas disponibles filtradas por operaciones.
+    Si no se especifican operaciones, devuelve todas las marcas del escenario.
+
+    Args:
+        escenario_id: ID del escenario
+        operacion_ids: IDs de operaciones separados por coma (ej: "1,2,3")
+
+    Returns:
+        Lista de marcas con sus operaciones asociadas
+    """
+    try:
+        from core.models import Escenario, Marca, MarcaOperacion, Operacion
+
+        escenario = Escenario.objects.get(pk=escenario_id)
+
+        # Si se especifican operaciones, filtrar marcas por esas operaciones
+        if operacion_ids:
+            ids = [int(id.strip()) for id in operacion_ids.split(',') if id.strip()]
+            # Obtener marcas que tienen relación con esas operaciones
+            marca_ids = MarcaOperacion.objects.filter(
+                operacion_id__in=ids,
+                operacion__escenario=escenario,
+                activo=True
+            ).values_list('marca_id', flat=True).distinct()
+            marcas = Marca.objects.filter(id__in=marca_ids, activa=True)
+        else:
+            # Sin filtro, devolver todas las marcas activas del escenario
+            # (marcas que tienen al menos una zona en el escenario)
+            from core.models import Zona
+            marca_ids = Zona.objects.filter(
+                escenario=escenario,
+                activo=True
+            ).values_list('marca_id', flat=True).distinct()
+            marcas = Marca.objects.filter(id__in=marca_ids, activa=True)
+
+        # Construir respuesta con operaciones de cada marca
+        marcas_data = []
+        for marca in marcas:
+            # Obtener operaciones de esta marca en el escenario
+            operaciones_marca = MarcaOperacion.objects.filter(
+                marca=marca,
+                operacion__escenario=escenario,
+                activo=True
+            ).select_related('operacion')
+
+            operaciones_data = [{
+                'id': mo.operacion.id,
+                'nombre': mo.operacion.nombre,
+                'codigo': mo.operacion.codigo,
+            } for mo in operaciones_marca]
+
+            marcas_data.append({
+                'id': marca.id,
+                'marca_id': marca.marca_id,
+                'nombre': marca.nombre,
+                'operaciones': operaciones_data
+            })
+
+        return {
+            'escenario_id': escenario_id,
+            'escenario_nombre': escenario.nombre,
+            'filtro_operaciones': operacion_ids,
+            'marcas': marcas_data
+        }
+
+    except Escenario.DoesNotExist:
+        raise HTTPException(status_code=404, detail=f"Escenario no encontrado: {escenario_id}")
+    except Exception as e:
+        logger.error(f"Error obteniendo marcas por operaciones: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == "__main__":
