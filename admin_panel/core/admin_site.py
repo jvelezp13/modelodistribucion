@@ -46,7 +46,7 @@ class DxVAdminSite(admin.AdminSite):
             'Marca',
             'Escenario',
             'Operacion',
-            'MarcaOperacion',
+            # 'MarcaOperacion',  # Oculto - se gestiona desde inline en Operacion
             'ParametrosMacro',
             'FactorPrestacional',
             'Impuesto',
