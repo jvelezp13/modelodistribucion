@@ -19,6 +19,45 @@ export interface Escenario {
   periodo: string;
 }
 
+export interface Operacion {
+  id: number;
+  nombre: string;
+  codigo: string;
+  activa: boolean;
+  color: string;
+  tasa_ica: number;
+  municipio_base?: {
+    id: number;
+    nombre: string;
+  };
+  cantidad_zonas: number;
+  cantidad_marcas: number;
+}
+
+export interface OperacionesResponse {
+  escenario_id: number;
+  escenario_nombre: string;
+  operaciones: Operacion[];
+}
+
+export interface MarcaBasica {
+  id: number;
+  marca_id: string;
+  nombre: string;
+  operaciones: Array<{
+    id: number;
+    nombre: string;
+    codigo: string;
+  }>;
+}
+
+export interface MarcasPorOperacionesResponse {
+  escenario_id: number;
+  escenario_nombre: string;
+  filtro_operaciones: string | null;
+  marcas: MarcaBasica[];
+}
+
 // Meses en español para el selector
 export const MESES = [
   { value: 'enero', label: 'Enero' },
@@ -441,6 +480,29 @@ class APIClient {
       `/api/diagnostico/logistico-detallado?escenario_id=${escenarioId}&marca_id=${marcaId}`
     );
   }
+
+  /**
+   * Obtiene las operaciones de un escenario
+   */
+  async obtenerOperaciones(escenarioId: number): Promise<OperacionesResponse> {
+    return this.request<OperacionesResponse>(
+      `/api/operaciones?escenario_id=${escenarioId}`
+    );
+  }
+
+  /**
+   * Obtiene las marcas filtradas por operaciones
+   */
+  async obtenerMarcasPorOperaciones(
+    escenarioId: number,
+    operacionIds?: number[]
+  ): Promise<MarcasPorOperacionesResponse> {
+    let url = `/api/marcas/por-operaciones?escenario_id=${escenarioId}`;
+    if (operacionIds && operacionIds.length > 0) {
+      url += `&operacion_ids=${operacionIds.join(',')}`;
+    }
+    return this.request<MarcasPorOperacionesResponse>(url);
+  }
 }
 
 // Interfaz para respuesta de tasa de renta
@@ -477,6 +539,12 @@ export interface PyGZona {
     id: number;
     nombre: string;
     participacion_ventas: number;
+    operacion?: {
+      id: number;
+      nombre: string;
+      codigo: string;
+    } | null;
+    tasa_ica: number;  // Tasa ICA de la operación de esta zona
   };
   comercial: PyGCategoria;
   logistico: PyGCategoria;
@@ -504,7 +572,7 @@ export interface PyGZonasResponse {
   ventas_mensuales: VentasMensualesDesglose;
   configuracion_descuentos: ConfigDescuentosZonas;
   tasa_impuesto_renta: number;
-  tasa_ica: number;
+  // tasa_ica ahora está en cada zona (zona.tasa_ica)
 }
 
 export interface PyGMunicipio {

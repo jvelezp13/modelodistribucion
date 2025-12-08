@@ -5,8 +5,10 @@ import { Marca, Rubro, DetalleLejaniasLogistica, apiClient, MESES, getMesActual,
 import { ChevronDown, ChevronRight, Truck, Calendar } from 'lucide-react';
 
 interface PyGDetalladoProps {
-  marca: Marca;
+  marca?: Marca;  // Opcional - si no se pasa, se carga automáticamente
   escenarioId: number;
+  marcaId?: string;  // Para cargar datos automáticamente
+  operacionIds?: number[];  // Filtro de operaciones (para futuro uso)
 }
 
 interface SeccionState {
@@ -37,7 +39,43 @@ interface VehiculoConFlete {
   totalConFlete: number;
 }
 
-export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) {
+export default function PyGDetallado({ marca: marcaProp, escenarioId, marcaId, operacionIds }: PyGDetalladoProps) {
+  const [marcaData, setMarcaData] = useState<Marca | null>(marcaProp || null);
+  const [loadingMarca, setLoadingMarca] = useState(!marcaProp && !!marcaId);
+  const [errorMarca, setErrorMarca] = useState<string | null>(null);
+
+  // Cargar datos de la marca si no se pasó como prop
+  useEffect(() => {
+    const cargarMarca = async () => {
+      if (marcaProp) {
+        setMarcaData(marcaProp);
+        return;
+      }
+      if (!marcaId || !escenarioId) return;
+
+      setLoadingMarca(true);
+      setErrorMarca(null);
+      try {
+        const result = await apiClient.ejecutarSimulacion([marcaId], escenarioId);
+        if (result.marcas && result.marcas.length > 0) {
+          setMarcaData(result.marcas[0]);
+        } else {
+          setErrorMarca('No se encontraron datos para esta marca');
+        }
+      } catch (error) {
+        console.error('Error cargando datos de marca:', error);
+        setErrorMarca('Error al cargar datos de la marca');
+      } finally {
+        setLoadingMarca(false);
+      }
+    };
+
+    cargarMarca();
+  }, [marcaProp, marcaId, escenarioId]);
+
+  // Usar marca de prop o del estado
+  const marca = marcaData;
+
   const [seccionesAbiertas, setSeccionesAbiertas] = useState<SeccionState>({
     ingresos: true,
     cmv: false,
@@ -89,7 +127,7 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
   // Cargar datos de lejanías logísticas
   useEffect(() => {
     const fetchLejanias = async () => {
-      if (!escenarioId || !marca.marca_id) return;
+      if (!escenarioId || !marca?.marca_id) return;
 
       setLoadingLejanias(true);
       try {
@@ -104,7 +142,7 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
     };
 
     fetchLejanias();
-  }, [escenarioId, marca.marca_id]);
+  }, [escenarioId, marca?.marca_id]);
 
   const toggleSeccion = (seccion: keyof SeccionState) => {
     setSeccionesAbiertas(prev => ({ ...prev, [seccion]: !prev[seccion] }));
@@ -127,10 +165,10 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
   };
 
   // Combinar rubros individuales y compartidos
-  const todosLosRubros = [
+  const todosLosRubros = marca ? [
     ...marca.rubros_individuales,
     ...marca.rubros_compartidos_asignados
-  ];
+  ] : [];
 
   // Agrupar rubros por categoría y tipo
   const agruparRubros = () => {
@@ -248,7 +286,7 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
     .filter(r => !r.nombre.includes('Combustible Lejanía') && !r.nombre.includes('Viáticos Pernocta'))
     .reduce((sum, r) => sum + r.valor_total, 0);
   // Las lejanías se suman desde el cálculo dinámico del backend
-  const totalComercial = subtotalComercialPersonal + subtotalComercialGastos + (marca.lejania_comercial || 0);
+  const totalComercial = subtotalComercialPersonal + subtotalComercialGastos + (marca?.lejania_comercial || 0);
 
   // Subtotal de vehículos ahora incluye flete base
   const subtotalLogisticoVehiculos = vehiculosConFlete.reduce((sum, v) => sum + v.totalConFlete, 0);
@@ -286,6 +324,7 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
 
   // 1. INGRESOS POR VENTAS - usar mes seleccionado si hay desglose disponible
   const obtenerVentasMes = (): number => {
+    if (!marca) return 0;
     if (marca.ventas_mensuales_desglose) {
       const desglose = marca.ventas_mensuales_desglose as VentasMensualesDesglose;
       return desglose[mesSeleccionado as keyof VentasMensualesDesglose] || marca.ventas_mensuales || 0;
@@ -303,7 +342,7 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
 
   // 2. COSTO DE MERCANCÍA VENDIDA (CMV)
   // CMV = Ventas × (1 - descuento_pie_factura_ponderado)
-  const config = marca.configuracion_descuentos;
+  const config = marca?.configuracion_descuentos;
   const descuentoPieFacturaPonderado = config?.descuento_pie_factura_ponderado || 0;
   const costoMercanciaVendida = ingresosPorVentas * (1 - descuentoPieFacturaPonderado / 100);
 
@@ -681,6 +720,31 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
       </div>
     );
   };
+
+  // Guard para loading y error
+  if (loadingMarca) {
+    return (
+      <div className="bg-white border border-gray-200 rounded p-8 text-center">
+        <p className="text-sm text-gray-600">Cargando datos del P&G...</p>
+      </div>
+    );
+  }
+
+  if (errorMarca) {
+    return (
+      <div className="bg-white border border-gray-200 rounded p-8 text-center">
+        <p className="text-sm text-red-600">{errorMarca}</p>
+      </div>
+    );
+  }
+
+  if (!marca) {
+    return (
+      <div className="bg-white border border-gray-200 rounded p-8 text-center">
+        <p className="text-sm text-gray-600">Selecciona una marca para ver el P&G</p>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white border border-gray-200 rounded">

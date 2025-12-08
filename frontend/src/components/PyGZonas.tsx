@@ -102,7 +102,8 @@ export default function PyGZonas({ escenarioId, marcaId }: PyGZonasProps) {
 
   const calcularICA = (zona: PyGZona): number => {
     const ventas = calcularVentasZona(zona);
-    const tasaICA = data?.tasa_ica || 0;
+    // La tasa ICA ahora viene por zona (desde su operación)
+    const tasaICA = zona.zona.tasa_ica || 0;
     return ventas * tasaICA;
   };
 
@@ -453,7 +454,7 @@ export default function PyGZonas({ escenarioId, marcaId }: PyGZonasProps) {
                                 marcaId={marcaId}
                                 formatCurrency={formatCurrency}
                                 formatPercent={formatPercent}
-                                tasaICA={data.tasa_ica || 0}
+                                tasaICA={zona.zona.tasa_ica || 0}
                                 tasaImpuesto={data.tasa_impuesto_renta || 0.33}
                                 configuracionDescuentos={data.configuracion_descuentos}
                               />
