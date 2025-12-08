@@ -177,7 +177,7 @@ class Simulator:
                     prestaciones=costo.prestaciones,
                     subsidio_transporte=costo.subsidio_transporte,
                     factor_prestacional=0.402 if perfil == 'comercial' else 0.378,
-                    auxilio_adicional=empleado_data.get('auxilio_adicional', 0)
+                    auxilios_no_prestacionales=empleado_data.get('auxilios_no_prestacionales', {})
                 )
 
                 if rubro.es_individual():
@@ -376,7 +376,7 @@ class Simulator:
                     prestaciones=costo.prestaciones,
                     subsidio_transporte=costo.subsidio_transporte,
                     factor_prestacional=0.402 if perfil == 'logistico' else 0.378,
-                    auxilio_adicional=empleado_data.get('auxilio_adicional', 0)
+                    auxilios_no_prestacionales=empleado_data.get('auxilios_no_prestacionales', {})
                 )
 
                 if rubro.es_individual():
@@ -462,7 +462,7 @@ class Simulator:
                 prestaciones=costo.prestaciones,
                 subsidio_transporte=costo.subsidio_transporte,
                 factor_prestacional=0.378 if perfil == 'administrativo' else 0.49 if perfil == 'aprendiz_sena' else 0.378,
-                auxilio_adicional=empleado_data.get('auxilio_adicional', 0)
+                auxilios_no_prestacionales=empleado_data.get('auxilios_no_prestacionales', {})
             )
 
             if rubro.es_individual():
@@ -547,7 +547,7 @@ class Simulator:
                 prestaciones=costo.prestaciones,
                 subsidio_transporte=costo.subsidio_transporte,
                 factor_prestacional=0.378 if perfil == 'administrativo' else 0.49 if perfil == 'aprendiz_sena' else 0.378,
-                auxilio_adicional=config.get('auxilio_adicional', 0)
+                auxilios_no_prestacionales=config.get('auxilios_no_prestacionales', {})
             )
 
             self.rubros_compartidos.append(rubro)

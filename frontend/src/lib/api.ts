@@ -118,6 +118,17 @@ export interface Rubro {
   prestaciones?: number;
   subsidio_transporte?: number;
   factor_prestacional?: number;
+  // Auxilios no prestacionales (JSON flexible)
+  auxilios_no_prestacionales?: {
+    cuota_carro?: number;
+    arriendo_vivienda?: number;
+    bono_alimentacion?: number;
+    rodamiento?: number;
+    otros?: number;
+    [key: string]: number | undefined;
+  };
+  total_auxilios_no_prestacionales?: number;
+  // Campo legacy para retrocompatibilidad
   auxilio_adicional?: number;
 
   // Campos para vehículos (solo costos fijos)

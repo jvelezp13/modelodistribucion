@@ -606,7 +606,29 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
                     <span className="font-medium text-gray-700">{formatCurrency(rubro.subsidio_transporte * (rubro.cantidad || 1))}</span>
                   </div>
                 )}
-                {rubro.auxilio_adicional !== undefined && rubro.auxilio_adicional > 0 && (
+                {/* Auxilios no prestacionales (JSON flexible) */}
+                {rubro.auxilios_no_prestacionales && Object.keys(rubro.auxilios_no_prestacionales).length > 0 && (
+                  <>
+                    <div className="text-xs font-medium text-gray-600 mt-1 mb-0.5 border-t border-gray-200 pt-1">Auxilios No Prestacionales:</div>
+                    {Object.entries(rubro.auxilios_no_prestacionales).map(([concepto, valor]) => (
+                      valor !== undefined && valor > 0 && (
+                        <div key={concepto} className="flex justify-between pl-2">
+                          <span>{formatConceptoAuxilio(concepto)}:</span>
+                          <span className="font-medium text-gray-700">{formatCurrency(valor * (rubro.cantidad || 1))}</span>
+                        </div>
+                      )
+                    ))}
+                    {rubro.total_auxilios_no_prestacionales !== undefined && rubro.total_auxilios_no_prestacionales > 0 && Object.keys(rubro.auxilios_no_prestacionales).length > 1 && (
+                      <div className="flex justify-between border-t border-gray-200 pt-0.5 mt-0.5">
+                        <span className="font-medium text-gray-600">Total Auxilios:</span>
+                        <span className="font-semibold text-gray-800">{formatCurrency(rubro.total_auxilios_no_prestacionales * (rubro.cantidad || 1))}</span>
+                      </div>
+                    )}
+                  </>
+                )}
+                {/* Campo legacy: mostrar solo si no hay auxilios_no_prestacionales */}
+                {(!rubro.auxilios_no_prestacionales || Object.keys(rubro.auxilios_no_prestacionales).length === 0) &&
+                 rubro.auxilio_adicional !== undefined && rubro.auxilio_adicional > 0 && (
                   <div className="flex justify-between">
                     <span>Auxilio Adicional (no prestacional):</span>
                     <span className="font-medium text-gray-700">{formatCurrency(rubro.auxilio_adicional * (rubro.cantidad || 1))}</span>
@@ -618,6 +640,18 @@ export default function PyGDetallado({ marca, escenarioId }: PyGDetalladoProps) 
         )}
       </div>
     );
+  };
+
+  // Helper para formatear nombres de conceptos de auxilios
+  const formatConceptoAuxilio = (concepto: string): string => {
+    const nombres: Record<string, string> = {
+      cuota_carro: 'Cuota Carro',
+      arriendo_vivienda: 'Arriendo Vivienda',
+      bono_alimentacion: 'Bono Alimentación',
+      rodamiento: 'Rodamiento',
+      otros: 'Otros Auxilios',
+    };
+    return nombres[concepto] || concepto.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
   const LineaItem = ({

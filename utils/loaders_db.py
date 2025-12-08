@@ -218,7 +218,7 @@ class DataLoaderDB:
                     'salario_base': float(p.salario_base),
                     'perfil_prestacional': p.perfil_prestacional,
                     'asignacion': p.asignacion,
-                    'auxilio_adicional': float(p.auxilio_adicional) if p.auxilio_adicional else 0,
+                    'auxilios_no_prestacionales': p.auxilios_no_prestacionales or {},
                     'porcentaje_dedicacion': float(p.porcentaje_dedicacion) if p.porcentaje_dedicacion else None,
                     'criterio_prorrateo': p.criterio_prorrateo,
                     'costo_mensual_calculado': float(p.calcular_costo_mensual()),  # ⭐ USAR método del modelo
@@ -317,7 +317,7 @@ class DataLoaderDB:
                     'salario_base': float(p.salario_base),
                     'perfil_prestacional': p.perfil_prestacional,
                     'asignacion': p.asignacion,
-                    'auxilio_adicional': float(p.auxilio_adicional) if p.auxilio_adicional else 0,
+                    'auxilios_no_prestacionales': p.auxilios_no_prestacionales or {},
                     'porcentaje_dedicacion': float(p.porcentaje_dedicacion) if p.porcentaje_dedicacion else None,
                     'criterio_prorrateo': p.criterio_prorrateo,
                     'costo_mensual_calculado': float(p.calcular_costo_mensual()),  # ⭐ USAR método del modelo
@@ -424,7 +424,7 @@ class DataLoaderDB:
                             'perfil_prestacional': p.perfil_prestacional,
                             'tipo_contrato': p.tipo_contrato,
                             'honorarios_mensuales': float(p.honorarios_mensuales) if p.honorarios_mensuales else 0,
-                            'auxilio_adicional': float(p.auxilio_adicional) if p.auxilio_adicional else 0,
+                            'auxilios_no_prestacionales': p.auxilios_no_prestacionales or {},
                             'asignacion': p.asignacion,
                             'criterio_prorrateo': p.criterio_prorrateo,
                             'costo_mensual_calculado': float(p.calcular_costo_mensual()),

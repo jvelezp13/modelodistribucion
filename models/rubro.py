@@ -171,7 +171,18 @@ class RubroPersonal(Rubro):
     prestaciones: float = 0.0
     subsidio_transporte: float = 0.0
     factor_prestacional: float = 0.0
-    auxilio_adicional: float = 0.0  # Bonos/auxilios que NO generan prestaciones
+    # Auxilios no prestacionales (JSON flexible)
+    auxilios_no_prestacionales: Dict[str, float] = field(default_factory=dict)
+    # Campo legacy - deprecado
+    auxilio_adicional: float = 0.0
+
+    @property
+    def total_auxilios_no_prestacionales(self) -> float:
+        """Suma todos los auxilios no prestacionales del dict."""
+        if self.auxilios_no_prestacionales:
+            return sum(self.auxilios_no_prestacionales.values())
+        # Retrocompatibilidad: usar campo antiguo si existe
+        return self.auxilio_adicional
 
     def __post_init__(self):
         """Calcula el costo total del personal."""
@@ -179,8 +190,13 @@ class RubroPersonal(Rubro):
         if self.prestaciones == 0.0 and self.factor_prestacional > 0.0:
             self.prestaciones = self.salario_base * self.factor_prestacional
 
-        # Calcular valor unitario (auxilio_adicional se suma al final, no afecta prestaciones)
-        self.valor_unitario = self.salario_base + self.prestaciones + self.subsidio_transporte + self.auxilio_adicional
+        # Calcular valor unitario (auxilios se suman al final, no afectan prestaciones)
+        self.valor_unitario = (
+            self.salario_base +
+            self.prestaciones +
+            self.subsidio_transporte +
+            self.total_auxilios_no_prestacionales
+        )
 
         # Llamar al __post_init__ del padre
         super().__post_init__()
@@ -193,7 +209,10 @@ class RubroPersonal(Rubro):
             'prestaciones': self.prestaciones,
             'subsidio_transporte': self.subsidio_transporte,
             'factor_prestacional': self.factor_prestacional,
-            'auxilio_adicional': self.auxilio_adicional,
+            'auxilios_no_prestacionales': self.auxilios_no_prestacionales,
+            'total_auxilios_no_prestacionales': self.total_auxilios_no_prestacionales,
+            # Mantener campo legacy para retrocompatibilidad
+            'auxilio_adicional': self.total_auxilios_no_prestacionales,
         })
         return base_dict
 

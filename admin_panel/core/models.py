@@ -154,8 +154,18 @@ class PersonalComercial(models.Model):
     salario_base = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Salario Base")
     perfil_prestacional = models.CharField(max_length=20, choices=PERFIL_CHOICES, default='comercial')
     asignacion = models.CharField(max_length=20, choices=ASIGNACION_CHOICES, default='individual')
-    auxilio_adicional = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Auxilio Adicional")
-    
+
+    # Auxilios no prestacionales (JSON flexible)
+    auxilios_no_prestacionales = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name="Auxilios No Prestacionales",
+        help_text="Auxilios que NO generan prestaciones. Ej: {cuota_carro: 500000, arriendo_vivienda: 800000, bono_alimentacion: 200000, rodamiento: 150000}"
+    )
+
+    # Campo legacy - deprecado, usar auxilios_no_prestacionales
+    auxilio_adicional = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Auxilio Adicional (Deprecado)")
+
     # Índice de incremento para proyecciones
     indice_incremento = models.CharField(
         max_length=20,
@@ -247,7 +257,7 @@ class PersonalComercial(models.Model):
                 salario_base=self.salario_base,
                 factores=factor,
                 subsidio_transporte=subsidio_transporte,
-                auxilio_adicional=self.auxilio_adicional or Decimal('0'),
+                auxilio_adicional=self.total_auxilios_no_prestacionales,
                 cantidad=self.cantidad,
             )
             return resultado.costo_total
@@ -255,6 +265,14 @@ class PersonalComercial(models.Model):
         except FactorPrestacional.DoesNotExist:
             # Si no existe factor, retornar solo salario base * cantidad
             return self.salario_base * self.cantidad
+
+    @property
+    def total_auxilios_no_prestacionales(self) -> Decimal:
+        """Suma todos los auxilios no prestacionales del JSON."""
+        if not self.auxilios_no_prestacionales:
+            # Retrocompatibilidad: usar campo antiguo si existe
+            return self.auxilio_adicional or Decimal('0')
+        return sum(Decimal(str(v)) for v in self.auxilios_no_prestacionales.values())
 
     def __str__(self):
         return f"{self.marca.nombre} - {self.nombre} ({self.cantidad})"
@@ -300,12 +318,22 @@ class PersonalLogistico(models.Model):
     salario_base = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Salario Base")
     perfil_prestacional = models.CharField(max_length=20, choices=PERFIL_CHOICES, default='logistico_calle')
     asignacion = models.CharField(max_length=20, choices=ASIGNACION_CHOICES, default='individual')
+
+    # Auxilios no prestacionales (JSON flexible)
+    auxilios_no_prestacionales = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name="Auxilios No Prestacionales",
+        help_text="Auxilios que NO generan prestaciones. Ej: {cuota_carro: 500000, arriendo_vivienda: 800000, bono_alimentacion: 200000, rodamiento: 150000}"
+    )
+
+    # Campo legacy - deprecado, usar auxilios_no_prestacionales
     auxilio_adicional = models.DecimalField(
         max_digits=12,
         decimal_places=2,
         default=0,
-        verbose_name="Auxilio Adicional",
-        help_text="Bonos o auxilios que NO generan prestaciones (rodamiento, alimentación, etc.)"
+        verbose_name="Auxilio Adicional (Deprecado)",
+        help_text="DEPRECADO - Usar auxilios_no_prestacionales"
     )
 
     # Índice de incremento para proyecciones
@@ -393,7 +421,7 @@ class PersonalLogistico(models.Model):
                 salario_base=self.salario_base,
                 factores=factor,
                 subsidio_transporte=subsidio_transporte,
-                auxilio_adicional=self.auxilio_adicional or Decimal('0'),
+                auxilio_adicional=self.total_auxilios_no_prestacionales,
                 cantidad=self.cantidad,
             )
             return resultado.costo_total
@@ -401,6 +429,14 @@ class PersonalLogistico(models.Model):
         except FactorPrestacional.DoesNotExist:
             # Si no existe factor, retornar solo salario base * cantidad
             return self.salario_base * self.cantidad
+
+    @property
+    def total_auxilios_no_prestacionales(self) -> Decimal:
+        """Suma todos los auxilios no prestacionales del JSON."""
+        if not self.auxilios_no_prestacionales:
+            # Retrocompatibilidad: usar campo antiguo si existe
+            return self.auxilio_adicional or Decimal('0')
+        return sum(Decimal(str(v)) for v in self.auxilios_no_prestacionales.values())
 
     def __str__(self):
         return f"{self.marca.nombre} - {self.nombre} ({self.cantidad})"
@@ -932,12 +968,22 @@ class PersonalAdministrativo(models.Model):
     # Para nómina
     salario_base = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, verbose_name="Salario Base")
     perfil_prestacional = models.CharField(max_length=20, choices=PERFIL_CHOICES, default='administrativo', verbose_name="Perfil")
+
+    # Auxilios no prestacionales (JSON flexible)
+    auxilios_no_prestacionales = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name="Auxilios No Prestacionales",
+        help_text="Auxilios que NO generan prestaciones. Ej: {cuota_carro: 500000, arriendo_vivienda: 800000, bono_alimentacion: 200000, rodamiento: 150000}"
+    )
+
+    # Campo legacy - deprecado, usar auxilios_no_prestacionales
     auxilio_adicional = models.DecimalField(
         max_digits=12,
         decimal_places=2,
         default=0,
-        verbose_name="Auxilio Adicional",
-        help_text="Bonos o auxilios que NO generan prestaciones (rodamiento, alimentación, etc.)"
+        verbose_name="Auxilio Adicional (Deprecado)",
+        help_text="DEPRECADO - Usar auxilios_no_prestacionales"
     )
 
     # Para honorarios
@@ -1024,7 +1070,7 @@ class PersonalAdministrativo(models.Model):
                 salario_base=self.salario_base,
                 factores=factor,
                 subsidio_transporte=subsidio_transporte,
-                auxilio_adicional=self.auxilio_adicional or Decimal('0'),
+                auxilio_adicional=self.total_auxilios_no_prestacionales,
                 cantidad=self.cantidad,
             )
             return resultado.costo_total
@@ -1032,6 +1078,14 @@ class PersonalAdministrativo(models.Model):
         except FactorPrestacional.DoesNotExist:
             # Si no existe factor, retornar solo salario base * cantidad
             return self.salario_base * self.cantidad
+
+    @property
+    def total_auxilios_no_prestacionales(self) -> Decimal:
+        """Suma todos los auxilios no prestacionales del JSON."""
+        if not self.auxilios_no_prestacionales:
+            # Retrocompatibilidad: usar campo antiguo si existe
+            return self.auxilio_adicional or Decimal('0')
+        return sum(Decimal(str(v)) for v in self.auxilios_no_prestacionales.values())
 
     def __str__(self):
         if self.marca:

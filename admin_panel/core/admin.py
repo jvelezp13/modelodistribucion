@@ -220,9 +220,9 @@ class PersonalComercialAdmin(DuplicarMixin, admin.ModelAdmin):
             'fields': ('indice_incremento',),
             'description': 'Índice usado para proyectar este costo a años futuros.'
         }),
-        ('Adicionales', {
-            'fields': ('auxilio_adicional',),
-            'classes': ('collapse',)
+        ('Auxilios No Prestacionales', {
+            'fields': ('auxilios_no_prestacionales',),
+            'description': 'Auxilios que NO generan prestaciones. Formato JSON: {"cuota_carro": 500000, "arriendo_vivienda": 800000, "bono_alimentacion": 200000, "rodamiento": 150000}'
         }),
         ('Metadata', {
             'fields': ('fecha_creacion', 'fecha_modificacion'),
@@ -295,9 +295,9 @@ class PersonalLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
         ('Información Básica', {
             'fields': ('marca', 'escenario', 'nombre', 'tipo', 'cantidad', 'salario_base', 'perfil_prestacional')
         }),
-        ('Auxilios Adicionales', {
-            'fields': ('auxilio_adicional',),
-            'description': 'Bonos o auxilios que NO generan prestaciones (rodamiento, alimentación, etc.)'
+        ('Auxilios No Prestacionales', {
+            'fields': ('auxilios_no_prestacionales',),
+            'description': 'Auxilios que NO generan prestaciones. Formato JSON: {"cuota_carro": 500000, "arriendo_vivienda": 800000, "bono_alimentacion": 200000, "rodamiento": 150000}'
         }),
         ('Asignación por Marca', {
             'fields': ('asignacion', 'porcentaje_dedicacion', 'criterio_prorrateo'),
@@ -635,8 +635,12 @@ class PersonalAdministrativoAdmin(DuplicarMixin, admin.ModelAdmin):
             'fields': ('marca', 'escenario', 'nombre', 'tipo', 'cantidad', 'tipo_contrato')
         }),
         ('Nómina', {
-            'fields': ('salario_base', 'perfil_prestacional', 'auxilio_adicional'),
-            'description': 'Diligenciar solo si tipo de contrato es Nómina. El auxilio adicional NO genera prestaciones.'
+            'fields': ('salario_base', 'perfil_prestacional'),
+            'description': 'Diligenciar solo si tipo de contrato es Nómina.'
+        }),
+        ('Auxilios No Prestacionales', {
+            'fields': ('auxilios_no_prestacionales',),
+            'description': 'Auxilios que NO generan prestaciones. Formato JSON: {"cuota_carro": 500000, "arriendo_vivienda": 800000, "bono_alimentacion": 200000, "rodamiento": 150000}'
         }),
         ('Honorarios', {
             'fields': ('honorarios_mensuales',),
