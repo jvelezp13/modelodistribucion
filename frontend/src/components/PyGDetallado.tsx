@@ -56,7 +56,8 @@ export default function PyGDetallado({ marca: marcaProp, escenarioId, marcaId, o
       setLoadingMarca(true);
       setErrorMarca(null);
       try {
-        const result = await apiClient.ejecutarSimulacion([marcaId], escenarioId);
+        // Pasar operacionIds si están definidas para filtrar por operación
+        const result = await apiClient.ejecutarSimulacion([marcaId], escenarioId, operacionIds);
         if (result.marcas && result.marcas.length > 0) {
           setMarcaData(result.marcas[0]);
         } else {
@@ -71,7 +72,7 @@ export default function PyGDetallado({ marca: marcaProp, escenarioId, marcaId, o
     };
 
     cargarMarca();
-  }, [marcaProp, marcaId, escenarioId]);
+  }, [marcaProp, marcaId, escenarioId, operacionIds]);
 
   // Usar marca de prop o del estado
   const marca = marcaData;
@@ -332,7 +333,9 @@ export default function PyGDetallado({ marca: marcaProp, escenarioId, marcaId, o
   const ingresosPorVentas = obtenerVentasMes();
 
   // ICA se calcula sobre ventas y va en Costos Administrativos (es gasto deducible)
-  const impuestoICA = ingresosPorVentas * tasaICA;
+  // Si el backend envía ica_total (calculado desde MarcaOperacion.venta_proyectada), usarlo
+  // Si no, calcular localmente usando la tasa ponderada (compatibilidad hacia atrás)
+  const impuestoICA = marca?.ica_total !== undefined ? marca.ica_total : (ingresosPorVentas * tasaICA);
 
   // Total Administrativo incluye ICA
   const totalAdministrativo = subtotalAdministrativoPersonal + subtotalAdministrativoGastos + impuestoICA;
@@ -1081,11 +1084,24 @@ export default function PyGDetallado({ marca: marcaProp, escenarioId, marcaId, o
 
           {/* ICA - Impuesto de Industria y Comercio (gasto deducible) */}
           {impuestoICA > 0 && (
-            <LineaItem
-              titulo={`ICA - Industria y Comercio (${(tasaICA * 100).toFixed(2)}% s/ ventas)`}
-              valor={impuestoICA}
-              indent={1}
-            />
+            <>
+              <LineaItem
+                titulo={`ICA - Industria y Comercio (${(tasaICA * 100).toFixed(2)}% s/ ventas)`}
+                valor={impuestoICA}
+                indent={1}
+              />
+              {/* Desglose por operación si está disponible */}
+              {marca?.ica_por_operacion && marca.ica_por_operacion.length > 1 && (
+                <div className="pl-8 text-[10px] text-gray-500 pb-1">
+                  {marca.ica_por_operacion.map((op) => (
+                    <div key={op.operacion_id} className="flex justify-between">
+                      <span>{op.operacion_nombre} ({op.tasa_ica.toFixed(2)}%)</span>
+                      <span>{formatCurrency(op.ica_calculado)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
           )}
 
           <LineaItem titulo="Total Costos Administrativos" valor={totalAdministrativo} bold />

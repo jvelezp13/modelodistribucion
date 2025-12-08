@@ -923,27 +923,41 @@ def listar_operaciones(escenario) -> List[Dict]:
     """
     Lista todas las operaciones de un escenario con información básica.
 
+    Incluye:
+    - tasa_ica: Tasa de ICA de la operación (porcentaje 0-100)
+    - venta_total: Suma de venta_proyectada de todas las MarcaOperacion
+
     Args:
         escenario: Escenario activo
 
     Returns:
         Lista de Dict con información de cada operación
     """
-    from core.models import Operacion
+    from core.models import Operacion, MarcaOperacion
+    from django.db.models import Sum
 
     operaciones = Operacion.objects.filter(
         escenario=escenario,
         activa=True
     ).order_by('nombre')
 
-    return [
-        {
+    resultado = []
+    for op in operaciones:
+        # Calcular venta total desde MarcaOperacion.venta_proyectada
+        venta_total = MarcaOperacion.objects.filter(
+            operacion=op,
+            activo=True
+        ).aggregate(total=Sum('venta_proyectada'))['total'] or Decimal('0')
+
+        resultado.append({
             'id': op.id,
             'nombre': op.nombre,
             'codigo': op.codigo,
             'municipio_base': op.municipio_base.nombre if op.municipio_base else None,
             'cantidad_marcas': op.marcas_asociadas.filter(activo=True).count(),
             'cantidad_zonas': op.zonas.filter(activo=True).count(),
-        }
-        for op in operaciones
-    ]
+            'tasa_ica': float(op.tasa_ica or Decimal('0')),  # Porcentaje 0-100
+            'venta_total': float(venta_total),
+        })
+
+    return resultado

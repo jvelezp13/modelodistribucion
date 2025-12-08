@@ -178,6 +178,7 @@ class MarcaOperacionInline(admin.TabularInline):
     model = MarcaOperacion
     extra = 1
     autocomplete_fields = ['marca']
+    fields = ['marca', 'venta_proyectada', 'participacion_ventas', 'activo']
     readonly_fields = ['participacion_ventas']
 
 
@@ -231,7 +232,7 @@ class MarcaOperacionAdmin(admin.ModelAdmin):
     Admin para la relación Marca-Operación.
     Permite gestionar qué marcas operan en cada operación.
     """
-    list_display = ('marca', 'operacion', 'escenario_display', 'participacion_ventas', 'activo')
+    list_display = ('marca', 'operacion', 'escenario_display', 'venta_proyectada', 'participacion_ventas', 'activo')
     list_filter = ('operacion__escenario', 'operacion', 'marca', 'activo')
     search_fields = ('marca__nombre', 'operacion__nombre', 'operacion__escenario__nombre')
     readonly_fields = ('participacion_ventas', 'fecha_creacion', 'fecha_modificacion')
@@ -241,9 +242,13 @@ class MarcaOperacionAdmin(admin.ModelAdmin):
         ('Relación', {
             'fields': ('marca', 'operacion', 'activo')
         }),
+        ('Ventas', {
+            'fields': ('venta_proyectada',),
+            'description': 'Venta mensual proyectada de esta marca en esta operación'
+        }),
         ('Participación', {
             'fields': ('participacion_ventas',),
-            'description': 'Este campo se calcula automáticamente basado en las ventas de las zonas.'
+            'description': 'Este campo se calcula automáticamente basado en las ventas.'
         }),
         ('Metadata', {
             'fields': ('fecha_creacion', 'fecha_modificacion'),

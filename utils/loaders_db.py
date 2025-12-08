@@ -213,7 +213,7 @@ class DataLoaderDB:
 
                 data = {
                     'tipo': p.tipo,
-                    'nombre': p.nombre if hasattr(p, 'nombre') else '',  # ⭐ NUEVO campo
+                    'nombre': p.nombre if hasattr(p, 'nombre') else '',
                     'cantidad': p.cantidad,
                     'salario_base': float(p.salario_base),
                     'perfil_prestacional': p.perfil_prestacional,
@@ -221,7 +221,12 @@ class DataLoaderDB:
                     'auxilios_no_prestacionales': p.auxilios_no_prestacionales or {},
                     'porcentaje_dedicacion': float(p.porcentaje_dedicacion) if p.porcentaje_dedicacion else None,
                     'criterio_prorrateo': p.criterio_prorrateo,
-                    'costo_mensual_calculado': float(p.calcular_costo_mensual()),  # ⭐ USAR método del modelo
+                    'costo_mensual_calculado': float(p.calcular_costo_mensual()),
+                    # Campos de operación para distribución por centro de costos
+                    'operacion_id': p.operacion_id,
+                    'operacion_nombre': p.operacion.nombre if p.operacion else None,
+                    'tipo_asignacion_operacion': p.tipo_asignacion_operacion,
+                    'criterio_prorrateo_operacion': p.criterio_prorrateo_operacion,
                 }
 
                 logger.info(f"[DEBUG] Agregando {p.tipo}: cantidad={p.cantidad}")
@@ -246,6 +251,11 @@ class DataLoaderDB:
                     'valor_mensual': float(gasto.valor_mensual),
                     'asignacion': gasto.asignacion,
                     'criterio_prorrateo': gasto.criterio_prorrateo if gasto.asignacion == 'compartido' else None,
+                    # Campos de operación para distribución por centro de costos
+                    'operacion_id': gasto.operacion_id,
+                    'operacion_nombre': gasto.operacion.nombre if gasto.operacion else None,
+                    'tipo_asignacion_operacion': gasto.tipo_asignacion_operacion,
+                    'criterio_prorrateo_operacion': gasto.criterio_prorrateo_operacion,
                 })
 
             logger.info(f"[DEBUG] Gastos comerciales cargados: {len(gastos_comerciales)}")
@@ -298,6 +308,11 @@ class DataLoaderDB:
                     'tipo_combustible': v.tipo_combustible,
                     'consumo_galon_km': float(v.consumo_galon_km) if v.consumo_galon_km else 0,
                     'esquema': v.esquema,
+                    # Campos de operación para distribución por centro de costos
+                    'operacion_id': v.operacion_id,
+                    'operacion_nombre': v.operacion.nombre if v.operacion else None,
+                    'tipo_asignacion_operacion': v.tipo_asignacion_operacion,
+                    'criterio_prorrateo_operacion': v.criterio_prorrateo_operacion,
                 }
                 vehiculos_dict[v.esquema].append(vehiculo_data)
 
@@ -312,7 +327,7 @@ class DataLoaderDB:
                     personal_dict[tipo_key] = []
 
                 personal_dict[tipo_key].append({
-                    'nombre': p.nombre if hasattr(p, 'nombre') else '',  # ⭐ NUEVO campo
+                    'nombre': p.nombre if hasattr(p, 'nombre') else '',
                     'cantidad': p.cantidad,
                     'salario_base': float(p.salario_base),
                     'perfil_prestacional': p.perfil_prestacional,
@@ -320,7 +335,12 @@ class DataLoaderDB:
                     'auxilios_no_prestacionales': p.auxilios_no_prestacionales or {},
                     'porcentaje_dedicacion': float(p.porcentaje_dedicacion) if p.porcentaje_dedicacion else None,
                     'criterio_prorrateo': p.criterio_prorrateo,
-                    'costo_mensual_calculado': float(p.calcular_costo_mensual()),  # ⭐ USAR método del modelo
+                    'costo_mensual_calculado': float(p.calcular_costo_mensual()),
+                    # Campos de operación para distribución por centro de costos
+                    'operacion_id': p.operacion_id,
+                    'operacion_nombre': p.operacion.nombre if p.operacion else None,
+                    'tipo_asignacion_operacion': p.tipo_asignacion_operacion,
+                    'criterio_prorrateo_operacion': p.criterio_prorrateo_operacion,
                 })
 
             # Cargar gastos logísticos
@@ -347,6 +367,11 @@ class DataLoaderDB:
                     'valor_mensual': float(gasto.valor_mensual),
                     'asignacion': gasto.asignacion,
                     'criterio_prorrateo': gasto.criterio_prorrateo if gasto.asignacion == 'compartido' else None,
+                    # Campos de operación para distribución por centro de costos
+                    'operacion_id': gasto.operacion_id,
+                    'operacion_nombre': gasto.operacion.nombre if gasto.operacion else None,
+                    'tipo_asignacion_operacion': gasto.tipo_asignacion_operacion,
+                    'criterio_prorrateo_operacion': gasto.criterio_prorrateo_operacion,
                 })
 
             logger.info(f"[DEBUG] Gastos logísticos cargados: {len(gastos_logisticos)}")
@@ -428,6 +453,11 @@ class DataLoaderDB:
                             'asignacion': p.asignacion,
                             'criterio_prorrateo': p.criterio_prorrateo,
                             'costo_mensual_calculado': float(p.calcular_costo_mensual()),
+                            # Campos de operación para distribución por centro de costos
+                            'operacion_id': p.operacion_id,
+                            'operacion_nombre': p.operacion.nombre if p.operacion else None,
+                            'tipo_asignacion_operacion': p.tipo_asignacion_operacion,
+                            'criterio_prorrateo_operacion': p.criterio_prorrateo_operacion,
                         })
                     except Exception as e:
                         logger.warning(f"Error procesando personal administrativo {p.id}: {e}")
@@ -448,6 +478,11 @@ class DataLoaderDB:
                             'valor_mensual': float(gasto.valor_mensual),
                             'asignacion': gasto.asignacion,
                             'criterio_prorrateo': gasto.criterio_prorrateo if gasto.asignacion == 'compartido' else None,
+                            # Campos de operación para distribución por centro de costos
+                            'operacion_id': gasto.operacion_id,
+                            'operacion_nombre': gasto.operacion.nombre if gasto.operacion else None,
+                            'tipo_asignacion_operacion': gasto.tipo_asignacion_operacion,
+                            'criterio_prorrateo_operacion': gasto.criterio_prorrateo_operacion,
                         })
                     except Exception as e:
                         logger.warning(f"Error procesando gasto administrativo {gasto.id}: {e}")
@@ -533,6 +568,11 @@ class DataLoaderDB:
                     'honorarios_mensuales': float(p.honorarios_mensuales) if p.honorarios_mensuales else 0,
                     'criterio_prorrateo': p.criterio_prorrateo,
                     'costo_mensual_calculado': float(p.calcular_costo_mensual()),
+                    # Campos de operación para distribución por centro de costos
+                    'operacion_id': p.operacion_id,
+                    'operacion_nombre': p.operacion.nombre if p.operacion else None,
+                    'tipo_asignacion_operacion': p.tipo_asignacion_operacion,
+                    'criterio_prorrateo_operacion': p.criterio_prorrateo_operacion,
                 }
 
             # Cargar gastos administrativos compartidos
@@ -546,6 +586,11 @@ class DataLoaderDB:
                     'valor_mensual': float(gasto.valor_mensual),
                     'asignacion': gasto.asignacion,
                     'criterio_prorrateo': gasto.criterio_prorrateo,
+                    # Campos de operación para distribución por centro de costos
+                    'operacion_id': gasto.operacion_id,
+                    'operacion_nombre': gasto.operacion.nombre if gasto.operacion else None,
+                    'tipo_asignacion_operacion': gasto.tipo_asignacion_operacion,
+                    'criterio_prorrateo_operacion': gasto.criterio_prorrateo_operacion,
                 })
 
             logger.info(f"[DEBUG] Personal administrativo compartido: {len(personal_administrativo)}")

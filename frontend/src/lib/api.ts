@@ -24,12 +24,10 @@ export interface Operacion {
   nombre: string;
   codigo: string;
   activa: boolean;
-  color: string;
-  tasa_ica: number;
-  municipio_base?: {
-    id: number;
-    nombre: string;
-  };
+  color?: string;
+  tasa_ica: number;  // Porcentaje 0-100
+  venta_total?: number;  // Suma de venta_proyectada de MarcaOperacion
+  municipio_base?: string;  // Nombre del municipio base
   cantidad_zonas: number;
   cantidad_marcas: number;
 }
@@ -114,6 +112,16 @@ export interface ConfiguracionDescuentos {
   aplica_cesantia_comercial: boolean;  // Art. 1324 C.Co. - 1/12 de ingresos del agente
 }
 
+// ICA por operación individual
+export interface IcaPorOperacion {
+  operacion_id: number;
+  operacion_nombre: string;
+  operacion_codigo: string;
+  venta_proyectada: number;
+  tasa_ica: number;  // Porcentaje 0-100
+  ica_calculado: number;
+}
+
 export interface Marca {
   marca_id: string;
   nombre: string;
@@ -121,7 +129,10 @@ export interface Marca {
   ventas_netas_mensuales?: number;
   ventas_mensuales_desglose?: VentasMensualesDesglose;
   configuracion_descuentos?: ConfiguracionDescuentos;
-  tasa_ica?: number;  // Tasa ICA ponderada por zonas (decimal 0-1)
+  // ICA - Nuevo modelo por operaciones
+  tasa_ica?: number;  // Tasa ICA ponderada (decimal 0-1)
+  ica_por_operacion?: IcaPorOperacion[];  // Desglose por operación
+  ica_total?: number;  // Suma total de ICA
   // Campos legacy (pueden eliminarse después)
   descuento_pie_factura?: number;
   rebate?: number;
@@ -206,6 +217,7 @@ export interface SimulacionResult {
   marcas: Marca[];
   rubros_compartidos: Rubro[];
   metadata: Record<string, any>;
+  operaciones_filtradas?: number[];  // IDs de operaciones filtradas (si aplica)
 }
 
 export interface VentasData {
@@ -342,15 +354,33 @@ class APIClient {
 
   /**
    * Ejecuta la simulación para las marcas seleccionadas
+   * @param marcas - Lista de IDs de marcas a simular
+   * @param escenarioId - ID del escenario (opcional)
+   * @param operacionIds - Lista de IDs de operaciones para filtrar (opcional)
    */
-  async ejecutarSimulacion(marcas: string[], escenarioId?: number): Promise<SimulacionResult> {
-    let url = '/api/simulate';
+  async ejecutarSimulacion(
+    marcas: string[],
+    escenarioId?: number,
+    operacionIds?: number[]
+  ): Promise<SimulacionResult> {
+    const params = new URLSearchParams();
     if (escenarioId) {
-      url += `?escenario_id=${escenarioId}`;
+      params.append('escenario_id', escenarioId.toString());
     }
+    const queryString = params.toString();
+    const url = `/api/simulate${queryString ? `?${queryString}` : ''}`;
+
+    // El body incluye marcas y operacion_ids
+    const body: { marcas_seleccionadas: string[]; operacion_ids?: number[] } = {
+      marcas_seleccionadas: marcas,
+    };
+    if (operacionIds && operacionIds.length > 0) {
+      body.operacion_ids = operacionIds;
+    }
+
     return this.request<SimulacionResult>(url, {
       method: 'POST',
-      body: JSON.stringify(marcas),
+      body: JSON.stringify(body),
     });
   }
 

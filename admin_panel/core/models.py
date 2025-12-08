@@ -195,6 +195,14 @@ class MarcaOperacion(models.Model):
         related_name='marcas_asociadas',
         verbose_name="Operación"
     )
+    venta_proyectada = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0)],
+        verbose_name="Venta Proyectada Mensual",
+        help_text="Venta mensual proyectada de esta marca en esta operación"
+    )
     participacion_ventas = models.DecimalField(
         max_digits=5,
         decimal_places=2,

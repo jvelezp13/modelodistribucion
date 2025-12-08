@@ -5,10 +5,18 @@ Expone endpoints REST para consumir el simulador existente.
 """
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import sys
 from pathlib import Path
 import logging
+
+
+# Modelos Pydantic para request bodies
+class SimulacionRequest(BaseModel):
+    marcas_seleccionadas: List[str]
+    escenario_id: Optional[int] = None
+    operacion_ids: Optional[List[int]] = None
 
 # Configurar paths
 root_path = Path(__file__).parent.parent
@@ -76,21 +84,24 @@ def listar_escenarios() -> List[Dict[str, Any]]:
 
 
 @app.post("/api/simulate")
-def ejecutar_simulacion(
-    marcas_seleccionadas: List[str],
-    escenario_id: Optional[int] = None
-) -> Dict[str, Any]:
+def ejecutar_simulacion(request: SimulacionRequest) -> Dict[str, Any]:
     """
     Ejecuta la simulación para las marcas seleccionadas.
 
-    Args:
-        marcas_seleccionadas: Lista de IDs de marcas a simular
-        escenario_id: ID del escenario (opcional)
+    Request body:
+        - marcas_seleccionadas: Lista de IDs de marcas a simular
+        - escenario_id: ID del escenario (opcional)
+        - operacion_ids: Lista de IDs de operaciones para filtrar (opcional)
 
     Returns:
         Resultado de la simulación serializado con desglose mensual de ventas
+        y cálculo de ICA por operación
     """
     try:
+        marcas_seleccionadas = request.marcas_seleccionadas
+        escenario_id = request.escenario_id
+        operacion_ids = request.operacion_ids
+
         if not marcas_seleccionadas:
             raise HTTPException(status_code=400, detail="Debe seleccionar al menos una marca")
 
@@ -135,11 +146,19 @@ def ejecutar_simulacion(
                     'aplica_cesantia_comercial': False,
                 }
 
-        # Agregar tasa ICA ponderada por marca (basada en las operaciones de sus zonas)
-        tasas_ica = obtener_tasa_ica_ponderada_por_marca(marcas_seleccionadas, escenario_id)
+        # Agregar tasa ICA y desglose por operación
+        ica_resultado = calcular_ica_por_operaciones(
+            marcas_seleccionadas, escenario_id, operacion_ids
+        )
         for marca_data in resultado_dict['marcas']:
             marca_id = marca_data['marca_id']
-            marca_data['tasa_ica'] = tasas_ica.get(marca_id, 0.0)
+            marca_ica = ica_resultado.get(marca_id, {})
+            marca_data['tasa_ica'] = marca_ica.get('tasa_ponderada', 0.0)
+            marca_data['ica_por_operacion'] = marca_ica.get('por_operacion', [])
+            marca_data['ica_total'] = marca_ica.get('ica_total', 0.0)
+
+        # Agregar operaciones filtradas al resultado
+        resultado_dict['operaciones_filtradas'] = operacion_ids or []
 
         logger.info(f"Simulación completada exitosamente")
         return resultado_dict
@@ -250,65 +269,125 @@ def obtener_configuracion_descuentos_por_marca(
         return {}
 
 
-def obtener_tasa_ica_ponderada_por_marca(
+def calcular_ica_por_operaciones(
     marcas_ids: List[str],
-    escenario_id: Optional[int] = None
-) -> Dict[str, float]:
+    escenario_id: Optional[int] = None,
+    operacion_ids: Optional[List[int]] = None
+) -> Dict[str, Dict[str, Any]]:
     """
-    Calcula la tasa ICA ponderada para cada marca basada en las operaciones de sus zonas.
+    Calcula el ICA para cada marca basado en las operaciones (filtradas o todas).
 
-    La tasa se pondera por la participación de ventas de cada zona.
+    Usa MarcaOperacion.venta_proyectada como fuente de ventas por operación.
 
     Returns:
-        Dict con marca_id como key y tasa_ica_ponderada (decimal 0-1) como value
+        Dict con marca_id como key y:
+        - tasa_ponderada: Tasa ICA ponderada (decimal 0-1)
+        - por_operacion: Lista de {operacion_id, operacion_nombre, venta, tasa_ica, ica_calculado}
+        - ica_total: Suma total de ICA
+        - venta_total: Suma total de ventas
     """
     try:
-        from core.models import Marca, Zona
+        from core.models import Marca, MarcaOperacion, Operacion, Escenario
         from decimal import Decimal
 
         resultado = {}
+
+        # Obtener escenario si se especificó
+        escenario = None
+        if escenario_id:
+            try:
+                escenario = Escenario.objects.get(pk=escenario_id)
+            except Escenario.DoesNotExist:
+                pass
 
         for marca_id in marcas_ids:
             try:
                 marca = Marca.objects.get(marca_id=marca_id)
 
-                # Obtener zonas de la marca con sus operaciones
-                zonas = Zona.objects.filter(
+                # Filtro base por marca
+                mo_qs = MarcaOperacion.objects.filter(
                     marca=marca,
                     activo=True
                 ).select_related('operacion')
 
-                if not zonas.exists():
-                    resultado[marca_id] = 0.0
+                # Filtrar por escenario si se especificó
+                if escenario:
+                    mo_qs = mo_qs.filter(operacion__escenario=escenario)
+
+                # Filtrar por operaciones si se especificaron
+                if operacion_ids:
+                    mo_qs = mo_qs.filter(operacion_id__in=operacion_ids)
+
+                if not mo_qs.exists():
+                    resultado[marca_id] = {
+                        'tasa_ponderada': 0.0,
+                        'por_operacion': [],
+                        'ica_total': 0.0,
+                        'venta_total': 0.0,
+                    }
                     continue
 
-                # Calcular tasa ICA ponderada por participación de ventas
+                # Calcular ICA por operación
+                por_operacion = []
+                ica_total = Decimal('0')
+                venta_total = Decimal('0')
+
+                for mo in mo_qs:
+                    venta = mo.venta_proyectada or Decimal('0')
+                    tasa_ica = mo.operacion.tasa_ica or Decimal('0')  # Ya en porcentaje 0-100
+                    ica = venta * (tasa_ica / Decimal('100'))
+
+                    por_operacion.append({
+                        'operacion_id': mo.operacion.id,
+                        'operacion_nombre': mo.operacion.nombre,
+                        'operacion_codigo': mo.operacion.codigo,
+                        'venta_proyectada': float(venta),
+                        'tasa_ica': float(tasa_ica),  # Porcentaje 0-100
+                        'ica_calculado': float(ica),
+                    })
+
+                    ica_total += ica
+                    venta_total += venta
+
+                # Calcular tasa ponderada (como decimal 0-1 para compatibilidad)
                 tasa_ponderada = Decimal('0')
-                total_participacion = Decimal('0')
+                if venta_total > 0:
+                    tasa_ponderada = ica_total / venta_total
 
-                for zona in zonas:
-                    participacion = zona.participacion_ventas or Decimal('0')
-                    total_participacion += participacion
-
-                    if zona.operacion and zona.operacion.tasa_ica:
-                        # tasa_ica está en porcentaje (0-100), convertir a decimal
-                        tasa_zona = zona.operacion.tasa_ica / Decimal('100')
-                        tasa_ponderada += participacion * tasa_zona
-
-                # Normalizar por total de participación (debería ser 100, pero por seguridad)
-                if total_participacion > 0:
-                    tasa_ponderada = tasa_ponderada / total_participacion * Decimal('100')
-
-                resultado[marca_id] = float(tasa_ponderada)
+                resultado[marca_id] = {
+                    'tasa_ponderada': float(tasa_ponderada),
+                    'por_operacion': por_operacion,
+                    'ica_total': float(ica_total),
+                    'venta_total': float(venta_total),
+                }
 
             except Marca.DoesNotExist:
-                resultado[marca_id] = 0.0
+                resultado[marca_id] = {
+                    'tasa_ponderada': 0.0,
+                    'por_operacion': [],
+                    'ica_total': 0.0,
+                    'venta_total': 0.0,
+                }
 
         return resultado
 
     except Exception as e:
-        logger.warning(f"Error calculando tasa ICA ponderada: {e}")
+        logger.warning(f"Error calculando ICA por operaciones: {e}")
         return {}
+
+
+def obtener_tasa_ica_ponderada_por_marca(
+    marcas_ids: List[str],
+    escenario_id: Optional[int] = None
+) -> Dict[str, float]:
+    """
+    DEPRECATED: Usar calcular_ica_por_operaciones() que usa MarcaOperacion.venta_proyectada.
+
+    Calcula la tasa ICA ponderada para cada marca basada en las zonas.
+    Mantenida para compatibilidad.
+    """
+    resultado = calcular_ica_por_operaciones(marcas_ids, escenario_id)
+    return {marca_id: data.get('tasa_ponderada', 0.0) for marca_id, data in resultado.items()}
 
 
 @app.get("/api/lejanias/comercial")
