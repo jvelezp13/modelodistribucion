@@ -204,7 +204,7 @@ class OperacionAdmin(admin.ModelAdmin):
         }),
         ('Impuestos', {
             'fields': ('tasa_ica',),
-            'description': 'Tasa de ICA (Industria y Comercio) para esta operación. Ej: 0.007 para 0.7%'
+            'description': 'Tasa de ICA (Industria y Comercio) para esta operación'
         }),
         ('Notas', {
             'fields': ('notas',),

@@ -156,12 +156,12 @@ class Operacion(models.Model):
 
     # Tasa de ICA (Industria y Comercio) para esta operación
     tasa_ica = models.DecimalField(
-        max_digits=6,
-        decimal_places=4,
+        max_digits=5,
+        decimal_places=2,
         default=0,
-        validators=[MinValueValidator(0), MaxValueValidator(1)],
-        verbose_name="Tasa ICA",
-        help_text="Tasa de ICA en decimal. Ej: 0.007 para 0.7%"
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        verbose_name="Tasa ICA (%)",
+        help_text="Ingrese en formato 0-100 (ej: 33 para 33%, 0.41 para 0.41%)"
     )
 
     fecha_creacion = models.DateTimeField(auto_now_add=True)
