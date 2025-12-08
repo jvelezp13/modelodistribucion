@@ -178,8 +178,8 @@ class MarcaOperacionInline(admin.TabularInline):
     model = MarcaOperacion
     extra = 1
     autocomplete_fields = ['marca']
-    fields = ['marca', 'venta_proyectada', 'participacion_ventas', 'activo']
-    readonly_fields = ['participacion_ventas']
+    fields = ['marca', 'participacion_ventas', 'venta_proyectada', 'activo']
+    readonly_fields = ['venta_proyectada']
 
 
 @admin.register(Operacion, site=dxv_admin_site)
@@ -230,25 +230,24 @@ class OperacionAdmin(admin.ModelAdmin):
 class MarcaOperacionAdmin(admin.ModelAdmin):
     """
     Admin para la relación Marca-Operación.
-    Permite gestionar qué marcas operan en cada operación.
+
+    Flujo de ventas:
+    - Usuario configura participacion_ventas (% de la marca)
+    - venta_proyectada se calcula automáticamente desde ProyeccionVentasConfig
     """
-    list_display = ('marca', 'operacion', 'escenario_display', 'venta_proyectada', 'participacion_ventas', 'activo')
+    list_display = ('marca', 'operacion', 'escenario_display', 'participacion_ventas', 'venta_proyectada_fmt', 'activo')
     list_filter = ('operacion__escenario', 'operacion', 'marca', 'activo')
     search_fields = ('marca__nombre', 'operacion__nombre', 'operacion__escenario__nombre')
-    readonly_fields = ('participacion_ventas', 'fecha_creacion', 'fecha_modificacion')
+    readonly_fields = ('venta_proyectada', 'fecha_creacion', 'fecha_modificacion')
     autocomplete_fields = ['marca', 'operacion']
 
     fieldsets = (
         ('Relación', {
             'fields': ('marca', 'operacion', 'activo')
         }),
-        ('Ventas', {
-            'fields': ('venta_proyectada',),
-            'description': 'Venta mensual proyectada de esta marca en esta operación'
-        }),
-        ('Participación', {
-            'fields': ('participacion_ventas',),
-            'description': 'Este campo se calcula automáticamente basado en las ventas.'
+        ('Distribución de Ventas', {
+            'fields': ('participacion_ventas', 'venta_proyectada'),
+            'description': 'Configure el % de ventas de la marca en esta operación. La venta se calcula automáticamente desde Proyección de Ventas.'
         }),
         ('Metadata', {
             'fields': ('fecha_creacion', 'fecha_modificacion'),
@@ -259,6 +258,13 @@ class MarcaOperacionAdmin(admin.ModelAdmin):
     def escenario_display(self, obj):
         return obj.operacion.escenario.nombre
     escenario_display.short_description = 'Escenario'
+
+    def venta_proyectada_fmt(self, obj):
+        if obj.venta_proyectada:
+            return f"${obj.venta_proyectada:,.0f}"
+        return "$0"
+    venta_proyectada_fmt.short_description = "Venta Calculada"
+    venta_proyectada_fmt.admin_order_field = "venta_proyectada"
 
 
 @admin.register(Marca, site=dxv_admin_site)
@@ -1340,17 +1346,17 @@ class ZonaMunicipioInline(admin.TabularInline):
     model = ZonaMunicipio
     extra = 1
     autocomplete_fields = ['municipio']
-    fields = ('municipio', 'visitas_por_periodo', 'venta_proyectada', 'participacion_ventas')
-    readonly_fields = ('participacion_ventas',)
+    fields = ('municipio', 'visitas_por_periodo', 'participacion_ventas', 'venta_proyectada')
+    readonly_fields = ('venta_proyectada',)
 
 
 @admin.register(Zona, site=dxv_admin_site)
 class ZonaAdmin(DuplicarMixin, admin.ModelAdmin):
     """Admin para Zonas Comerciales (vendedores)"""
-    list_display = ('nombre', 'marca', 'operacion', 'vendedor', 'venta_proyectada_fmt', 'participacion_ventas_fmt', 'tipo_vehiculo_comercial', 'frecuencia', 'requiere_pernocta', 'activo')
+    list_display = ('nombre', 'marca', 'operacion', 'vendedor', 'participacion_ventas_fmt', 'venta_proyectada_fmt', 'tipo_vehiculo_comercial', 'frecuencia', 'requiere_pernocta', 'activo')
     list_filter = ('marca', 'escenario', 'operacion', 'frecuencia', 'requiere_pernocta', 'tipo_vehiculo_comercial', 'activo')
     search_fields = ['nombre', 'vendedor__nombre', 'marca__nombre', 'operacion__nombre']
-    readonly_fields = ('fecha_creacion', 'fecha_modificacion')
+    readonly_fields = ('venta_proyectada', 'fecha_creacion', 'fecha_modificacion')
     autocomplete_fields = ['vendedor', 'municipio_base_vendedor', 'operacion']
     inlines = [ZonaMunicipioInline]
     actions = ['duplicar_registros']
@@ -1362,6 +1368,10 @@ class ZonaAdmin(DuplicarMixin, admin.ModelAdmin):
         ('Asignación', {
             'fields': ('marca', 'escenario', 'operacion', 'vendedor', 'municipio_base_vendedor'),
             'description': 'La Operación determina el centro de costos y la tasa de ICA'
+        }),
+        ('Distribución de Ventas', {
+            'fields': ('participacion_ventas', 'venta_proyectada'),
+            'description': 'Configure el % de ventas de la operación que corresponden a esta zona. La venta se calcula automáticamente.'
         }),
         ('Configuración Comercial', {
             'fields': ('tipo_vehiculo_comercial', 'frecuencia'),
