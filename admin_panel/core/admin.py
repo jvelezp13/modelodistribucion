@@ -1342,11 +1342,11 @@ class ZonaMunicipioInline(admin.TabularInline):
 @admin.register(Zona, site=dxv_admin_site)
 class ZonaAdmin(DuplicarMixin, admin.ModelAdmin):
     """Admin para Zonas Comerciales (vendedores)"""
-    list_display = ('nombre', 'marca', 'vendedor', 'venta_proyectada_fmt', 'participacion_ventas_fmt', 'tipo_vehiculo_comercial', 'frecuencia', 'requiere_pernocta', 'activo')
-    list_filter = ('marca', 'escenario', 'frecuencia', 'requiere_pernocta', 'tipo_vehiculo_comercial', 'activo')
-    search_fields = ['nombre', 'vendedor__nombre', 'marca__nombre']
+    list_display = ('nombre', 'marca', 'operacion', 'vendedor', 'venta_proyectada_fmt', 'participacion_ventas_fmt', 'tipo_vehiculo_comercial', 'frecuencia', 'requiere_pernocta', 'activo')
+    list_filter = ('marca', 'escenario', 'operacion', 'frecuencia', 'requiere_pernocta', 'tipo_vehiculo_comercial', 'activo')
+    search_fields = ['nombre', 'vendedor__nombre', 'marca__nombre', 'operacion__nombre']
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
-    autocomplete_fields = ['vendedor', 'municipio_base_vendedor']
+    autocomplete_fields = ['vendedor', 'municipio_base_vendedor', 'operacion']
     inlines = [ZonaMunicipioInline]
     actions = ['duplicar_registros']
 
@@ -1355,7 +1355,8 @@ class ZonaAdmin(DuplicarMixin, admin.ModelAdmin):
             'fields': ('nombre', 'activo')
         }),
         ('Asignación', {
-            'fields': ('marca', 'escenario', 'vendedor', 'municipio_base_vendedor')
+            'fields': ('marca', 'escenario', 'operacion', 'vendedor', 'municipio_base_vendedor'),
+            'description': 'La Operación determina el centro de costos y la tasa de ICA'
         }),
         ('Configuración Comercial', {
             'fields': ('tipo_vehiculo_comercial', 'frecuencia'),
