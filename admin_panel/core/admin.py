@@ -319,10 +319,78 @@ class MarcaAdmin(admin.ModelAdmin):
     total_vehiculos.short_description = 'Total Vehículos'
 
 
+class AuxiliosNoPrestacionalesWidget(forms.Widget):
+    """Widget para editar auxilios no prestacionales como campos individuales"""
+    template_name = 'admin/widgets/auxilios_no_prestacionales.html'
+
+    CAMPOS_AUXILIOS = [
+        ('cuota_carro', 'Cuota Carro'),
+        ('arriendo_vivienda', 'Arriendo Vivienda'),
+        ('bono_alimentacion', 'Bono Alimentación'),
+        ('rodamiento', 'Rodamiento'),
+        ('otros', 'Otros'),
+    ]
+
+    def get_context(self, name, value, attrs):
+        context = super().get_context(name, value, attrs)
+        # Parsear el valor JSON
+        if isinstance(value, str):
+            try:
+                import json
+                value = json.loads(value) if value else {}
+            except (json.JSONDecodeError, TypeError):
+                value = {}
+        elif value is None:
+            value = {}
+
+        context['widget']['campos'] = [
+            {
+                'key': key,
+                'label': label,
+                'value': value.get(key, ''),
+                'id': f'{attrs.get("id", name)}_{key}',
+                'name': f'{name}_{key}',
+            }
+            for key, label in self.CAMPOS_AUXILIOS
+        ]
+        context['widget']['hidden_name'] = name
+        return context
+
+    def value_from_datadict(self, data, files, name):
+        import json
+        result = {}
+        for key, _ in self.CAMPOS_AUXILIOS:
+            val = data.get(f'{name}_{key}', '').strip()
+            if val:
+                try:
+                    # Limpiar separadores de miles y convertir
+                    val_clean = val.replace('.', '').replace(',', '.')
+                    result[key] = float(val_clean)
+                except (ValueError, TypeError):
+                    pass
+        return json.dumps(result) if result else '{}'
+
+
+class PersonalComercialForm(forms.ModelForm):
+    """Form con campos monetarios localizados y widget de auxilios"""
+    salario_base = forms.DecimalField(
+        localize=True,
+        label="Salario Base",
+    )
+
+    class Meta:
+        model = PersonalComercial
+        fields = '__all__'
+        widgets = {
+            'auxilios_no_prestacionales': AuxiliosNoPrestacionalesWidget(),
+        }
+
+
 @admin.register(PersonalComercial, site=dxv_admin_site)
 class PersonalComercialAdmin(DuplicarMixin, admin.ModelAdmin):
+    form = PersonalComercialForm
     change_list_template = 'admin/core/change_list_with_total.html'
-    list_display = ('marca', 'nombre', 'escenario', 'tipo', 'cantidad', 'salario_base', 'costo_total_estimado', 'asignacion', 'tipo_asignacion_geo', 'indice_incremento')
+    list_display = ('marca', 'nombre', 'escenario', 'tipo', 'cantidad', 'salario_formateado', 'costo_total_estimado', 'asignacion', 'tipo_asignacion_geo', 'indice_incremento')
     list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'tipo_asignacion_geo', 'indice_incremento', 'perfil_prestacional')
     search_fields = ('marca__nombre', 'nombre')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
@@ -346,7 +414,7 @@ class PersonalComercialAdmin(DuplicarMixin, admin.ModelAdmin):
         }),
         ('Auxilios No Prestacionales', {
             'fields': ('auxilios_no_prestacionales',),
-            'description': 'Auxilios que NO generan prestaciones. Formato JSON: {"cuota_carro": 500000, "arriendo_vivienda": 800000, "bono_alimentacion": 200000, "rodamiento": 150000}'
+            'description': 'Auxilios que NO generan prestaciones sociales. Ingrese valores sin puntos de miles.'
         }),
         ('Metadata', {
             'fields': ('fecha_creacion', 'fecha_modificacion'),
@@ -354,12 +422,22 @@ class PersonalComercialAdmin(DuplicarMixin, admin.ModelAdmin):
         }),
     )
 
+    class Media:
+        js = ('admin/js/personal_condicional.js',)
+
+    def salario_formateado(self, obj):
+        return f"${obj.salario_base:,.0f}" if obj.salario_base else "-"
+    salario_formateado.short_description = 'Salario Base'
+    salario_formateado.admin_order_field = 'salario_base'
+
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)
         # Hacer campos condicionales según asignación
         if obj and obj.asignacion == 'individual':
-            form.base_fields['porcentaje_dedicacion'].required = False
-            form.base_fields['criterio_prorrateo'].required = False
+            if 'porcentaje_dedicacion' in form.base_fields:
+                form.base_fields['porcentaje_dedicacion'].required = False
+            if 'criterio_prorrateo' in form.base_fields:
+                form.base_fields['criterio_prorrateo'].required = False
         return form
 
     def costo_total_estimado(self, obj):
@@ -406,10 +484,26 @@ class PersonalComercialAdmin(DuplicarMixin, admin.ModelAdmin):
         return response
 
 
+class PersonalLogisticoForm(forms.ModelForm):
+    """Form con campos monetarios localizados y widget de auxilios"""
+    salario_base = forms.DecimalField(
+        localize=True,
+        label="Salario Base",
+    )
+
+    class Meta:
+        model = PersonalLogistico
+        fields = '__all__'
+        widgets = {
+            'auxilios_no_prestacionales': AuxiliosNoPrestacionalesWidget(),
+        }
+
+
 @admin.register(PersonalLogistico, site=dxv_admin_site)
 class PersonalLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
+    form = PersonalLogisticoForm
     change_list_template = 'admin/core/change_list_with_total.html'
-    list_display = ('marca', 'nombre', 'escenario', 'tipo', 'cantidad', 'salario_base', 'costo_total_estimado', 'asignacion', 'tipo_asignacion_geo', 'indice_incremento')
+    list_display = ('marca', 'nombre', 'escenario', 'tipo', 'cantidad', 'salario_formateado', 'costo_total_estimado', 'asignacion', 'tipo_asignacion_geo', 'indice_incremento')
     list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'tipo_asignacion_geo', 'indice_incremento', 'perfil_prestacional')
     search_fields = ('marca__nombre', 'nombre')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
@@ -421,7 +515,7 @@ class PersonalLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
         }),
         ('Auxilios No Prestacionales', {
             'fields': ('auxilios_no_prestacionales',),
-            'description': 'Auxilios que NO generan prestaciones. Formato JSON: {"cuota_carro": 500000, "arriendo_vivienda": 800000, "bono_alimentacion": 200000, "rodamiento": 150000}'
+            'description': 'Auxilios que NO generan prestaciones sociales. Ingrese valores sin puntos de miles.'
         }),
         ('Asignación por Marca', {
             'fields': ('asignacion', 'porcentaje_dedicacion', 'criterio_prorrateo'),
@@ -440,6 +534,14 @@ class PersonalLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+
+    class Media:
+        js = ('admin/js/personal_condicional.js',)
+
+    def salario_formateado(self, obj):
+        return f"${obj.salario_base:,.0f}" if obj.salario_base else "-"
+    salario_formateado.short_description = 'Salario Base'
+    salario_formateado.admin_order_field = 'salario_base'
 
     def costo_total_estimado(self, obj):
         if not obj.salario_base:
@@ -764,8 +866,30 @@ class FactorPrestacionalAdmin(DuplicarMixin, admin.ModelAdmin):
     salud_percent.admin_order_field = 'salud'
 
 
+class PersonalAdministrativoForm(forms.ModelForm):
+    """Form con campos monetarios localizados y widget de auxilios"""
+    salario_base = forms.DecimalField(
+        localize=True,
+        label="Salario Base",
+        required=False,
+    )
+    honorarios_mensuales = forms.DecimalField(
+        localize=True,
+        label="Honorarios Mensuales",
+        required=False,
+    )
+
+    class Meta:
+        model = PersonalAdministrativo
+        fields = '__all__'
+        widgets = {
+            'auxilios_no_prestacionales': AuxiliosNoPrestacionalesWidget(),
+        }
+
+
 @admin.register(PersonalAdministrativo, site=dxv_admin_site)
 class PersonalAdministrativoAdmin(DuplicarMixin, admin.ModelAdmin):
+    form = PersonalAdministrativoForm
     change_list_template = 'admin/core/change_list_with_total.html'
     list_display = ('nombre', 'marca', 'escenario', 'tipo', 'cantidad', 'asignacion', 'tipo_asignacion_geo', 'tipo_contrato', 'valor_mensual', 'costo_total_estimado', 'indice_incremento')
     list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'tipo_asignacion_geo', 'indice_incremento', 'tipo_contrato')
@@ -783,7 +907,7 @@ class PersonalAdministrativoAdmin(DuplicarMixin, admin.ModelAdmin):
         }),
         ('Auxilios No Prestacionales', {
             'fields': ('auxilios_no_prestacionales',),
-            'description': 'Auxilios que NO generan prestaciones. Formato JSON: {"cuota_carro": 500000, "arriendo_vivienda": 800000, "bono_alimentacion": 200000, "rodamiento": 150000}'
+            'description': 'Auxilios que NO generan prestaciones sociales. Ingrese valores sin puntos de miles.'
         }),
         ('Honorarios', {
             'fields': ('honorarios_mensuales',),
@@ -806,6 +930,9 @@ class PersonalAdministrativoAdmin(DuplicarMixin, admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+
+    class Media:
+        js = ('admin/js/personal_condicional.js',)
 
     def valor_mensual(self, obj):
         if obj.tipo_contrato == 'nomina' and obj.salario_base:

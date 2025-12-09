@@ -1,0 +1,18 @@
+<div class="auxilios-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+    {% for campo in widget.campos %}
+    <div class="auxilio-item">
+        <label for="{{ campo.id }}" style="display: block; font-size: 11px; color: #666; margin-bottom: 2px;">
+            {{ campo.label }}:
+        </label>
+        <input type="text"
+               name="{{ campo.name }}"
+               id="{{ campo.id }}"
+               value="{{ campo.value }}"
+               style="width: 100%; padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px;"
+               placeholder="0">
+    </div>
+    {% endfor %}
+</div>
+<p class="help" style="font-size: 11px; color: #666; margin-top: 8px;">
+    Ingrese valores numéricos. Deje vacío o en 0 los que no apliquen.
+</p>
