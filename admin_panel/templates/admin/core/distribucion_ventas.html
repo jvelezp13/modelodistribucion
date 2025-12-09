@@ -868,12 +868,16 @@
         if (btnGuardarOperaciones) {
             btnGuardarOperaciones.onclick = function() {
                 var items = [];
-                document.querySelectorAll('#tabla-operaciones .participacion-input').forEach(function(input) {
+                var inputs = document.querySelectorAll('#tabla-operaciones .participacion-input');
+                for (var i = 0; i < inputs.length; i++) {
                     items.push({
-                        id: parseInt(input.dataset.id),
-                        participacion: parseFloat(input.value) || 0
+                        id: parseInt(inputs[i].dataset.id),
+                        participacion: parseFloat(inputs[i].value) || 0
                     });
-                });
+                }
+
+                console.log('Guardando operaciones:', items);
+                console.log('URL:', GUARDAR_URL);
 
                 var btn = this;
                 btn.disabled = true;
@@ -890,8 +894,18 @@
                         items: items
                     })
                 })
-                .then(function(response) { return response.json(); })
+                .then(function(response) {
+                    console.log('Response status:', response.status);
+                    if (!response.ok) {
+                        return response.text().then(function(text) {
+                            console.log('Error response body:', text);
+                            throw new Error('HTTP ' + response.status + ': ' + text.substring(0, 200));
+                        });
+                    }
+                    return response.json();
+                })
                 .then(function(data) {
+                    console.log('Response data:', data);
                     if (data.success) {
                         mostrarMensaje('Distribucion por operaciones guardada correctamente.', 'success');
                         setTimeout(function() { window.location.reload(); }, 1500);
@@ -902,7 +916,8 @@
                     }
                 })
                 .catch(function(error) {
-                    mostrarMensaje('Error al guardar: ' + error, 'error');
+                    console.error('Fetch error:', error);
+                    mostrarMensaje('Error al guardar: ' + error.message, 'error');
                     btn.disabled = false;
                     btn.textContent = 'Guardar Distribucion por Operaciones';
                 });
