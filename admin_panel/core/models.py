@@ -79,52 +79,31 @@ class Marca(models.Model):
 
 class Escenario(models.Model):
     """Representa una versión de presupuesto o datos reales"""
-    
+
     TIPO_CHOICES = [
         ('planeado', 'Planeado'),
         ('sugerido_marca', 'Sugerido por Marca'),
         ('real', 'Real Ejecutado'),
     ]
-    
-    PERIODO_TIPO_CHOICES = [
-        ('anual', 'Anual'),
-        ('trimestral', 'Trimestral'),
-        ('mensual', 'Mensual'),
-    ]
-    
+
     nombre = models.CharField(max_length=200, verbose_name="Nombre", help_text="Ej: 'Plan 2025', 'Real Q1 2025'")
     tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, verbose_name="Tipo de Escenario")
     anio = models.IntegerField(verbose_name="Año")
-    periodo_tipo = models.CharField(max_length=20, choices=PERIODO_TIPO_CHOICES, default='anual', verbose_name="Tipo de Periodo")
-    periodo_numero = models.IntegerField(
-        null=True,
-        blank=True,
-        verbose_name="Número de Periodo",
-        help_text="1-4 para trimestral, 1-12 para mensual. Dejar vacío para anual"
-    )
-    
     activo = models.BooleanField(default=False, verbose_name="Activo", help_text="Escenario activo para simulación")
 
     notas = models.TextField(blank=True, verbose_name="Notas")
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_modificacion = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         db_table = 'dxv_escenario'
         verbose_name = "Escenario"
         verbose_name_plural = "Escenarios"
-        ordering = ['-anio', '-periodo_numero', 'tipo']
+        ordering = ['-anio', 'tipo']
         unique_together = [['nombre', 'anio']]
-    
+
     def __str__(self):
-        periodo_str = ""
-        if self.periodo_tipo == 'trimestral' and self.periodo_numero:
-            periodo_str = f" Q{self.periodo_numero}"
-        elif self.periodo_tipo == 'mensual' and self.periodo_numero:
-            meses = ['', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
-            periodo_str = f" {meses[self.periodo_numero]}"
-        
-        return f"{self.nombre} ({self.anio}{periodo_str})"
+        return f"{self.nombre} ({self.anio})"
 
 
 class Operacion(models.Model):

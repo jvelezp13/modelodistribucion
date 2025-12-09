@@ -543,7 +543,6 @@ class DataLoaderDB:
                 'anio': e.anio,
                 'tipo': e.tipo,
                 'activo': e.activo,
-                'periodo': f"{e.periodo_tipo} {e.periodo_numero or ''}".strip()
             }
             for e in escenarios
         ]

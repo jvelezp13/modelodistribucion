@@ -71,7 +71,7 @@ class DuplicarMixin:
 
 @admin.register(Escenario, site=dxv_admin_site)
 class EscenarioAdmin(admin.ModelAdmin):
-    list_display = ('nombre', 'tipo', 'anio', 'periodo_display', 'activo', 'fecha_modificacion')
+    list_display = ('nombre', 'tipo', 'anio', 'activo', 'fecha_modificacion')
     list_filter = ('tipo', 'anio', 'activo')
     search_fields = ('nombre', 'notas')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
@@ -79,9 +79,6 @@ class EscenarioAdmin(admin.ModelAdmin):
     fieldsets = (
         ('Información Básica', {
             'fields': ('nombre', 'tipo', 'anio', 'activo')
-        }),
-        ('Periodo', {
-            'fields': ('periodo_tipo', 'periodo_numero')
         }),
         ('Detalles', {
             'fields': ('notas',)
@@ -91,18 +88,6 @@ class EscenarioAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
-
-    def periodo_display(self, obj):
-        if obj.periodo_tipo == 'anual':
-            return "Anual"
-        elif obj.periodo_tipo == 'trimestral':
-            return f"Trimestral (Q{obj.periodo_numero})"
-        elif obj.periodo_tipo == 'mensual':
-            meses = ['', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
-            mes_nombre = meses[obj.periodo_numero] if obj.periodo_numero else '?'
-            return f"Mensual ({mes_nombre})"
-        return obj.periodo_tipo
-    periodo_display.short_description = 'Periodo'
 
     actions = ['duplicar_escenario', 'proyectar_escenario']
 
@@ -179,8 +164,14 @@ class MarcaOperacionInline(admin.TabularInline):
     model = MarcaOperacion
     extra = 1
     autocomplete_fields = ['marca']
-    fields = ['marca', 'participacion_ventas', 'venta_proyectada', 'activo']
-    readonly_fields = ['venta_proyectada']
+    fields = ['marca', 'participacion_ventas', 'venta_proyectada_fmt', 'activo']
+    readonly_fields = ['venta_proyectada_fmt']
+
+    def venta_proyectada_fmt(self, obj):
+        if obj.venta_proyectada:
+            return f"${obj.venta_proyectada:,.0f}"
+        return "$0"
+    venta_proyectada_fmt.short_description = "Venta Mensual"
 
 
 @admin.register(Operacion, site=dxv_admin_site)
@@ -581,8 +572,27 @@ class VehiculoAdmin(DuplicarMixin, admin.ModelAdmin):
         return response
 
 
+class ParametrosMacroForm(forms.ModelForm):
+    """Form con campos monetarios localizados"""
+    salario_minimo_legal = forms.DecimalField(
+        localize=True,
+        label="Salario Mínimo Legal",
+        help_text="Salario mínimo mensual vigente"
+    )
+    subsidio_transporte = forms.DecimalField(
+        localize=True,
+        label="Subsidio de Transporte",
+        help_text="Auxilio de transporte mensual"
+    )
+
+    class Meta:
+        model = ParametrosMacro
+        fields = '__all__'
+
+
 @admin.register(ParametrosMacro, site=dxv_admin_site)
 class ParametrosMacroAdmin(admin.ModelAdmin):
+    form = ParametrosMacroForm
     list_display = (
         'anio',
         'ipc_percent',
@@ -1035,7 +1045,8 @@ class ImpuestoAdmin(admin.ModelAdmin):
 
     fieldsets = (
         ('Información Básica', {
-            'fields': ('nombre', 'tipo', 'aplicacion', 'periodicidad', 'activo')
+            'fields': ('nombre', 'tipo', 'aplicacion', 'periodicidad', 'activo'),
+            'description': 'Nota: El ICA (Industria y Comercio) se configura directamente en cada Operación, no aquí.'
         }),
         ('Configuración', {
             'fields': ('porcentaje', 'valor_fijo'),
@@ -1157,8 +1168,42 @@ class ConfiguracionDescuentosAdmin(admin.ModelAdmin):
                 )
 
 
+class PoliticaRecursosHumanosForm(forms.ModelForm):
+    """Form con campos monetarios localizados"""
+    valor_dotacion_completa = forms.DecimalField(
+        localize=True,
+        label="Valor Dotación Completa",
+        help_text="Valor total de una dotación"
+    )
+    valor_epp_anual_comercial = forms.DecimalField(
+        localize=True,
+        label="Valor EPP Anual (Comercial)"
+    )
+    costo_examen_ingreso_comercial = forms.DecimalField(
+        localize=True,
+        label="Costo Examen Ingreso (Comercial)"
+    )
+    costo_examen_ingreso_operativo = forms.DecimalField(
+        localize=True,
+        label="Costo Examen Ingreso (Operativo)"
+    )
+    costo_examen_periodico_comercial = forms.DecimalField(
+        localize=True,
+        label="Costo Examen Periódico (Comercial)"
+    )
+    costo_examen_periodico_operativo = forms.DecimalField(
+        localize=True,
+        label="Costo Examen Periódico (Operativo)"
+    )
+
+    class Meta:
+        model = PoliticaRecursosHumanos
+        fields = '__all__'
+
+
 @admin.register(PoliticaRecursosHumanos, site=dxv_admin_site)
 class PoliticaRecursosHumanosAdmin(DuplicarMixin, admin.ModelAdmin):
+    form = PoliticaRecursosHumanosForm
     list_display = (
         'anio',
         'valor_dotacion_formateado',
