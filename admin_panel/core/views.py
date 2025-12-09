@@ -78,11 +78,15 @@ def distribucion_ventas(request):
                 pass
 
             # Obtener MarcaOperacion para distribución por operación
-            marcas_operacion = MarcaOperacion.objects.filter(
+            marcas_operacion = list(MarcaOperacion.objects.filter(
                 marca=marca_seleccionada,
                 operacion__escenario=escenario_seleccionado,
                 activo=True
-            ).select_related('operacion').order_by('operacion__nombre')
+            ).select_related('operacion').order_by('operacion__nombre'))
+
+            # Debug: imprimir valores cargados
+            for mo in marcas_operacion:
+                print(f"DEBUG MarcaOperacion id={mo.id}, operacion={mo.operacion.nombre}, participacion={mo.participacion_ventas}")
 
             total_participacion_operaciones = sum(mo.participacion_ventas for mo in marcas_operacion)
 
@@ -181,9 +185,13 @@ def guardar_distribucion_ventas(request):
             for item in items:
                 mo_id = item.get('id')
                 participacion = Decimal(str(item.get('participacion', 0)))
+                print(f"DEBUG Guardando MarcaOperacion id={mo_id}, participacion={participacion}")
                 mo = MarcaOperacion.objects.get(pk=mo_id)
                 mo.participacion_ventas = participacion
                 mo.save()
+                # Verificar que se guardó
+                mo.refresh_from_db()
+                print(f"DEBUG Después de guardar: id={mo.id}, participacion={mo.participacion_ventas}")
 
         elif tipo == 'zonas':
             # Agrupar zonas por operación y validar que cada grupo sume 100%
