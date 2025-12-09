@@ -609,35 +609,57 @@
     function initDistribucionVentas() {
         console.log('Iniciando Distribucion de Ventas JS...');
 
-        const VENTA_TOTAL_MARCA = {{ venta_total_marca|default:0 }};
+        // Debug: mostrar valores de configuracion
+        var ventaTotalStr = '{{ venta_total_marca|default:"0" }}';
+        console.log('venta_total_marca raw:', ventaTotalStr);
+
+        const VENTA_TOTAL_MARCA = parseFloat(ventaTotalStr) || 0;
         const CSRF_TOKEN = '{{ csrf_token }}';
         const GUARDAR_URL = '{% url "dxv_admin:guardar_distribucion_ventas" %}';
+
+        console.log('VENTA_TOTAL_MARCA:', VENTA_TOTAL_MARCA);
+        console.log('GUARDAR_URL:', GUARDAR_URL);
 
         // ========== MANEJO DE TABS ==========
         var tabs = document.querySelectorAll('.tab');
         var tabContents = document.querySelectorAll('.tab-content');
 
-        tabs.forEach(function(tab) {
-            tab.onclick = function(e) {
-                e.preventDefault();
-                e.stopPropagation();
+        console.log('Tabs encontrados:', tabs.length);
+        console.log('Tab contents encontrados:', tabContents.length);
 
-                // Remover active de todos
-                tabs.forEach(function(t) { t.classList.remove('active'); });
-                tabContents.forEach(function(c) { c.classList.remove('active'); });
+        for (var i = 0; i < tabs.length; i++) {
+            (function(tab, index) {
+                console.log('Configurando tab ' + index + ':', tab.getAttribute('data-tab'));
 
-                // Activar el seleccionado
-                this.classList.add('active');
-                var tabId = 'tab-' + this.getAttribute('data-tab');
-                var content = document.getElementById(tabId);
-                if (content) {
-                    content.classList.add('active');
-                }
+                tab.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
 
-                console.log('Tab cambiado a:', tabId);
-                return false;
-            };
-        });
+                    console.log('Click en tab:', this.getAttribute('data-tab'));
+
+                    // Remover active de todos
+                    for (var j = 0; j < tabs.length; j++) {
+                        tabs[j].classList.remove('active');
+                    }
+                    for (var k = 0; k < tabContents.length; k++) {
+                        tabContents[k].classList.remove('active');
+                    }
+
+                    // Activar el seleccionado
+                    this.classList.add('active');
+                    var tabId = 'tab-' + this.getAttribute('data-tab');
+                    var content = document.getElementById(tabId);
+                    if (content) {
+                        content.classList.add('active');
+                        console.log('Tab content activado:', tabId);
+                    } else {
+                        console.error('No se encontro tab content:', tabId);
+                    }
+
+                    return false;
+                });
+            })(tabs[i], i);
+        }
 
         // Formatear numero con separadores de miles
         function formatNumber(num) {
