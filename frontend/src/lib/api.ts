@@ -534,6 +534,19 @@ class APIClient {
     }
     return this.request<MarcasPorOperacionesResponse>(url);
   }
+
+  /**
+   * Obtiene la cascada de distribución de ventas
+   * ProyeccionVentasConfig → MarcaOperacion → Zona → ZonaMunicipio
+   */
+  async obtenerDistribucionCascada(
+    escenarioId: number,
+    marcaId: string
+  ): Promise<DistribucionCascadaResponse> {
+    return this.request<DistribucionCascadaResponse>(
+      `/api/distribucion/cascada?escenario_id=${escenarioId}&marca_id=${marcaId}`
+    );
+  }
 }
 
 // Interfaz para respuesta de tasa de renta
@@ -842,6 +855,64 @@ export interface DiagnosticoLogisticoResponse {
       costo_asignado: number;
     }>;
   }>;
+}
+
+// Interfaces para Distribución de Ventas (Cascada)
+export interface MunicipioDistribucion {
+  id: number;
+  municipio_id: number;
+  nombre: string;
+  departamento: string;
+  participacion_ventas: number;
+  venta_proyectada: number;
+}
+
+export interface ZonaDistribucion {
+  id: number;
+  nombre: string;
+  participacion_ventas: number;
+  venta_proyectada: number;
+  municipios: MunicipioDistribucion[];
+  municipios_count: number;
+  validacion: {
+    suma_participaciones: number;
+    es_valido: boolean;
+  };
+}
+
+export interface OperacionDistribucion {
+  id: number;
+  operacion_id: number;
+  nombre: string;
+  codigo: string;
+  participacion_ventas: number;
+  venta_proyectada: number;
+  zonas: ZonaDistribucion[];
+  zonas_count: number;
+  validacion: {
+    suma_participaciones: number;
+    es_valido: boolean;
+  };
+}
+
+export interface DistribucionCascadaResponse {
+  marca: {
+    id: number;
+    marca_id: string;
+    nombre: string;
+    venta_total_mensual: number;
+    ventas_mensuales: VentasMensualesDesglose;
+  };
+  escenario: {
+    id: number;
+    nombre: string;
+    anio: number;
+  };
+  operaciones: OperacionDistribucion[];
+  validacion: {
+    suma_participaciones_operaciones: number;
+    operaciones_valido: boolean;
+  };
 }
 
 export const apiClient = new APIClient();

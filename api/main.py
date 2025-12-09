@@ -2811,6 +2811,146 @@ def obtener_marcas_por_operaciones(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/distribucion/cascada")
+def obtener_distribucion_cascada(
+    escenario_id: int,
+    marca_id: str
+) -> Dict[str, Any]:
+    """
+    Retorna la cascada de distribución de ventas:
+    ProyeccionVentasConfig → MarcaOperacion → Zona → ZonaMunicipio
+
+    Args:
+        escenario_id: ID del escenario
+        marca_id: ID de la marca (ej: 'M1')
+
+    Returns:
+        Dict con la cascada completa y validaciones
+    """
+    try:
+        from decimal import Decimal
+        from core.models import (
+            Escenario, Marca, ProyeccionVentasConfig,
+            MarcaOperacion, Zona, ZonaMunicipio
+        )
+
+        escenario = Escenario.objects.get(pk=escenario_id)
+        marca = Marca.objects.get(marca_id=marca_id)
+
+        # Obtener venta total mensual de ProyeccionVentasConfig
+        venta_total_mensual = Decimal('0')
+        ventas_mensuales = {}
+        try:
+            config = ProyeccionVentasConfig.objects.get(
+                marca=marca,
+                escenario=escenario,
+                anio=escenario.anio
+            )
+            ventas_mensuales = config.calcular_ventas_mensuales()
+            if ventas_mensuales:
+                venta_total_mensual = sum(ventas_mensuales.values()) / len(ventas_mensuales)
+        except ProyeccionVentasConfig.DoesNotExist:
+            pass
+
+        # Obtener MarcaOperacion (distribución por operación)
+        marcas_operacion = MarcaOperacion.objects.filter(
+            marca=marca,
+            operacion__escenario=escenario,
+            activo=True
+        ).select_related('operacion').order_by('operacion__nombre')
+
+        # Calcular total de participaciones
+        total_participacion_operaciones = sum(mo.participacion_ventas for mo in marcas_operacion)
+
+        # Construir cascada de operaciones
+        operaciones_data = []
+        for mo in marcas_operacion:
+            # Obtener zonas de esta operación
+            zonas = Zona.objects.filter(
+                marca=marca,
+                escenario=escenario,
+                operacion=mo.operacion,
+                activo=True
+            ).order_by('nombre')
+
+            total_participacion_zonas = sum(z.participacion_ventas for z in zonas)
+
+            # Construir datos de zonas con sus municipios
+            zonas_data = []
+            for zona in zonas:
+                # Obtener municipios de la zona
+                zona_municipios = ZonaMunicipio.objects.filter(
+                    zona=zona
+                ).select_related('municipio').order_by('municipio__nombre')
+
+                total_participacion_municipios = sum(zm.participacion_ventas for zm in zona_municipios)
+
+                municipios_data = [{
+                    'id': zm.id,
+                    'municipio_id': zm.municipio.id,
+                    'nombre': zm.municipio.nombre,
+                    'departamento': zm.municipio.departamento,
+                    'participacion_ventas': float(zm.participacion_ventas),
+                    'venta_proyectada': float(zm.venta_proyectada),
+                } for zm in zona_municipios]
+
+                zonas_data.append({
+                    'id': zona.id,
+                    'nombre': zona.nombre,
+                    'participacion_ventas': float(zona.participacion_ventas),
+                    'venta_proyectada': float(zona.venta_proyectada),
+                    'municipios': municipios_data,
+                    'municipios_count': len(municipios_data),
+                    'validacion': {
+                        'suma_participaciones': float(total_participacion_municipios),
+                        'es_valido': abs(total_participacion_municipios - Decimal('100')) < Decimal('0.01')
+                    }
+                })
+
+            operaciones_data.append({
+                'id': mo.id,
+                'operacion_id': mo.operacion.id,
+                'nombre': mo.operacion.nombre,
+                'codigo': mo.operacion.codigo,
+                'participacion_ventas': float(mo.participacion_ventas),
+                'venta_proyectada': float(mo.venta_proyectada),
+                'zonas': zonas_data,
+                'zonas_count': len(zonas_data),
+                'validacion': {
+                    'suma_participaciones': float(total_participacion_zonas),
+                    'es_valido': abs(total_participacion_zonas - Decimal('100')) < Decimal('0.01')
+                }
+            })
+
+        return {
+            'marca': {
+                'id': marca.id,
+                'marca_id': marca.marca_id,
+                'nombre': marca.nombre,
+                'venta_total_mensual': float(venta_total_mensual),
+                'ventas_mensuales': {k: float(v) for k, v in ventas_mensuales.items()}
+            },
+            'escenario': {
+                'id': escenario.id,
+                'nombre': escenario.nombre,
+                'anio': escenario.anio
+            },
+            'operaciones': operaciones_data,
+            'validacion': {
+                'suma_participaciones_operaciones': float(total_participacion_operaciones),
+                'operaciones_valido': abs(total_participacion_operaciones - Decimal('100')) < Decimal('0.01')
+            }
+        }
+
+    except Escenario.DoesNotExist:
+        raise HTTPException(status_code=404, detail=f"Escenario no encontrado: {escenario_id}")
+    except Marca.DoesNotExist:
+        raise HTTPException(status_code=404, detail=f"Marca no encontrada: {marca_id}")
+    except Exception as e:
+        logger.error(f"Error obteniendo cascada de distribución: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

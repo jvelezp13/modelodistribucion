@@ -9,8 +9,9 @@ import PyGDetallado from '@/components/PyGDetallado';
 import PyGZonas from '@/components/PyGZonas';
 import LejaniasComercial from '@/components/LejaniasComercial';
 import LejaniasLogistica from '@/components/LejaniasLogistica';
+import DistribucionVentas from '@/components/DistribucionVentas';
 
-type ViewType = 'pyg' | 'pyg-zonas' | 'lejanias-comercial' | 'lejanias-logistica';
+type ViewType = 'distribucion' | 'pyg' | 'pyg-zonas' | 'lejanias-comercial' | 'lejanias-logistica';
 
 export default function DashboardPage() {
   // Datos base
@@ -26,7 +27,7 @@ export default function DashboardPage() {
   // UI State
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeView, setActiveView] = useState<ViewType>('pyg');
+  const [activeView, setActiveView] = useState<ViewType>('distribucion');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -370,6 +371,15 @@ export default function DashboardPage() {
                     Selecciona una sola marca para ver sus datos específicos.
                   </p>
                 </div>
+              )}
+
+              {/* Vista Distribucion de Ventas */}
+              {activeView === 'distribucion' && primeraMarcaId && (
+                <DistribucionVentas
+                  key={`distribucion-${primeraMarcaId}-${refreshKey}`}
+                  escenarioId={selectedScenarioId}
+                  marcaId={primeraMarcaId}
+                />
               )}
 
               {/* Vista P&G Detallado */}

@@ -7,7 +7,8 @@ import {
   ChevronRight,
   MapPin,
   Truck,
-  Map
+  Map,
+  GitBranch
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -24,10 +25,11 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
+  { id: 'distribucion', label: 'Distribucion Ventas', icon: GitBranch },
   { id: 'pyg', label: 'P&G Detallado', icon: FileText },
   { id: 'pyg-zonas', label: 'P&G Zonas y Municipios', icon: Map },
-  { id: 'lejanias-comercial', label: 'Lejanías Comerciales', icon: MapPin },
-  { id: 'lejanias-logistica', label: 'Lejanías Logísticas', icon: Truck },
+  { id: 'lejanias-comercial', label: 'Lejanias Comerciales', icon: MapPin },
+  { id: 'lejanias-logistica', label: 'Lejanias Logisticas', icon: Truck },
 ];
 
 export default function Sidebar({ isCollapsed, onToggle, activeView, onViewChange }: SidebarProps) {

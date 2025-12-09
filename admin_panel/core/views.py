@@ -10,7 +10,7 @@ from django.views.decorators.http import require_POST
 import json
 
 from .models import (
-    Marca, Escenario, Zona, ZonaMunicipio, VentaMunicipio, Municipio,
+    Marca, Escenario, Zona, ZonaMunicipio, Municipio,
     Operacion, MarcaOperacion, ProyeccionVentasConfig
 )
 
@@ -158,6 +158,7 @@ def guardar_distribucion_ventas(request):
 
     Flujo:
     - Usuario edita participacion_ventas (%)
+    - Validación estricta: la suma debe ser exactamente 100%
     - Al guardar, se actualiza participacion_ventas
     - El modelo.save() calcula automáticamente venta_proyectada
     - La cascada propaga los cambios hacia abajo
@@ -168,32 +169,67 @@ def guardar_distribucion_ventas(request):
         items = data.get('items', [])
 
         if tipo == 'operaciones':
+            # Validar que la suma sea exactamente 100%
+            total = sum(Decimal(str(item.get('participacion', 0))) for item in items)
+            if abs(total - Decimal('100')) > Decimal('0.01'):
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Las participaciones de operaciones deben sumar 100%. Actual: {total}%'
+                }, status=400)
+
             # Guardar participaciones de MarcaOperacion
             for item in items:
                 mo_id = item.get('id')
                 participacion = Decimal(str(item.get('participacion', 0)))
-                # Usar save() para que recalcule venta_proyectada y propague a zonas
                 mo = MarcaOperacion.objects.get(pk=mo_id)
                 mo.participacion_ventas = participacion
                 mo.save()
 
         elif tipo == 'zonas':
+            # Agrupar zonas por operación y validar que cada grupo sume 100%
+            zonas_por_operacion = {}
+            for item in items:
+                zona = Zona.objects.get(pk=item.get('id'))
+                op_id = zona.operacion_id if zona.operacion_id else 'sin_operacion'
+                if op_id not in zonas_por_operacion:
+                    zonas_por_operacion[op_id] = {
+                        'nombre': zona.operacion.nombre if zona.operacion else 'Sin operación',
+                        'items': []
+                    }
+                zonas_por_operacion[op_id]['items'].append(item)
+
+            # Validar cada operación
+            for op_id, op_data in zonas_por_operacion.items():
+                total = sum(Decimal(str(item.get('participacion', 0))) for item in op_data['items'])
+                if abs(total - Decimal('100')) > Decimal('0.01'):
+                    return JsonResponse({
+                        'success': False,
+                        'error': f'Las zonas de "{op_data["nombre"]}" deben sumar 100%. Actual: {total}%'
+                    }, status=400)
+
             # Guardar participaciones de Zona
             for item in items:
                 zona_id = item.get('id')
                 participacion = Decimal(str(item.get('participacion', 0)))
-                # Usar save() para que recalcule venta_proyectada y propague a municipios
                 zona = Zona.objects.get(pk=zona_id)
                 zona.participacion_ventas = participacion
                 zona.save()
 
         elif tipo == 'zonas_municipios':
-            # Guardar participaciones de ZonaMunicipio (por zona)
+            # Validar que la suma de municipios de la zona sea 100%
             zona_id = data.get('zona_id')
+            total = sum(Decimal(str(item.get('participacion', 0))) for item in items)
+            if abs(total - Decimal('100')) > Decimal('0.01'):
+                zona = Zona.objects.get(pk=zona_id)
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Los municipios de "{zona.nombre}" deben sumar 100%. Actual: {total}%'
+                }, status=400)
+
+            # Guardar participaciones de ZonaMunicipio
             for item in items:
                 zm_id = item.get('id')
                 participacion = Decimal(str(item.get('participacion', 0)))
-                # Usar save() para que recalcule venta_proyectada
                 zm = ZonaMunicipio.objects.get(pk=zm_id)
                 zm.participacion_ventas = participacion
                 zm.save()
@@ -204,34 +240,3 @@ def guardar_distribucion_ventas(request):
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 
-@staff_member_required
-@require_POST
-def agregar_municipios_venta(request):
-    """
-    API para agregar municipios a VentaMunicipio
-    """
-    try:
-        data = json.loads(request.body)
-        marca_id = data.get('marca_id')
-        escenario_id = data.get('escenario_id')
-        municipio_ids = data.get('municipio_ids', [])
-
-        marca = Marca.objects.get(pk=marca_id)
-        escenario = Escenario.objects.get(pk=escenario_id)
-
-        creados = 0
-        for mun_id in municipio_ids:
-            municipio = Municipio.objects.get(pk=mun_id)
-            _, created = VentaMunicipio.objects.get_or_create(
-                marca=marca,
-                escenario=escenario,
-                municipio=municipio,
-                defaults={'venta_proyectada': 0}
-            )
-            if created:
-                creados += 1
-
-        return JsonResponse({'success': True, 'creados': creados})
-
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=400)
