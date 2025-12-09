@@ -329,7 +329,7 @@ class PersonalComercial(models.Model):
     cantidad = models.IntegerField(validators=[MinValueValidator(1)], verbose_name="Cantidad")
     salario_base = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Salario Base")
     perfil_prestacional = models.CharField(max_length=20, choices=PERFIL_CHOICES, default='comercial')
-    asignacion = models.CharField(max_length=20, choices=ASIGNACION_CHOICES, default='individual')
+    asignacion = models.CharField(max_length=20, choices=ASIGNACION_CHOICES, default='individual', verbose_name="Asignación Marca")
 
     # Auxilios no prestacionales (JSON flexible)
     auxilios_no_prestacionales = models.JSONField(
@@ -519,7 +519,7 @@ class PersonalLogistico(models.Model):
     cantidad = models.IntegerField(validators=[MinValueValidator(1)], verbose_name="Cantidad")
     salario_base = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Salario Base")
     perfil_prestacional = models.CharField(max_length=20, choices=PERFIL_CHOICES, default='logistico_calle')
-    asignacion = models.CharField(max_length=20, choices=ASIGNACION_CHOICES, default='individual')
+    asignacion = models.CharField(max_length=20, choices=ASIGNACION_CHOICES, default='individual', verbose_name="Asignación Marca")
 
     # Auxilios no prestacionales (JSON flexible)
     auxilios_no_prestacionales = models.JSONField(
@@ -714,7 +714,7 @@ class Vehiculo(models.Model):
     tipo_vehiculo = models.CharField(max_length=50, choices=TIPO_VEHICULO_CHOICES, verbose_name="Tipo de Vehículo")
     esquema = models.CharField(max_length=20, choices=ESQUEMA_CHOICES, verbose_name="Esquema")
     cantidad = models.IntegerField(validators=[MinValueValidator(1)], verbose_name="Cantidad")
-    asignacion = models.CharField(max_length=20, choices=ASIGNACION_CHOICES, default='individual')
+    asignacion = models.CharField(max_length=20, choices=ASIGNACION_CHOICES, default='individual', verbose_name="Asignación Marca")
 
     # Campos para esquema Renting
     canon_renting = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Canon Renting Mensual")
@@ -1252,7 +1252,7 @@ class PersonalAdministrativo(models.Model):
         help_text="Índice a usar para proyecciones de años futuros"
     )
 
-    asignacion = models.CharField(max_length=20, choices=ASIGNACION_CHOICES, default='compartido')
+    asignacion = models.CharField(max_length=20, choices=ASIGNACION_CHOICES, default='compartido', verbose_name="Asignación Marca")
     criterio_prorrateo = models.CharField(
         max_length=20,
         choices=[
@@ -1424,7 +1424,7 @@ class GastoAdministrativo(models.Model):
     nombre = models.CharField(max_length=200, verbose_name="Nombre/Descripción")
     tipo = models.CharField(max_length=50, choices=TIPO_CHOICES, verbose_name="Tipo de Gasto")
     valor_mensual = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Valor Mensual")
-    asignacion = models.CharField(max_length=20, choices=ASIGNACION_CHOICES, default='compartido')
+    asignacion = models.CharField(max_length=20, choices=ASIGNACION_CHOICES, default='compartido', verbose_name="Asignación Marca")
     
     # Índice de incremento para proyecciones
     indice_incremento = models.CharField(
@@ -1547,7 +1547,7 @@ class GastoComercial(models.Model):
     nombre = models.CharField(max_length=200, verbose_name="Nombre/Descripción")
     tipo = models.CharField(max_length=50, choices=TIPO_CHOICES, verbose_name="Tipo de Gasto")
     valor_mensual = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Valor Mensual")
-    asignacion = models.CharField(max_length=20, choices=ASIGNACION_CHOICES, default='individual')
+    asignacion = models.CharField(max_length=20, choices=ASIGNACION_CHOICES, default='individual', verbose_name="Asignación Marca")
     
     # Índice de incremento para proyecciones
     indice_incremento = models.CharField(
@@ -1673,7 +1673,7 @@ class GastoLogistico(models.Model):
     nombre = models.CharField(max_length=200, verbose_name="Nombre/Descripción")
     tipo = models.CharField(max_length=50, choices=TIPO_CHOICES, verbose_name="Tipo de Gasto")
     valor_mensual = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Valor Mensual")
-    asignacion = models.CharField(max_length=20, choices=ASIGNACION_CHOICES, default='individual')
+    asignacion = models.CharField(max_length=20, choices=ASIGNACION_CHOICES, default='individual', verbose_name="Asignación Marca")
     
     # Índice de incremento para proyecciones
     indice_incremento = models.CharField(
