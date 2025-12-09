@@ -593,9 +593,9 @@ function MunicipiosTable({
               // Usar impuesto prorrateado de la zona padre
               const impuesto = totalVentas > 0 ? impuestoZona * (ventas / totalVentas) : 0;
               const utilNeta = utilAntesImp - impuesto;
-              // El margen % de cada municipio es igual al de la zona padre
-              // porque los costos se distribuyen proporcionalmente por participación
-              const margenNeto = margenNetoZona;
+              // Margen % real calculado para este municipio
+              // (ahora los costos varían por distancia, no solo por participación)
+              const margenNeto = ventas > 0 ? (utilNeta / ventas) * 100 : 0;
               const isRentable = utilNeta >= 0;
 
               return (

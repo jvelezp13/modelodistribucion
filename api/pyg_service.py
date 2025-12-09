@@ -615,10 +615,14 @@ def calcular_pyg_todos_municipios(escenario, zona) -> List[Dict]:
     """
     Calcula P&G para todos los municipios de una zona.
 
-    Lógica: Toma el P&G de la zona (calculado con calcular_pyg_todas_zonas)
-    y lo distribuye proporcionalmente según ZonaMunicipio.participacion_ventas.
+    Lógica MEJORADA:
+    - Lejanías COMERCIALES (combustible): Se calculan REALMENTE por municipio según distancia
+    - Pernocta comercial: Se prorratea por participación (es a nivel de zona/viaje)
+    - Personal y gastos fijos: Se prorratean por participación
+    - Lejanías LOGÍSTICAS: Se prorratean (dependen de rutas, no de municipios)
+    - Administrativo: Se prorratea por participación
 
-    Esto garantiza que la suma de municipios = total de la zona.
+    Esto hace que municipios más lejanos tengan mayor costo y menor margen.
     """
     from core.models import ZonaMunicipio
 
@@ -633,71 +637,98 @@ def calcular_pyg_todos_municipios(escenario, zona) -> List[Dict]:
         return []
 
     # Usar directamente ZonaMunicipio.participacion_ventas
-    # Este campo ya contiene el peso relativo dentro de la zona (suma = 100%)
     pesos_relativos = {}
     ventas_proyectadas = {}
     for zm in zona_municipios:
-        # participacion_ventas ya está en % (0-100), convertir a decimal (0-1)
         pesos_relativos[zm.municipio.id] = (zm.participacion_ventas or Decimal('0')) / 100
         ventas_proyectadas[zm.municipio.id] = zm.venta_proyectada or Decimal('0')
 
     # Obtener P&G de la zona usando la MISMA función que la vista de zonas
-    # Esto garantiza consistencia entre ambas vistas
     pyg_todas_zonas = calcular_pyg_todas_zonas(escenario, marca)
     pyg_zona = next((z for z in pyg_todas_zonas if z['zona']['id'] == zona.id), None)
 
     if not pyg_zona:
         return []
 
-    # Construir resultado para cada municipio
-    # Todos los costos se distribuyen proporcionalmente según peso del municipio en la zona
+    # =========================================================================
+    # CALCULAR LEJANÍAS COMERCIALES REALES POR MUNICIPIO
+    # =========================================================================
+    calculadora = CalculadoraLejanias(escenario)
+    lejania_zona = calculadora.calcular_lejania_comercial_zona(zona)
+
+    # Crear diccionario de combustible por municipio_id
+    combustible_por_municipio = {}
+    if lejania_zona.get('detalle') and lejania_zona['detalle'].get('municipios'):
+        for mun_detalle in lejania_zona['detalle']['municipios']:
+            mun_id = mun_detalle.get('municipio_id')
+            if mun_id:
+                combustible_por_municipio[mun_id] = Decimal(str(mun_detalle.get('combustible_mensual', 0)))
+
+    # Pernocta total de la zona (se prorrateará por participación)
+    pernocta_zona = lejania_zona.get('pernocta_mensual', Decimal('0'))
+    if not isinstance(pernocta_zona, Decimal):
+        pernocta_zona = Decimal(str(pernocta_zona))
+
+    # =========================================================================
+    # CONSTRUIR RESULTADO POR MUNICIPIO
+    # =========================================================================
     resultados = []
     for zm in zona_municipios:
         mun_id = zm.municipio.id
         peso = pesos_relativos.get(mun_id, Decimal('0'))
         venta_proy = ventas_proyectadas.get(mun_id, Decimal('0'))
 
-        # Convertir valores de pyg_zona a Decimal para cálculos precisos
+        # Convertir valores de pyg_zona a Decimal
         comercial_personal = Decimal(str(pyg_zona['comercial']['personal']))
         comercial_gastos = Decimal(str(pyg_zona['comercial']['gastos']))
-        comercial_lejanias = Decimal(str(pyg_zona['comercial'].get('lejanias', 0)))
-        comercial_total = Decimal(str(pyg_zona['comercial']['total']))
 
         logistico_personal = Decimal(str(pyg_zona['logistico']['personal']))
         logistico_gastos = Decimal(str(pyg_zona['logistico']['gastos']))
         logistico_lejanias = Decimal(str(pyg_zona['logistico'].get('lejanias', 0)))
-        logistico_total = Decimal(str(pyg_zona['logistico']['total']))
 
         admin_personal = Decimal(str(pyg_zona['administrativo']['personal']))
         admin_gastos = Decimal(str(pyg_zona['administrativo']['gastos']))
-        admin_total = Decimal(str(pyg_zona['administrativo']['total']))
 
-        # Distribuir proporcionalmente por peso del municipio
+        # ---------------------------------------------------------------------
+        # COMERCIAL: Lejanías REALES por municipio, resto prorrateado
+        # ---------------------------------------------------------------------
+        combustible_real = combustible_por_municipio.get(mun_id, Decimal('0'))
+        pernocta_prorrateada = pernocta_zona * peso
+        lejania_comercial_mun = combustible_real + pernocta_prorrateada
+
         comercial = {
             'personal': comercial_personal * peso,
             'gastos': comercial_gastos * peso,
-            'lejanias': comercial_lejanias * peso,
-            'total': comercial_total * peso
+            'lejanias': lejania_comercial_mun,
+            'combustible': combustible_real,  # Detalle: combustible real
+            'pernocta': pernocta_prorrateada,  # Detalle: pernocta prorrateada
+            'total': (comercial_personal * peso) + (comercial_gastos * peso) + lejania_comercial_mun
         }
 
+        # ---------------------------------------------------------------------
+        # LOGÍSTICO: Todo prorrateado (depende de rutas, no de municipios)
+        # ---------------------------------------------------------------------
         logistico = {
             'personal': logistico_personal * peso,
             'gastos': logistico_gastos * peso,
             'lejanias': logistico_lejanias * peso,
-            'total': logistico_total * peso
+            'total': (logistico_personal + logistico_gastos + logistico_lejanias) * peso
         }
 
+        # ---------------------------------------------------------------------
+        # ADMINISTRATIVO: Prorrateado
+        # ---------------------------------------------------------------------
         administrativo = {
             'personal': admin_personal * peso,
             'gastos': admin_gastos * peso,
-            'total': admin_total * peso
+            'total': (admin_personal + admin_gastos) * peso
         }
 
         total_mensual = comercial['total'] + logistico['total'] + administrativo['total']
 
-        # Participación sobre la marca = participación_zona × peso_municipio_en_zona
+        # Participación sobre la marca
         part_zona_decimal = Decimal(str(pyg_zona['zona']['participacion_ventas'])) / 100
-        part_total = part_zona_decimal * peso * 100  # Volver a %
+        part_total = part_zona_decimal * peso * 100
 
         resultados.append({
             'municipio': {
@@ -705,8 +736,8 @@ def calcular_pyg_todos_municipios(escenario, zona) -> List[Dict]:
                 'nombre': zm.municipio.nombre,
                 'codigo_dane': zm.municipio.codigo_dane,
                 'venta_proyectada': float(venta_proy),
-                'participacion_zona': float(peso * 100),  # % dentro de la zona
-                'participacion_total': float(part_total),  # % sobre la marca
+                'participacion_zona': float(peso * 100),
+                'participacion_total': float(part_total),
             },
             'zona': {
                 'id': zona.id,
