@@ -1,5 +1,5 @@
 {% extends "admin/base_site.html" %}
-{% load humanize %}
+{% load humanize l10n %}
 
 {% block title %}Distribución de Ventas{% endblock %}
 
@@ -379,7 +379,7 @@
                                data-tipo="operacion"
                                data-id="{{ mo.id }}"
                                data-operacion-id="{{ mo.operacion.id }}"
-                               value="{{ mo.participacion_ventas|floatformat:2 }}"
+                               value="{% localize off %}{{ mo.participacion_ventas|floatformat:2 }}{% endlocalize %}"
                                min="0"
                                max="100"
                                step="0.01">
@@ -452,7 +452,7 @@
                                data-tipo="zona"
                                data-id="{{ zona.id }}"
                                data-operacion="{{ zona.operacion.id|default:'' }}"
-                               value="{{ zona.participacion_ventas|floatformat:2 }}"
+                               value="{% localize off %}{{ zona.participacion_ventas|floatformat:2 }}{% endlocalize %}"
                                min="0"
                                max="100"
                                step="0.01">
@@ -533,7 +533,7 @@
                                    data-tipo="zona-municipio"
                                    data-id="{{ zm.id }}"
                                    data-zona-id="{{ zona_data.zona.id }}"
-                                   value="{{ zm.participacion_ventas|floatformat:2 }}"
+                                   value="{% localize off %}{{ zm.participacion_ventas|floatformat:2 }}{% endlocalize %}"
                                    min="0"
                                    max="100"
                                    step="0.01">
@@ -876,9 +876,6 @@
                     });
                 }
 
-                console.log('Guardando operaciones:', items);
-                console.log('URL:', GUARDAR_URL);
-
                 var btn = this;
                 btn.disabled = true;
                 btn.textContent = 'Guardando...';
@@ -895,17 +892,14 @@
                     })
                 })
                 .then(function(response) {
-                    console.log('Response status:', response.status);
                     if (!response.ok) {
                         return response.text().then(function(text) {
-                            console.log('Error response body:', text);
                             throw new Error('HTTP ' + response.status + ': ' + text.substring(0, 200));
                         });
                     }
                     return response.json();
                 })
                 .then(function(data) {
-                    console.log('Response data:', data);
                     if (data.success) {
                         mostrarMensaje('Distribucion por operaciones guardada correctamente.', 'success');
                         setTimeout(function() { window.location.reload(); }, 1500);
@@ -916,7 +910,6 @@
                     }
                 })
                 .catch(function(error) {
-                    console.error('Fetch error:', error);
                     mostrarMensaje('Error al guardar: ' + error.message, 'error');
                     btn.disabled = false;
                     btn.textContent = 'Guardar Distribucion por Operaciones';
