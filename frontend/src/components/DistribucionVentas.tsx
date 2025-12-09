@@ -73,7 +73,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ value, color = 'bg-blue-500' 
 
 export default function DistribucionVentas() {
   const { filters } = useFilters();
-  const { escenarioId, marcaId, mes: mesSeleccionado } = filters;
+  const { escenarioId, marcaId, operacionIds, mes: mesSeleccionado } = filters;
 
   const [data, setData] = useState<DistribucionCascadaResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -92,7 +92,9 @@ export default function DistribucionVentas() {
       setError(null);
 
       try {
-        const response = await apiClient.obtenerDistribucionCascada(escenarioId, marcaId);
+        // Pasar operacionIds solo si hay alguna seleccionada (vacío = todas)
+        const opsParam = operacionIds.length > 0 ? operacionIds : undefined;
+        const response = await apiClient.obtenerDistribucionCascada(escenarioId, marcaId, opsParam);
         setData(response);
         // Expandir todas las operaciones por defecto
         setExpandedOperaciones(new Set(response.operaciones.map(op => op.id)));
@@ -105,7 +107,7 @@ export default function DistribucionVentas() {
     };
 
     fetchData();
-  }, [escenarioId, marcaId]);
+  }, [escenarioId, marcaId, operacionIds]);
 
   // Calcular ventas del mes seleccionado
   const ventasMes = useMemo(() => {

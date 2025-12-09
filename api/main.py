@@ -429,7 +429,8 @@ def obtener_tasa_ica_ponderada_por_marca(
 @app.get("/api/lejanias/comercial")
 def obtener_detalle_lejanias_comercial(
     escenario_id: int,
-    marca_id: str
+    marca_id: str,
+    operacion_ids: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Obtiene el detalle de lejanías comerciales por zona.
@@ -440,6 +441,7 @@ def obtener_detalle_lejanias_comercial(
     Args:
         escenario_id: ID del escenario
         marca_id: ID de la marca
+        operacion_ids: IDs de operaciones separados por coma (opcional, ej: '1,2,3')
 
     Returns:
         Detalle de lejanías comerciales por zona
@@ -475,12 +477,24 @@ def obtener_detalle_lejanias_comercial(
             nombre__startswith='Viáticos Pernocta'
         )
 
+        # Parsear operacion_ids si se proporcionan
+        operacion_ids_list = None
+        if operacion_ids:
+            try:
+                operacion_ids_list = [int(x.strip()) for x in operacion_ids.split(',') if x.strip()]
+            except ValueError:
+                pass
+
         # Obtener zonas de la marca
         zonas = Zona.objects.filter(
             marca=marca,
             escenario=escenario,
             activo=True
-        ).prefetch_related('municipios__municipio').select_related('vendedor', 'municipio_base_vendedor')
+        ).prefetch_related('municipios__municipio').select_related('vendedor', 'municipio_base_vendedor', 'operacion')
+
+        # Filtrar por operaciones seleccionadas si se especifican
+        if operacion_ids_list:
+            zonas = zonas.filter(operacion_id__in=operacion_ids_list)
 
         # Construir detalle por zona
         detalle_zonas = []
@@ -631,7 +645,8 @@ def obtener_detalle_lejanias_comercial(
 @app.get("/api/lejanias/logistica")
 def obtener_detalle_lejanias_logistica(
     escenario_id: int,
-    marca_id: str
+    marca_id: str,
+    operacion_ids: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Obtiene el detalle de lejanías logísticas por ruta/vehículo.
@@ -642,6 +657,7 @@ def obtener_detalle_lejanias_logistica(
     Args:
         escenario_id: ID del escenario
         marca_id: ID de la marca
+        operacion_ids: IDs de operaciones separados por coma (opcional, filtrado indirecto por municipios)
 
     Returns:
         Detalle de lejanías logísticas por ruta (vehículo/tercero)
@@ -649,7 +665,7 @@ def obtener_detalle_lejanias_logistica(
     try:
         from core.models import (
             Escenario, Marca, RutaLogistica, GastoLogistico,
-            ConfiguracionLejania, MatrizDesplazamiento
+            ConfiguracionLejania, MatrizDesplazamiento, Zona, ZonaMunicipio
         )
         from decimal import Decimal
         from django.db.models import Sum
@@ -657,6 +673,30 @@ def obtener_detalle_lejanias_logistica(
         # Obtener escenario y marca
         escenario = Escenario.objects.get(pk=escenario_id)
         marca = Marca.objects.get(marca_id=marca_id)
+
+        # Parsear operacion_ids si se proporcionan
+        operacion_ids_list = None
+        if operacion_ids:
+            try:
+                operacion_ids_list = [int(x.strip()) for x in operacion_ids.split(',') if x.strip()]
+            except ValueError:
+                pass
+
+        # Filtrar municipios por operaciones (para filtrado indirecto de rutas)
+        municipios_operaciones = None
+        if operacion_ids_list:
+            # Obtener zonas de las operaciones seleccionadas
+            zonas_operaciones = Zona.objects.filter(
+                escenario=escenario,
+                marca=marca,
+                operacion_id__in=operacion_ids_list,
+                activo=True
+            ).values_list('id', flat=True)
+            # Obtener municipios de esas zonas
+            municipios_operaciones = set(
+                ZonaMunicipio.objects.filter(zona_id__in=zonas_operaciones)
+                .values_list('municipio_id', flat=True)
+            )
 
         # Obtener configuración de lejanías
         try:
@@ -696,6 +736,16 @@ def obtener_detalle_lejanias_logistica(
             escenario=escenario,
             activo=True
         ).prefetch_related('municipios__municipio').select_related('vehiculo')
+
+        # Filtrar rutas por municipios de operaciones seleccionadas (filtrado indirecto)
+        if municipios_operaciones is not None:
+            # Una ruta se incluye si atiende al menos un municipio de las operaciones
+            rutas_filtradas = []
+            for ruta in rutas:
+                muni_ids_ruta = set(rm.municipio_id for rm in ruta.municipios.all())
+                if muni_ids_ruta & municipios_operaciones:  # Intersección
+                    rutas_filtradas.append(ruta)
+            rutas = rutas_filtradas
 
         # Construir detalle por ruta
         detalle_rutas = []
@@ -1363,7 +1413,8 @@ def obtener_pyg_marca(
 @app.get("/api/pyg/zonas")
 def obtener_pyg_zonas(
     escenario_id: int,
-    marca_id: str
+    marca_id: str,
+    operacion_ids: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Obtiene el P&G desglosado por zona comercial para una marca.
@@ -1372,6 +1423,7 @@ def obtener_pyg_zonas(
     Args:
         escenario_id: ID del escenario
         marca_id: ID de la marca
+        operacion_ids: IDs de operaciones separados por coma (opcional)
 
     Returns:
         Lista de P&G por zona con ventas, costos y rentabilidad
@@ -1386,7 +1438,15 @@ def obtener_pyg_zonas(
         escenario = Escenario.objects.get(pk=escenario_id)
         marca = Marca.objects.get(marca_id=marca_id)
 
-        zonas = calcular_pyg_todas_zonas(escenario, marca)
+        # Parsear operacion_ids si se proporcionan
+        operacion_ids_list = None
+        if operacion_ids:
+            try:
+                operacion_ids_list = [int(x.strip()) for x in operacion_ids.split(',') if x.strip()]
+            except ValueError:
+                pass
+
+        zonas = calcular_pyg_todas_zonas(escenario, marca, operacion_ids=operacion_ids_list)
 
         # Obtener ventas mensuales de la marca
         ventas_mensuales = {}
@@ -2814,7 +2874,8 @@ def obtener_marcas_por_operaciones(
 @app.get("/api/distribucion/cascada")
 def obtener_distribucion_cascada(
     escenario_id: int,
-    marca_id: str
+    marca_id: str,
+    operacion_ids: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Retorna la cascada de distribución de ventas:
@@ -2823,6 +2884,7 @@ def obtener_distribucion_cascada(
     Args:
         escenario_id: ID del escenario
         marca_id: ID de la marca (ej: 'M1')
+        operacion_ids: IDs de operaciones separados por coma (opcional, ej: '1,2,3')
 
     Returns:
         Dict con la cascada completa y validaciones
@@ -2852,12 +2914,26 @@ def obtener_distribucion_cascada(
         except ProyeccionVentasConfig.DoesNotExist:
             pass
 
+        # Parsear operacion_ids si se proporcionan
+        operacion_ids_list = None
+        if operacion_ids:
+            try:
+                operacion_ids_list = [int(x.strip()) for x in operacion_ids.split(',') if x.strip()]
+            except ValueError:
+                pass
+
         # Obtener MarcaOperacion (distribución por operación)
         marcas_operacion = MarcaOperacion.objects.filter(
             marca=marca,
             operacion__escenario=escenario,
             activo=True
-        ).select_related('operacion').order_by('operacion__nombre')
+        ).select_related('operacion')
+
+        # Filtrar por operaciones seleccionadas si se especifican
+        if operacion_ids_list:
+            marcas_operacion = marcas_operacion.filter(operacion_id__in=operacion_ids_list)
+
+        marcas_operacion = marcas_operacion.order_by('operacion__nombre')
 
         # Calcular total de participaciones
         total_participacion_operaciones = sum(mo.participacion_ventas for mo in marcas_operacion)

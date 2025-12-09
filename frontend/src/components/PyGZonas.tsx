@@ -8,9 +8,11 @@ import { ChevronDown, ChevronRight, TrendingUp, TrendingDown, Users, Truck, Buil
 
 export default function PyGZonas() {
   const { filters } = useFilters();
-  const { escenarioId, marcaId, mes: mesSeleccionado } = filters;
+  const { escenarioId, marcaId, operacionIds, mes: mesSeleccionado } = filters;
 
-  const { data, isLoading, error } = usePyGZonasData(escenarioId, marcaId);
+  // Pasar operacionIds solo si hay alguna seleccionada (vacío = todas)
+  const opsParam = operacionIds.length > 0 ? operacionIds : undefined;
+  const { data, isLoading, error } = usePyGZonasData(escenarioId, marcaId, opsParam);
   const [expandedZonas, setExpandedZonas] = useState<Set<number>>(new Set());
   const [expandedMunicipios, setExpandedMunicipios] = useState<Set<number>>(new Set());
 

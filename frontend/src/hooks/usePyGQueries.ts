@@ -6,10 +6,12 @@ import { apiClient, PyGZonasResponse, PyGMunicipiosResponse, DiagnosticoPersonal
 /**
  * Hook para obtener P&G por zonas con caché
  */
-export function usePyGZonas(escenarioId: number | null, marcaId: string | null) {
+export function usePyGZonas(escenarioId: number | null, marcaId: string | null, operacionIds?: number[]) {
+  // Convertir array vacío a undefined para el query key
+  const opsKey = operacionIds && operacionIds.length > 0 ? operacionIds : undefined;
   return useQuery({
-    queryKey: ['pyg-zonas', escenarioId, marcaId],
-    queryFn: () => apiClient.obtenerPyGZonas(escenarioId!, marcaId!),
+    queryKey: ['pyg-zonas', escenarioId, marcaId, opsKey],
+    queryFn: () => apiClient.obtenerPyGZonas(escenarioId!, marcaId!, opsKey),
     enabled: !!escenarioId && !!marcaId,
     staleTime: 5 * 60 * 1000, // 5 minutos
   });
@@ -55,8 +57,8 @@ export function usePyGMunicipios(zonaId: number | null, escenarioId: number | nu
  * Hook combinado para cargar todos los datos de P&G Zonas
  * Usa queries paralelas con caché compartido
  */
-export function usePyGZonasData(escenarioId: number | null, marcaId: string | null) {
-  const zonasQuery = usePyGZonas(escenarioId, marcaId);
+export function usePyGZonasData(escenarioId: number | null, marcaId: string | null, operacionIds?: number[]) {
+  const zonasQuery = usePyGZonas(escenarioId, marcaId, operacionIds);
   const diagnosticoQuery = useDiagnosticoPersonal(escenarioId, marcaId);
   const comparacionQuery = useComparacionPyG(escenarioId, marcaId);
 

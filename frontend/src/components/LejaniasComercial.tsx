@@ -7,7 +7,7 @@ import { ChevronDown, ChevronRight, MapPin, User, Car, Home } from 'lucide-react
 
 export default function LejaniasComercial() {
   const { filters } = useFilters();
-  const { escenarioId, marcaId } = filters;
+  const { escenarioId, marcaId, operacionIds } = filters;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -18,7 +18,7 @@ export default function LejaniasComercial() {
     if (escenarioId && marcaId) {
       cargarDatos();
     }
-  }, [escenarioId, marcaId]);
+  }, [escenarioId, marcaId, operacionIds]);
 
   const cargarDatos = async () => {
     if (!escenarioId || !marcaId) return;
@@ -26,7 +26,9 @@ export default function LejaniasComercial() {
     try {
       setLoading(true);
       setError(null);
-      const resultado = await apiClient.obtenerDetalleLejaniasComercial(escenarioId, marcaId);
+      // Pasar operacionIds solo si hay alguna seleccionada (vacío = todas)
+      const opsParam = operacionIds.length > 0 ? operacionIds : undefined;
+      const resultado = await apiClient.obtenerDetalleLejaniasComercial(escenarioId, marcaId, opsParam);
       setDatos(resultado);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error cargando datos');

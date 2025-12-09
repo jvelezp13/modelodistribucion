@@ -403,11 +403,14 @@ class APIClient {
    */
   async obtenerDetalleLejaniasComercial(
     escenarioId: number,
-    marcaId: string
+    marcaId: string,
+    operacionIds?: number[]
   ): Promise<DetalleLejaniasComercial> {
-    return this.request<DetalleLejaniasComercial>(
-      `/api/lejanias/comercial?escenario_id=${escenarioId}&marca_id=${marcaId}`
-    );
+    let url = `/api/lejanias/comercial?escenario_id=${escenarioId}&marca_id=${marcaId}`;
+    if (operacionIds && operacionIds.length > 0) {
+      url += `&operacion_ids=${operacionIds.join(',')}`;
+    }
+    return this.request<DetalleLejaniasComercial>(url);
   }
 
   /**
@@ -415,11 +418,14 @@ class APIClient {
    */
   async obtenerDetalleLejaniasLogistica(
     escenarioId: number,
-    marcaId: string
+    marcaId: string,
+    operacionIds?: number[]
   ): Promise<DetalleLejaniasLogistica> {
-    return this.request<DetalleLejaniasLogistica>(
-      `/api/lejanias/logistica?escenario_id=${escenarioId}&marca_id=${marcaId}`
-    );
+    let url = `/api/lejanias/logistica?escenario_id=${escenarioId}&marca_id=${marcaId}`;
+    if (operacionIds && operacionIds.length > 0) {
+      url += `&operacion_ids=${operacionIds.join(',')}`;
+    }
+    return this.request<DetalleLejaniasLogistica>(url);
   }
 
   /**
@@ -441,11 +447,14 @@ class APIClient {
    */
   async obtenerPyGZonas(
     escenarioId: number,
-    marcaId: string
+    marcaId: string,
+    operacionIds?: number[]
   ): Promise<PyGZonasResponse> {
-    return this.request<PyGZonasResponse>(
-      `/api/pyg/zonas?escenario_id=${escenarioId}&marca_id=${marcaId}`
-    );
+    let url = `/api/pyg/zonas?escenario_id=${escenarioId}&marca_id=${marcaId}`;
+    if (operacionIds && operacionIds.length > 0) {
+      url += `&operacion_ids=${operacionIds.join(',')}`;
+    }
+    return this.request<PyGZonasResponse>(url);
   }
 
   /**
@@ -541,11 +550,14 @@ class APIClient {
    */
   async obtenerDistribucionCascada(
     escenarioId: number,
-    marcaId: string
+    marcaId: string,
+    operacionIds?: number[]
   ): Promise<DistribucionCascadaResponse> {
-    return this.request<DistribucionCascadaResponse>(
-      `/api/distribucion/cascada?escenario_id=${escenarioId}&marca_id=${marcaId}`
-    );
+    let url = `/api/distribucion/cascada?escenario_id=${escenarioId}&marca_id=${marcaId}`;
+    if (operacionIds && operacionIds.length > 0) {
+      url += `&operacion_ids=${operacionIds.join(',')}`;
+    }
+    return this.request<DistribucionCascadaResponse>(url);
   }
 }
 

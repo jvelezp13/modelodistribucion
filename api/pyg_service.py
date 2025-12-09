@@ -3,7 +3,7 @@ Servicio de P&G para la API FastAPI.
 Reimplementa la lógica de PyGService usando core.models (alias de admin_panel.core.models).
 """
 from decimal import Decimal
-from typing import Dict, List
+from typing import Dict, List, Optional
 import logging
 
 from core.calculator_lejanias import CalculadoraLejanias
@@ -375,7 +375,7 @@ def _distribuir_admin_a_zona(escenario, zona, zonas_count: int) -> Dict:
     }
 
 
-def calcular_pyg_todas_zonas(escenario, marca) -> List[Dict]:
+def calcular_pyg_todas_zonas(escenario, marca, operacion_ids: Optional[List[int]] = None) -> List[Dict]:
     """
     Calcula P&G para todas las zonas de una marca.
 
@@ -389,6 +389,11 @@ def calcular_pyg_todas_zonas(escenario, marca) -> List[Dict]:
     - Logísticas: distribuidas según municipios atendidos por las rutas
 
     OPTIMIZACIÓN: Pre-carga todos los datos una sola vez antes del loop.
+
+    Args:
+        escenario: Escenario activo
+        marca: Marca a calcular
+        operacion_ids: Lista opcional de IDs de operaciones para filtrar zonas
     """
     from core.models import (
         Zona, PersonalComercial, GastoComercial,
@@ -398,11 +403,20 @@ def calcular_pyg_todas_zonas(escenario, marca) -> List[Dict]:
     from core.simulator import Simulator
     from utils.loaders_db import DataLoaderDB
 
-    zonas = Zona.objects.filter(
-        escenario=escenario,
-        marca=marca,
-        activo=True
-    ).order_by('nombre')
+    # Filtro base de zonas
+    zonas_filter = {
+        'escenario': escenario,
+        'marca': marca,
+        'activo': True
+    }
+
+    zonas = Zona.objects.filter(**zonas_filter)
+
+    # Filtrar por operaciones si se especifican
+    if operacion_ids:
+        zonas = zonas.filter(operacion_id__in=operacion_ids)
+
+    zonas = zonas.order_by('nombre')
 
     zonas_list = list(zonas)
     zonas_count = len(zonas_list) or 1

@@ -25,7 +25,7 @@ interface VehiculoAgrupado {
 
 export default function LejaniasLogistica() {
   const { filters } = useFilters();
-  const { escenarioId, marcaId } = filters;
+  const { escenarioId, marcaId, operacionIds } = filters;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +39,7 @@ export default function LejaniasLogistica() {
     if (escenarioId && marcaId) {
       cargarDatos();
     }
-  }, [escenarioId, marcaId]);
+  }, [escenarioId, marcaId, operacionIds]);
 
   const cargarDatos = async () => {
     if (!escenarioId || !marcaId) return;
@@ -47,8 +47,10 @@ export default function LejaniasLogistica() {
     try {
       setLoading(true);
       setError(null);
+      // Pasar operacionIds solo si hay alguna seleccionada (vacío = todas)
+      const opsParam = operacionIds.length > 0 ? operacionIds : undefined;
       const [resultado, distResult] = await Promise.all([
-        apiClient.obtenerDetalleLejaniasLogistica(escenarioId, marcaId),
+        apiClient.obtenerDetalleLejaniasLogistica(escenarioId, marcaId, opsParam),
         apiClient.obtenerDiagnosticoLogistico(escenarioId, marcaId)
       ]);
       setDatos(resultado);
