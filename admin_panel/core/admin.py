@@ -1106,8 +1106,11 @@ class GastoComercialAdmin(DuplicarMixin, admin.ModelAdmin):
         ('Distribución de Costos', {
             'fields': (
                 'asignacion',
-                ('tipo_asignacion_operacion', 'operacion', 'criterio_prorrateo_operacion'),
-                ('tipo_asignacion_geo', 'zona'),
+                'tipo_asignacion_operacion',
+                'operacion',
+                'criterio_prorrateo_operacion',
+                'tipo_asignacion_geo',
+                'zona',
             ),
             'description': '''
                 <b>Por Marca:</b> Individual = 100% a esta marca | Compartido = se distribuye entre marcas<br>
@@ -1184,8 +1187,11 @@ class GastoLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
         ('Distribución de Costos', {
             'fields': (
                 'asignacion',
-                ('tipo_asignacion_operacion', 'operacion', 'criterio_prorrateo_operacion'),
-                ('tipo_asignacion_geo', 'zona'),
+                'tipo_asignacion_operacion',
+                'operacion',
+                'criterio_prorrateo_operacion',
+                'tipo_asignacion_geo',
+                'zona',
             ),
             'description': '''
                 <b>Por Marca:</b> Individual = 100% a esta marca | Compartido = se distribuye entre marcas<br>
