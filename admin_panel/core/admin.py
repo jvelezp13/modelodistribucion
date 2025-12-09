@@ -390,23 +390,28 @@ class PersonalComercialForm(forms.ModelForm):
 class PersonalComercialAdmin(DuplicarMixin, admin.ModelAdmin):
     form = PersonalComercialForm
     change_list_template = 'admin/core/change_list_with_total.html'
-    list_display = ('marca', 'nombre', 'escenario', 'tipo', 'cantidad', 'salario_formateado', 'costo_total_estimado', 'asignacion', 'tipo_asignacion_geo', 'indice_incremento')
-    list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'tipo_asignacion_geo', 'indice_incremento', 'perfil_prestacional')
+    list_display = ('marca', 'nombre', 'escenario', 'tipo', 'cantidad', 'salario_formateado', 'costo_total_estimado', 'asignacion', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento')
+    list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento', 'perfil_prestacional')
     search_fields = ('marca__nombre', 'nombre')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
+    autocomplete_fields = ['operacion', 'zona']
     actions = ['duplicar_registros']
 
     fieldsets = (
         ('Información Básica', {
             'fields': ('marca', 'escenario', 'nombre', 'tipo', 'cantidad', 'salario_base', 'perfil_prestacional')
         }),
-        ('Asignación por Marca', {
-            'fields': ('asignacion', 'porcentaje_dedicacion', 'criterio_prorrateo'),
-            'description': 'Individual = 100% a esta marca. Compartido = se distribuye entre marcas según criterio.'
-        }),
-        ('Asignación Geográfica', {
-            'fields': ('tipo_asignacion_geo', 'zona'),
-            'description': 'Directo = 100% a una zona. Proporcional = se distribuye entre zonas según venta.'
+        ('Distribución de Costos', {
+            'fields': (
+                ('asignacion', 'porcentaje_dedicacion', 'criterio_prorrateo'),
+                ('tipo_asignacion_operacion', 'operacion', 'criterio_prorrateo_operacion'),
+                ('tipo_asignacion_geo', 'zona'),
+            ),
+            'description': '''
+                <b>Por Marca:</b> Individual = 100% a esta marca | Compartido = se distribuye entre marcas<br>
+                <b>Por Operación:</b> Individual = asignado a una operación | Compartido = se distribuye entre operaciones<br>
+                <b>Por Zona:</b> Directo = 100% a una zona | Proporcional = según ventas | Compartido = equitativo
+            '''
         }),
         ('Proyección Anual', {
             'fields': ('indice_incremento',),
@@ -414,7 +419,7 @@ class PersonalComercialAdmin(DuplicarMixin, admin.ModelAdmin):
         }),
         ('Auxilios No Prestacionales', {
             'fields': ('auxilios_no_prestacionales',),
-            'description': 'Auxilios que NO generan prestaciones sociales. Ingrese valores sin puntos de miles.'
+            'description': 'Auxilios que NO generan prestaciones sociales.'
         }),
         ('Metadata', {
             'fields': ('fecha_creacion', 'fecha_modificacion'),
@@ -429,16 +434,6 @@ class PersonalComercialAdmin(DuplicarMixin, admin.ModelAdmin):
         return f"${obj.salario_base:,.0f}" if obj.salario_base else "-"
     salario_formateado.short_description = 'Salario Base'
     salario_formateado.admin_order_field = 'salario_base'
-
-    def get_form(self, request, obj=None, **kwargs):
-        form = super().get_form(request, obj, **kwargs)
-        # Hacer campos condicionales según asignación
-        if obj and obj.asignacion == 'individual':
-            if 'porcentaje_dedicacion' in form.base_fields:
-                form.base_fields['porcentaje_dedicacion'].required = False
-            if 'criterio_prorrateo' in form.base_fields:
-                form.base_fields['criterio_prorrateo'].required = False
-        return form
 
     def costo_total_estimado(self, obj):
         if not obj.salario_base:
@@ -503,31 +498,36 @@ class PersonalLogisticoForm(forms.ModelForm):
 class PersonalLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
     form = PersonalLogisticoForm
     change_list_template = 'admin/core/change_list_with_total.html'
-    list_display = ('marca', 'nombre', 'escenario', 'tipo', 'cantidad', 'salario_formateado', 'costo_total_estimado', 'asignacion', 'tipo_asignacion_geo', 'indice_incremento')
-    list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'tipo_asignacion_geo', 'indice_incremento', 'perfil_prestacional')
+    list_display = ('marca', 'nombre', 'escenario', 'tipo', 'cantidad', 'salario_formateado', 'costo_total_estimado', 'asignacion', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento')
+    list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento', 'perfil_prestacional')
     search_fields = ('marca__nombre', 'nombre')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
+    autocomplete_fields = ['operacion', 'zona']
     actions = ['duplicar_registros']
 
     fieldsets = (
         ('Información Básica', {
             'fields': ('marca', 'escenario', 'nombre', 'tipo', 'cantidad', 'salario_base', 'perfil_prestacional')
         }),
-        ('Auxilios No Prestacionales', {
-            'fields': ('auxilios_no_prestacionales',),
-            'description': 'Auxilios que NO generan prestaciones sociales. Ingrese valores sin puntos de miles.'
-        }),
-        ('Asignación por Marca', {
-            'fields': ('asignacion', 'porcentaje_dedicacion', 'criterio_prorrateo'),
-            'description': 'Individual = 100% a esta marca. Compartido = se distribuye entre marcas según criterio.'
-        }),
-        ('Asignación Geográfica', {
-            'fields': ('tipo_asignacion_geo', 'zona'),
-            'description': 'Directo = 100% a una zona. Proporcional = se distribuye entre zonas según venta.'
+        ('Distribución de Costos', {
+            'fields': (
+                ('asignacion', 'porcentaje_dedicacion', 'criterio_prorrateo'),
+                ('tipo_asignacion_operacion', 'operacion', 'criterio_prorrateo_operacion'),
+                ('tipo_asignacion_geo', 'zona'),
+            ),
+            'description': '''
+                <b>Por Marca:</b> Individual = 100% a esta marca | Compartido = se distribuye entre marcas<br>
+                <b>Por Operación:</b> Individual = asignado a una operación | Compartido = se distribuye entre operaciones<br>
+                <b>Por Zona:</b> Directo = 100% a una zona | Proporcional = según ventas | Compartido = equitativo
+            '''
         }),
         ('Proyección Anual', {
             'fields': ('indice_incremento',),
             'description': 'Índice usado para proyectar este costo a años futuros.'
+        }),
+        ('Auxilios No Prestacionales', {
+            'fields': ('auxilios_no_prestacionales',),
+            'description': 'Auxilios que NO generan prestaciones sociales.'
         }),
         ('Metadata', {
             'fields': ('fecha_creacion', 'fecha_modificacion'),
@@ -891,10 +891,11 @@ class PersonalAdministrativoForm(forms.ModelForm):
 class PersonalAdministrativoAdmin(DuplicarMixin, admin.ModelAdmin):
     form = PersonalAdministrativoForm
     change_list_template = 'admin/core/change_list_with_total.html'
-    list_display = ('nombre', 'marca', 'escenario', 'tipo', 'cantidad', 'asignacion', 'tipo_asignacion_geo', 'tipo_contrato', 'valor_mensual', 'costo_total_estimado', 'indice_incremento')
-    list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'tipo_asignacion_geo', 'indice_incremento', 'tipo_contrato')
+    list_display = ('nombre', 'marca', 'escenario', 'tipo', 'cantidad', 'asignacion', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'tipo_contrato', 'valor_mensual', 'costo_total_estimado', 'indice_incremento')
+    list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento', 'tipo_contrato')
     search_fields = ('nombre',)
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
+    autocomplete_fields = ['operacion']
     actions = ['duplicar_registros']
 
     fieldsets = (
@@ -905,21 +906,25 @@ class PersonalAdministrativoAdmin(DuplicarMixin, admin.ModelAdmin):
             'fields': ('salario_base', 'perfil_prestacional'),
             'description': 'Diligenciar solo si tipo de contrato es Nómina.'
         }),
-        ('Auxilios No Prestacionales', {
-            'fields': ('auxilios_no_prestacionales',),
-            'description': 'Auxilios que NO generan prestaciones sociales. Ingrese valores sin puntos de miles.'
-        }),
         ('Honorarios', {
             'fields': ('honorarios_mensuales',),
-            'description': 'Diligenciar solo si tipo de contrato es Honorarios'
+            'description': 'Diligenciar solo si tipo de contrato es Honorarios.'
         }),
-        ('Asignación por Marca', {
-            'fields': ('asignacion', 'criterio_prorrateo'),
-            'description': 'Individual = 100% a esta marca. Compartido = se distribuye entre marcas según criterio.'
+        ('Auxilios No Prestacionales', {
+            'fields': ('auxilios_no_prestacionales',),
+            'description': 'Auxilios que NO generan prestaciones sociales.'
         }),
-        ('Asignación Geográfica', {
-            'fields': ('tipo_asignacion_geo',),
-            'description': 'Típicamente Proporcional (se distribuye entre zonas según venta)'
+        ('Distribución de Costos', {
+            'fields': (
+                ('asignacion', 'criterio_prorrateo'),
+                ('tipo_asignacion_operacion', 'operacion', 'criterio_prorrateo_operacion'),
+                ('tipo_asignacion_geo',),
+            ),
+            'description': '''
+                <b>Por Marca:</b> Individual = 100% a esta marca | Compartido = se distribuye entre marcas<br>
+                <b>Por Operación:</b> Individual = asignado a una operación | Compartido = se distribuye entre operaciones<br>
+                <b>Por Zona:</b> Típicamente Proporcional o Compartido (personal admin no se asigna directo a zona)
+            '''
         }),
         ('Proyección Anual', {
             'fields': ('indice_incremento',),
@@ -1010,23 +1015,28 @@ class GastoAdministrativoForm(forms.ModelForm):
 class GastoAdministrativoAdmin(DuplicarMixin, admin.ModelAdmin):
     form = GastoAdministrativoForm
     change_list_template = 'admin/core/change_list_with_total.html'
-    list_display = ('nombre', 'marca', 'escenario', 'tipo', 'valor_mensual_formateado', 'asignacion', 'tipo_asignacion_geo', 'criterio_prorrateo', 'indice_incremento')
-    list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'tipo_asignacion_geo', 'indice_incremento', 'criterio_prorrateo')
+    list_display = ('nombre', 'marca', 'escenario', 'tipo', 'valor_mensual_formateado', 'asignacion', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'criterio_prorrateo', 'indice_incremento')
+    list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento', 'criterio_prorrateo')
     search_fields = ('nombre', 'notas')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
+    autocomplete_fields = ['operacion']
     actions = ['duplicar_registros']
 
     fieldsets = (
         ('Información Básica', {
             'fields': ('marca', 'escenario', 'nombre', 'tipo', 'valor_mensual')
         }),
-        ('Asignación por Marca', {
-            'fields': ('asignacion', 'criterio_prorrateo'),
-            'description': 'Individual = 100% a esta marca. Compartido = se distribuye entre marcas según criterio.'
-        }),
-        ('Asignación Geográfica', {
-            'fields': ('tipo_asignacion_geo',),
-            'description': 'Típicamente Proporcional (se distribuye entre zonas según venta)'
+        ('Distribución de Costos', {
+            'fields': (
+                ('asignacion', 'criterio_prorrateo'),
+                ('tipo_asignacion_operacion', 'operacion', 'criterio_prorrateo_operacion'),
+                ('tipo_asignacion_geo',),
+            ),
+            'description': '''
+                <b>Por Marca:</b> Individual = 100% a esta marca | Compartido = se distribuye entre marcas<br>
+                <b>Por Operación:</b> Individual = asignado a una operación | Compartido = se distribuye entre operaciones<br>
+                <b>Por Zona:</b> Típicamente Proporcional o Compartido (gastos admin no se asignan directo a zona)
+            '''
         }),
         ('Proyección Anual', {
             'fields': ('indice_incremento',),
@@ -1082,23 +1092,28 @@ class GastoComercialForm(forms.ModelForm):
 class GastoComercialAdmin(DuplicarMixin, admin.ModelAdmin):
     form = GastoComercialForm
     change_list_template = 'admin/core/change_list_with_total.html'
-    list_display = ('marca', 'escenario', 'nombre', 'tipo', 'valor_mensual_formateado', 'asignacion', 'tipo_asignacion_geo', 'indice_incremento')
-    list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'tipo_asignacion_geo', 'indice_incremento')
+    list_display = ('marca', 'escenario', 'nombre', 'tipo', 'valor_mensual_formateado', 'asignacion', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento')
+    list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento')
     search_fields = ('nombre', 'notas')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
+    autocomplete_fields = ['operacion', 'zona']
     actions = ['duplicar_registros']
 
     fieldsets = (
         ('Información Básica', {
             'fields': ('marca', 'escenario', 'nombre', 'tipo', 'valor_mensual')
         }),
-        ('Asignación por Marca', {
-            'fields': ('asignacion',),
-            'description': 'Individual = 100% a esta marca. Compartido = se distribuye entre marcas.'
-        }),
-        ('Asignación Geográfica', {
-            'fields': ('tipo_asignacion_geo', 'zona'),
-            'description': 'Directo = 100% a una zona. Proporcional = se distribuye entre zonas según venta.'
+        ('Distribución de Costos', {
+            'fields': (
+                'asignacion',
+                ('tipo_asignacion_operacion', 'operacion', 'criterio_prorrateo_operacion'),
+                ('tipo_asignacion_geo', 'zona'),
+            ),
+            'description': '''
+                <b>Por Marca:</b> Individual = 100% a esta marca | Compartido = se distribuye entre marcas<br>
+                <b>Por Operación:</b> Individual = asignado a una operación | Compartido = se distribuye entre operaciones<br>
+                <b>Por Zona:</b> Directo = 100% a una zona | Proporcional = según ventas
+            '''
         }),
         ('Proyección Anual', {
             'fields': ('indice_incremento',),
@@ -1154,10 +1169,11 @@ class GastoLogisticoForm(forms.ModelForm):
 class GastoLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
     form = GastoLogisticoForm
     change_list_template = 'admin/core/change_list_with_total.html'
-    list_display = ('marca', 'escenario', 'nombre', 'tipo', 'valor_mensual_formateado', 'asignacion', 'tipo_asignacion_geo', 'indice_incremento')
-    list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'tipo_asignacion_geo', 'indice_incremento')
+    list_display = ('marca', 'escenario', 'nombre', 'tipo', 'valor_mensual_formateado', 'asignacion', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento')
+    list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento')
     search_fields = ('nombre', 'notas')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
+    autocomplete_fields = ['operacion', 'zona']
     actions = ['duplicar_registros']
 
     fieldsets = (
@@ -1165,13 +1181,17 @@ class GastoLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
             'fields': ('marca', 'escenario', 'nombre', 'tipo', 'valor_mensual'),
             'description': 'Para fletes de terceros, usar VEHÍCULOS con esquema="Tercero".'
         }),
-        ('Asignación por Marca', {
-            'fields': ('asignacion',),
-            'description': 'Individual = 100% a esta marca. Compartido = se distribuye entre marcas.'
-        }),
-        ('Asignación Geográfica', {
-            'fields': ('tipo_asignacion_geo', 'zona'),
-            'description': 'Directo = 100% a una zona. Proporcional = se distribuye entre zonas según venta.'
+        ('Distribución de Costos', {
+            'fields': (
+                'asignacion',
+                ('tipo_asignacion_operacion', 'operacion', 'criterio_prorrateo_operacion'),
+                ('tipo_asignacion_geo', 'zona'),
+            ),
+            'description': '''
+                <b>Por Marca:</b> Individual = 100% a esta marca | Compartido = se distribuye entre marcas<br>
+                <b>Por Operación:</b> Individual = asignado a una operación | Compartido = se distribuye entre operaciones<br>
+                <b>Por Zona:</b> Directo = 100% a una zona | Proporcional = según ventas
+            '''
         }),
         ('Proyección Anual', {
             'fields': ('indice_incremento',),
