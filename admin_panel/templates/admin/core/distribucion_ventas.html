@@ -478,6 +478,14 @@
                 </tr>
             </tfoot>
         </table>
+        <!-- Indicadores de validacion por operacion -->
+        <div id="validacion-zonas-por-operacion" style="margin-top: 15px; padding: 15px; background: #f9f9f9; border-radius: 8px;">
+            <strong style="font-size: 13px; color: #666;">Validación por Operación:</strong>
+            <div id="validacion-operaciones-lista" style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 10px;">
+                <!-- Se llena dinámicamente -->
+            </div>
+        </div>
+
         <button type="button" class="btn-guardar" id="guardar-zonas">
             Guardar Distribucion de Zonas
         </button>
@@ -713,12 +721,18 @@
 
         // ========== ZONAS ==========
         var operacionVentaMap = {};
+        var operacionNombreMap = {};
         var tablaOp = document.getElementById('tabla-operaciones');
         if (tablaOp) {
             tablaOp.querySelectorAll('tbody tr').forEach(function(row) {
                 var input = row.querySelector('.participacion-input');
                 if (input && input.dataset.operacionId) {
                     operacionVentaMap[input.dataset.operacionId] = input;
+                    // Obtener nombre de operacion de la celda de nombre
+                    var nombreCell = row.querySelector('td:first-child strong');
+                    if (nombreCell) {
+                        operacionNombreMap[input.dataset.operacionId] = nombreCell.textContent.trim();
+                    }
                 }
             });
         }
@@ -730,11 +744,15 @@
             var inputs = tabla.querySelectorAll('.participacion-input');
             var totalesPorOperacion = {};
             var totalVentaGlobal = 0;
+            var totalParticipacionGlobal = 0;
 
-            inputs.forEach(function(input) {
+            for (var i = 0; i < inputs.length; i++) {
+                var input = inputs[i];
                 var participacion = parseFloat(input.value) || 0;
                 var operacionId = input.dataset.operacion;
                 var ventaOperacion = 0;
+
+                totalParticipacionGlobal += participacion;
 
                 if (operacionId && operacionVentaMap[operacionId]) {
                     var opParticipacion = parseFloat(operacionVentaMap[operacionId].value) || 0;
@@ -746,7 +764,7 @@
 
                 // Acumular por operacion
                 if (!totalesPorOperacion[operacionId]) {
-                    totalesPorOperacion[operacionId] = { total: 0, venta: 0 };
+                    totalesPorOperacion[operacionId] = { total: 0, venta: 0, nombre: operacionNombreMap[operacionId] || 'Sin operación' };
                 }
                 totalesPorOperacion[operacionId].total += participacion;
                 totalesPorOperacion[operacionId].venta += venta;
@@ -756,18 +774,39 @@
                 if (ventaSpan) {
                     ventaSpan.textContent = formatNumber(venta);
                 }
-            });
+            }
 
+            // Actualizar total de participacion global
+            var totalPartSpan = document.getElementById('total-participacion-zonas');
+            if (totalPartSpan) totalPartSpan.textContent = totalParticipacionGlobal.toFixed(2);
+
+            // Actualizar total de venta
             var totalVentaSpan = document.getElementById('total-venta-zonas');
             if (totalVentaSpan) totalVentaSpan.textContent = formatNumber(totalVentaGlobal);
 
-            // Verificar si todas las operaciones suman 100%
+            // No aplicar clase de validacion al total global (no tiene sentido)
+            var totalBox = document.getElementById('total-zonas-box');
+            if (totalBox) {
+                totalBox.classList.remove('ok', 'warning', 'error');
+                totalBox.classList.add('warning'); // Siempre neutro
+            }
+
+            // Verificar si todas las operaciones suman 100% y mostrar indicadores
             var todasValidas = true;
-            for (var opId in totalesPorOperacion) {
-                if (Math.abs(totalesPorOperacion[opId].total - 100) > 0.01) {
-                    todasValidas = false;
-                    break;
+            var listaValidacion = document.getElementById('validacion-operaciones-lista');
+            if (listaValidacion) {
+                var html = '';
+                for (var opId in totalesPorOperacion) {
+                    var opData = totalesPorOperacion[opId];
+                    var esValida = Math.abs(opData.total - 100) < 0.01;
+                    if (!esValida) todasValidas = false;
+
+                    var claseColor = esValida ? 'ok' : (opData.total > 100 ? 'error' : 'warning');
+                    var icono = esValida ? '✓' : (opData.total > 100 ? '✗' : '⚠');
+                    html += '<span class="total-box ' + claseColor + '" style="font-size: 12px; padding: 4px 10px;">' +
+                            icono + ' ' + opData.nombre + ': ' + opData.total.toFixed(2) + '%</span>';
                 }
+                listaValidacion.innerHTML = html;
             }
 
             var btnGuardar = document.getElementById('guardar-zonas');
