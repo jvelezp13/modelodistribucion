@@ -994,8 +994,21 @@ class PersonalAdministrativoAdmin(DuplicarMixin, admin.ModelAdmin):
         return response
 
 
+class GastoAdministrativoForm(forms.ModelForm):
+    """Form con campo monetario localizado"""
+    valor_mensual = forms.DecimalField(
+        localize=True,
+        label="Valor Mensual",
+    )
+
+    class Meta:
+        model = GastoAdministrativo
+        fields = '__all__'
+
+
 @admin.register(GastoAdministrativo, site=dxv_admin_site)
 class GastoAdministrativoAdmin(DuplicarMixin, admin.ModelAdmin):
+    form = GastoAdministrativoForm
     change_list_template = 'admin/core/change_list_with_total.html'
     list_display = ('nombre', 'marca', 'escenario', 'tipo', 'valor_mensual_formateado', 'asignacion', 'tipo_asignacion_geo', 'criterio_prorrateo', 'indice_incremento')
     list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'tipo_asignacion_geo', 'indice_incremento', 'criterio_prorrateo')
@@ -1029,6 +1042,9 @@ class GastoAdministrativoAdmin(DuplicarMixin, admin.ModelAdmin):
         }),
     )
 
+    class Media:
+        js = ('admin/js/personal_condicional.js',)
+
     def valor_mensual_formateado(self, obj):
         return f"${obj.valor_mensual:,.0f}"
     valor_mensual_formateado.short_description = 'Valor Mensual'
@@ -1050,8 +1066,21 @@ class GastoAdministrativoAdmin(DuplicarMixin, admin.ModelAdmin):
         return response
 
 
+class GastoComercialForm(forms.ModelForm):
+    """Form con campo monetario localizado"""
+    valor_mensual = forms.DecimalField(
+        localize=True,
+        label="Valor Mensual",
+    )
+
+    class Meta:
+        model = GastoComercial
+        fields = '__all__'
+
+
 @admin.register(GastoComercial, site=dxv_admin_site)
 class GastoComercialAdmin(DuplicarMixin, admin.ModelAdmin):
+    form = GastoComercialForm
     change_list_template = 'admin/core/change_list_with_total.html'
     list_display = ('marca', 'escenario', 'nombre', 'tipo', 'valor_mensual_formateado', 'asignacion', 'tipo_asignacion_geo', 'indice_incremento')
     list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'tipo_asignacion_geo', 'indice_incremento')
@@ -1085,6 +1114,9 @@ class GastoComercialAdmin(DuplicarMixin, admin.ModelAdmin):
         }),
     )
 
+    class Media:
+        js = ('admin/js/personal_condicional.js',)
+
     def valor_mensual_formateado(self, obj):
         return f"${obj.valor_mensual:,.0f}"
     valor_mensual_formateado.short_description = 'Valor Mensual'
@@ -1106,8 +1138,21 @@ class GastoComercialAdmin(DuplicarMixin, admin.ModelAdmin):
         return response
 
 
+class GastoLogisticoForm(forms.ModelForm):
+    """Form con campo monetario localizado"""
+    valor_mensual = forms.DecimalField(
+        localize=True,
+        label="Valor Mensual",
+    )
+
+    class Meta:
+        model = GastoLogistico
+        fields = '__all__'
+
+
 @admin.register(GastoLogistico, site=dxv_admin_site)
 class GastoLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
+    form = GastoLogisticoForm
     change_list_template = 'admin/core/change_list_with_total.html'
     list_display = ('marca', 'escenario', 'nombre', 'tipo', 'valor_mensual_formateado', 'asignacion', 'tipo_asignacion_geo', 'indice_incremento')
     list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'tipo_asignacion_geo', 'indice_incremento')
@@ -1118,7 +1163,7 @@ class GastoLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
     fieldsets = (
         ('Información Básica', {
             'fields': ('marca', 'escenario', 'nombre', 'tipo', 'valor_mensual'),
-            'description': '⚠️ Para fletes de terceros, usar VEHÍCULOS con esquema="Tercero".'
+            'description': 'Para fletes de terceros, usar VEHÍCULOS con esquema="Tercero".'
         }),
         ('Asignación por Marca', {
             'fields': ('asignacion',),
@@ -1141,6 +1186,9 @@ class GastoLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+
+    class Media:
+        js = ('admin/js/personal_condicional.js',)
 
     def valor_mensual_formateado(self, obj):
         return f"${obj.valor_mensual:,.0f}"
