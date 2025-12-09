@@ -5,6 +5,7 @@ from django import forms
 from django.contrib import admin
 from django.contrib import messages
 from django.db.models import Sum, Count
+from django.utils.html import format_html
 from .utils import copiar_instancia
 from .models import (
     Marca, PersonalComercial, PersonalLogistico,
@@ -267,9 +268,31 @@ class MarcaOperacionAdmin(admin.ModelAdmin):
     venta_proyectada_fmt.admin_order_field = "venta_proyectada"
 
 
+class ColorPickerWidget(forms.TextInput):
+    """Widget de selector de color HTML5"""
+    input_type = 'color'
+
+    def format_value(self, value):
+        # Asegurar que el valor tenga formato #RRGGBB
+        if value and not value.startswith('#'):
+            value = f'#{value}'
+        return value or '#000000'
+
+
+class MarcaForm(forms.ModelForm):
+    """Formulario personalizado para Marca con color picker"""
+    class Meta:
+        model = Marca
+        fields = '__all__'
+        widgets = {
+            'color': ColorPickerWidget(attrs={'style': 'width: 80px; height: 40px; padding: 0; cursor: pointer;'})
+        }
+
+
 @admin.register(Marca, site=dxv_admin_site)
 class MarcaAdmin(admin.ModelAdmin):
-    list_display = ('nombre', 'marca_id', 'activa', 'total_empleados', 'total_vehiculos', 'fecha_modificacion')
+    form = MarcaForm
+    list_display = ('nombre', 'marca_id', 'color_preview', 'activa', 'total_empleados', 'total_vehiculos', 'fecha_modificacion')
     list_filter = ('activa',)
     search_fields = ('nombre', 'marca_id', 'descripcion')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
@@ -283,6 +306,16 @@ class MarcaAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+
+    def color_preview(self, obj):
+        """Muestra preview del color en la lista"""
+        if obj.color:
+            return format_html(
+                '<span style="background-color: {}; padding: 5px 15px; border-radius: 3px;">&nbsp;</span> {}',
+                obj.color, obj.color
+            )
+        return '-'
+    color_preview.short_description = 'Color'
 
     def total_empleados(self, obj):
         comercial = obj.personal_comercial.aggregate(total=Sum('cantidad'))['total'] or 0
