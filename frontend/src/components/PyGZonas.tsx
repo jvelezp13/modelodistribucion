@@ -445,6 +445,8 @@ export default function PyGZonas() {
                                 tasaICA={zona.zona.tasa_ica || 0}
                                 tasaImpuesto={data.tasa_impuesto_renta || 0.33}
                                 configuracionDescuentos={data.configuracion_descuentos}
+                                impuestoZona={calcularImpuestoProrrateado(zona)}
+                                margenNetoZona={margenNeto}
                               />
                             )}
                           </td>
@@ -492,11 +494,14 @@ interface MunicipiosTableProps {
   tasaICA: number;
   tasaImpuesto: number;
   configuracionDescuentos: any;
+  impuestoZona: number;
+  margenNetoZona: number;
 }
 
 function MunicipiosTable({
   zonaId, zonaNombre, zonaParticipacion, ventasZona, escenarioId, marcaId,
-  formatCurrency, formatPercent, tasaICA, tasaImpuesto, configuracionDescuentos
+  formatCurrency, formatPercent, tasaICA, tasaImpuesto, configuracionDescuentos,
+  impuestoZona, margenNetoZona
 }: MunicipiosTableProps) {
   const { data, isLoading, error } = usePyGMunicipios(zonaId, escenarioId, marcaId);
 
@@ -542,22 +547,14 @@ function MunicipiosTable({
     return rebate + descFinanciero + cesantia;
   };
 
-  // Calcular totales consolidados para prorrateo
-  let totalUtilidadAntesImp = 0;
+  // El impuesto ya viene prorrateado de la zona padre (impuestoZona)
+  // Solo calculamos totalVentas para prorratear entre municipios
   let totalVentas = 0;
 
   data.municipios.forEach(mun => {
     const ventas = calcularVentasMunicipio(mun.municipio.participacion_zona || 0);
-    const margenBruto = calcularMargenBruto(ventas);
-    const ica = calcularICAMun(ventas);
-    const costoTotal = mun.total_mensual + ica;
-    const utilOp = margenBruto - costoTotal;
-    const otrosIng = calcularOtrosIngresosMun(ventas, margenBruto);
-    totalUtilidadAntesImp += utilOp + otrosIng;
     totalVentas += ventas;
   });
-
-  const impuestoTotal = totalUtilidadAntesImp > 0 ? totalUtilidadAntesImp * tasaImpuesto : 0;
 
   return (
     <div className="mt-3 bg-white rounded border border-gray-200 overflow-hidden">
@@ -593,9 +590,12 @@ function MunicipiosTable({
               const utilOp = margenBruto - costoTotal;
               const otrosIng = calcularOtrosIngresosMun(ventas, margenBruto);
               const utilAntesImp = utilOp + otrosIng;
-              const impuesto = totalVentas > 0 ? impuestoTotal * (ventas / totalVentas) : 0;
+              // Usar impuesto prorrateado de la zona padre
+              const impuesto = totalVentas > 0 ? impuestoZona * (ventas / totalVentas) : 0;
               const utilNeta = utilAntesImp - impuesto;
-              const margenNeto = ventas > 0 ? (utilNeta / ventas) * 100 : 0;
+              // El margen % de cada municipio es igual al de la zona padre
+              // porque los costos se distribuyen proporcionalmente por participación
+              const margenNeto = margenNetoZona;
               const isRentable = utilNeta >= 0;
 
               return (
