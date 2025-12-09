@@ -260,9 +260,13 @@ class DataLoaderDB:
 
             logger.info(f"[DEBUG] Gastos comerciales cargados: {len(gastos_comerciales)}")
 
+            # Calcular ventas mensuales promedio
+            ventas_mensuales = float(total_ventas_anuales) / 12 if total_ventas_anuales else 0
+
             return {
                 'marca_id': marca.marca_id,
                 'nombre': marca.nombre,
+                'proyeccion_ventas_mensual': ventas_mensuales,  # Campo requerido por Simulator
                 'proyeccion_ventas': {
                     'resumen_anual': {
                         'total_ventas_anuales': float(total_ventas_anuales)
