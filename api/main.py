@@ -1430,7 +1430,7 @@ def obtener_pyg_zonas(
     """
     try:
         from core.models import (
-            Escenario, Marca, ProyeccionVentasConfig,
+            Escenario, Marca,
             ConfiguracionDescuentos, Impuesto
         )
         from api.pyg_service import calcular_pyg_todas_zonas
@@ -1448,17 +1448,13 @@ def obtener_pyg_zonas(
 
         zonas = calcular_pyg_todas_zonas(escenario, marca, operacion_ids=operacion_ids_list)
 
-        # Obtener ventas mensuales de la marca
-        ventas_mensuales = {}
-        try:
-            config_ventas = ProyeccionVentasConfig.objects.get(
-                marca=marca,
-                escenario=escenario,
-                anio=escenario.anio
-            )
-            ventas_mensuales = {k: float(v) for k, v in config_ventas.calcular_ventas_mensuales().items()}
-        except ProyeccionVentasConfig.DoesNotExist:
-            pass
+        # Obtener ventas mensuales de la marca (filtradas por operaciones si se especifican)
+        ventas_por_marca = obtener_ventas_mensuales_por_marca(
+            escenario_id=escenario_id,
+            marcas_ids=[marca_id],
+            operacion_ids=operacion_ids_list
+        )
+        ventas_mensuales = ventas_por_marca.get(marca_id, {})
 
         # Obtener configuración de descuentos
         config_descuentos = None

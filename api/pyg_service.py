@@ -581,11 +581,25 @@ def calcular_pyg_todas_zonas(escenario, marca, operacion_ids: Optional[List[int]
 
         total_mensual = comercial['total'] + logistico['total'] + administrativo['total']
 
+        # Obtener información de la operación (si existe)
+        operacion_info = None
+        tasa_ica = Decimal('0')
+        if zona.operacion:
+            operacion_info = {
+                'id': zona.operacion.id,
+                'nombre': zona.operacion.nombre,
+                'codigo': zona.operacion.codigo,
+            }
+            # tasa_ica viene en porcentaje (0-100), convertir a decimal (0-1)
+            tasa_ica = (zona.operacion.tasa_ica or Decimal('0')) / Decimal('100')
+
         resultados.append({
             'zona': {
                 'id': zona.id,
                 'nombre': zona.nombre,
                 'participacion_ventas': float(zona.participacion_ventas or 0),
+                'operacion': operacion_info,
+                'tasa_ica': float(tasa_ica),  # Ya convertido a decimal (0-1)
             },
             'comercial': comercial,
             'logistico': logistico,
