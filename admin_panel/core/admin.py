@@ -394,7 +394,6 @@ class PersonalComercialAdmin(DuplicarMixin, admin.ModelAdmin):
     list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento', 'perfil_prestacional')
     search_fields = ('marca__nombre', 'nombre')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
-    autocomplete_fields = ['operacion', 'zona']
     actions = ['duplicar_registros']
 
     fieldsets = (
@@ -403,9 +402,14 @@ class PersonalComercialAdmin(DuplicarMixin, admin.ModelAdmin):
         }),
         ('Distribución de Costos', {
             'fields': (
-                ('asignacion', 'porcentaje_dedicacion', 'criterio_prorrateo'),
-                ('tipo_asignacion_operacion', 'operacion', 'criterio_prorrateo_operacion'),
-                ('tipo_asignacion_geo', 'zona'),
+                'asignacion',
+                'porcentaje_dedicacion',
+                'criterio_prorrateo',
+                'tipo_asignacion_operacion',
+                'operacion',
+                'criterio_prorrateo_operacion',
+                'tipo_asignacion_geo',
+                'zona',
             ),
             'description': '''
                 <b>Por Marca:</b> Individual = 100% a esta marca | Compartido = se distribuye entre marcas<br>
@@ -502,7 +506,6 @@ class PersonalLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
     list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento', 'perfil_prestacional')
     search_fields = ('marca__nombre', 'nombre')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
-    autocomplete_fields = ['operacion', 'zona']
     actions = ['duplicar_registros']
 
     fieldsets = (
@@ -511,9 +514,14 @@ class PersonalLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
         }),
         ('Distribución de Costos', {
             'fields': (
-                ('asignacion', 'porcentaje_dedicacion', 'criterio_prorrateo'),
-                ('tipo_asignacion_operacion', 'operacion', 'criterio_prorrateo_operacion'),
-                ('tipo_asignacion_geo', 'zona'),
+                'asignacion',
+                'porcentaje_dedicacion',
+                'criterio_prorrateo',
+                'tipo_asignacion_operacion',
+                'operacion',
+                'criterio_prorrateo_operacion',
+                'tipo_asignacion_geo',
+                'zona',
             ),
             'description': '''
                 <b>Por Marca:</b> Individual = 100% a esta marca | Compartido = se distribuye entre marcas<br>
@@ -895,7 +903,6 @@ class PersonalAdministrativoAdmin(DuplicarMixin, admin.ModelAdmin):
     list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento', 'tipo_contrato')
     search_fields = ('nombre',)
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
-    autocomplete_fields = ['operacion']
     actions = ['duplicar_registros']
 
     fieldsets = (
@@ -916,9 +923,12 @@ class PersonalAdministrativoAdmin(DuplicarMixin, admin.ModelAdmin):
         }),
         ('Distribución de Costos', {
             'fields': (
-                ('asignacion', 'criterio_prorrateo'),
-                ('tipo_asignacion_operacion', 'operacion', 'criterio_prorrateo_operacion'),
-                ('tipo_asignacion_geo',),
+                'asignacion',
+                'criterio_prorrateo',
+                'tipo_asignacion_operacion',
+                'operacion',
+                'criterio_prorrateo_operacion',
+                'tipo_asignacion_geo',
             ),
             'description': '''
                 <b>Por Marca:</b> Individual = 100% a esta marca | Compartido = se distribuye entre marcas<br>
@@ -1019,7 +1029,6 @@ class GastoAdministrativoAdmin(DuplicarMixin, admin.ModelAdmin):
     list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento', 'criterio_prorrateo')
     search_fields = ('nombre', 'notas')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
-    autocomplete_fields = ['operacion']
     actions = ['duplicar_registros']
 
     fieldsets = (
@@ -1028,9 +1037,12 @@ class GastoAdministrativoAdmin(DuplicarMixin, admin.ModelAdmin):
         }),
         ('Distribución de Costos', {
             'fields': (
-                ('asignacion', 'criterio_prorrateo'),
-                ('tipo_asignacion_operacion', 'operacion', 'criterio_prorrateo_operacion'),
-                ('tipo_asignacion_geo',),
+                'asignacion',
+                'criterio_prorrateo',
+                'tipo_asignacion_operacion',
+                'operacion',
+                'criterio_prorrateo_operacion',
+                'tipo_asignacion_geo',
             ),
             'description': '''
                 <b>Por Marca:</b> Individual = 100% a esta marca | Compartido = se distribuye entre marcas<br>
@@ -1096,7 +1108,6 @@ class GastoComercialAdmin(DuplicarMixin, admin.ModelAdmin):
     list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento')
     search_fields = ('nombre', 'notas')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
-    autocomplete_fields = ['operacion', 'zona']
     actions = ['duplicar_registros']
 
     fieldsets = (
@@ -1176,7 +1187,6 @@ class GastoLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
     list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento')
     search_fields = ('nombre', 'notas')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
-    autocomplete_fields = ['operacion', 'zona']
     actions = ['duplicar_registros']
 
     fieldsets = (
