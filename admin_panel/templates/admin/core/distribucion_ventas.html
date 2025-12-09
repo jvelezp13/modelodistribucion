@@ -902,7 +902,8 @@
                 .then(function(data) {
                     if (data.success) {
                         mostrarMensaje('Distribucion por operaciones guardada correctamente.', 'success');
-                        setTimeout(function() { window.location.reload(); }, 1500);
+                        // Recargar manteniendo los parámetros de la URL
+                        setTimeout(function() { window.location.href = window.location.href; }, 1500);
                     } else {
                         mostrarMensaje('Error: ' + data.error, 'error');
                         btn.disabled = false;
@@ -948,7 +949,7 @@
                 .then(function(data) {
                     if (data.success) {
                         mostrarMensaje('Distribucion de zonas guardada correctamente.', 'success');
-                        setTimeout(function() { window.location.reload(); }, 1500);
+                        setTimeout(function() { window.location.href = window.location.href; }, 1500);
                     } else {
                         mostrarMensaje('Error: ' + data.error, 'error');
                         btn.disabled = false;
