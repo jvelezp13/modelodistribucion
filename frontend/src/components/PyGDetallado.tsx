@@ -1,15 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Marca, Rubro, DetalleLejaniasLogistica, apiClient, MESES, getMesActual, VentasMensualesDesglose } from '@/lib/api';
-import { ChevronDown, ChevronRight, Truck, Calendar } from 'lucide-react';
-
-interface PyGDetalladoProps {
-  marca?: Marca;  // Opcional - si no se pasa, se carga automáticamente
-  escenarioId: number;
-  marcaId?: string;  // Para cargar datos automáticamente
-  operacionIds?: number[];  // Filtro de operaciones (para futuro uso)
-}
+import { Marca, Rubro, DetalleLejaniasLogistica, apiClient, VentasMensualesDesglose } from '@/lib/api';
+import { useFilters } from '@/hooks/useFilters';
+import { ChevronDown, ChevronRight, Truck } from 'lucide-react';
 
 interface SeccionState {
   ingresos: boolean;
@@ -39,25 +33,25 @@ interface VehiculoConFlete {
   totalConFlete: number;
 }
 
-export default function PyGDetallado({ marca: marcaProp, escenarioId, marcaId, operacionIds }: PyGDetalladoProps) {
-  const [marcaData, setMarcaData] = useState<Marca | null>(marcaProp || null);
-  const [loadingMarca, setLoadingMarca] = useState(!marcaProp && !!marcaId);
+export default function PyGDetallado() {
+  const { filters } = useFilters();
+  const { escenarioId, marcaId, operacionIds, mes: mesSeleccionado } = filters;
+
+  const [marcaData, setMarcaData] = useState<Marca | null>(null);
+  const [loadingMarca, setLoadingMarca] = useState(!!marcaId);
   const [errorMarca, setErrorMarca] = useState<string | null>(null);
 
-  // Cargar datos de la marca si no se pasó como prop
+  // Cargar datos de la marca
   useEffect(() => {
     const cargarMarca = async () => {
-      if (marcaProp) {
-        setMarcaData(marcaProp);
-        return;
-      }
       if (!marcaId || !escenarioId) return;
 
       setLoadingMarca(true);
       setErrorMarca(null);
       try {
         // Pasar operacionIds si están definidas para filtrar por operación
-        const result = await apiClient.ejecutarSimulacion([marcaId], escenarioId, operacionIds);
+        const opsToUse = operacionIds.length > 0 ? operacionIds : undefined;
+        const result = await apiClient.ejecutarSimulacion([marcaId], escenarioId, opsToUse);
         if (result.marcas && result.marcas.length > 0) {
           setMarcaData(result.marcas[0]);
         } else {
@@ -72,7 +66,7 @@ export default function PyGDetallado({ marca: marcaProp, escenarioId, marcaId, o
     };
 
     cargarMarca();
-  }, [marcaProp, marcaId, escenarioId, operacionIds]);
+  }, [marcaId, escenarioId, operacionIds]);
 
   // Usar marca de prop o del estado
   const marca = marcaData;
@@ -100,7 +94,6 @@ export default function PyGDetallado({ marca: marcaProp, escenarioId, marcaId, o
 
   const [lejaniasLogistica, setLejaniasLogistica] = useState<DetalleLejaniasLogistica | null>(null);
   const [loadingLejanias, setLoadingLejanias] = useState(false);
-  const [mesSeleccionado, setMesSeleccionado] = useState<string>(getMesActual());
   const [tasaImpuestoRenta, setTasaImpuestoRenta] = useState<number>(0.33); // Default 33%
   const [provisionesExpandidas, setProvisionesExpandidas] = useState<Set<string>>(new Set());
 
@@ -748,25 +741,11 @@ export default function PyGDetallado({ marca: marcaProp, escenarioId, marcaId, o
 
   return (
     <div className="bg-white border border-gray-200 rounded">
-      {/* Header con selector de mes */}
-      <div className="px-3 py-2 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+      {/* Header */}
+      <div className="px-3 py-2 border-b border-gray-200 bg-gray-50">
         <h3 className="text-sm font-semibold text-gray-800">
           Estado de Resultados - {marca.nombre}
         </h3>
-        <div className="flex items-center gap-2">
-          <Calendar size={14} className="text-gray-500" />
-          <select
-            value={mesSeleccionado}
-            onChange={(e) => setMesSeleccionado(e.target.value)}
-            className="text-xs border border-gray-300 rounded px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          >
-            {MESES.map((mes) => (
-              <option key={mes.value} value={mes.value}>
-                {mes.label}
-              </option>
-            ))}
-          </select>
-        </div>
       </div>
 
       {/* SECCIÓN: INGRESOS POR VENTAS */}

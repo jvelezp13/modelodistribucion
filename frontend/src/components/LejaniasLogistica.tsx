@@ -2,12 +2,8 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { apiClient, DetalleLejaniasLogistica, DetalleRutaLogistica, DiagnosticoLogisticoResponse } from '@/lib/api';
+import { useFilters } from '@/hooks/useFilters';
 import { ChevronDown, ChevronRight, MapPin, Truck, DollarSign, Fuel, Route, ArrowRight, Building2, AlertTriangle } from 'lucide-react';
-
-interface LejaniasLogisticaProps {
-  escenarioId: number;
-  marcaId: string;
-}
 
 type VistaType = 'recorrido' | 'vehiculo' | 'distribucion';
 
@@ -27,7 +23,10 @@ interface VehiculoAgrupado {
   total_mensual: number;
 }
 
-export default function LejaniasLogistica({ escenarioId, marcaId }: LejaniasLogisticaProps) {
+export default function LejaniasLogistica() {
+  const { filters } = useFilters();
+  const { escenarioId, marcaId } = filters;
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [datos, setDatos] = useState<DetalleLejaniasLogistica | null>(null);
@@ -37,10 +36,14 @@ export default function LejaniasLogistica({ escenarioId, marcaId }: LejaniasLogi
   const [vistaActiva, setVistaActiva] = useState<VistaType>('recorrido');
 
   useEffect(() => {
-    cargarDatos();
+    if (escenarioId && marcaId) {
+      cargarDatos();
+    }
   }, [escenarioId, marcaId]);
 
   const cargarDatos = async () => {
+    if (!escenarioId || !marcaId) return;
+
     try {
       setLoading(true);
       setError(null);

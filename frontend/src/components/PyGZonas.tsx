@@ -1,20 +1,18 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { PyGZonasResponse, PyGZona, MESES, getMesActual, VentasMensualesDesglose } from '@/lib/api';
+import { PyGZonasResponse, PyGZona, VentasMensualesDesglose } from '@/lib/api';
 import { usePyGZonasData, usePyGMunicipios } from '@/hooks/usePyGQueries';
-import { ChevronDown, ChevronRight, TrendingUp, TrendingDown, Users, Truck, Building2, Calendar, DollarSign, Percent, MapPin, Building } from 'lucide-react';
+import { useFilters } from '@/hooks/useFilters';
+import { ChevronDown, ChevronRight, TrendingUp, TrendingDown, Users, Truck, Building2, DollarSign, Percent, MapPin, Building } from 'lucide-react';
 
-interface PyGZonasProps {
-  escenarioId: number;
-  marcaId: string;
-}
+export default function PyGZonas() {
+  const { filters } = useFilters();
+  const { escenarioId, marcaId, mes: mesSeleccionado } = filters;
 
-export default function PyGZonas({ escenarioId, marcaId }: PyGZonasProps) {
   const { data, isLoading, error } = usePyGZonasData(escenarioId, marcaId);
   const [expandedZonas, setExpandedZonas] = useState<Set<number>>(new Set());
   const [expandedMunicipios, setExpandedMunicipios] = useState<Set<number>>(new Set());
-  const [mesSeleccionado, setMesSeleccionado] = useState<string>(getMesActual());
 
   const toggleZona = (zonaId: number) => {
     setExpandedZonas(prev => {
@@ -245,18 +243,6 @@ export default function PyGZonas({ escenarioId, marcaId }: PyGZonasProps) {
                 {data.total_zonas} zonas | {data.escenario_nombre} | Expande una zona para ver sus municipios
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              <Calendar size={14} className="text-gray-500" />
-              <select
-                value={mesSeleccionado}
-                onChange={(e) => setMesSeleccionado(e.target.value)}
-                className="text-xs border border-gray-300 rounded px-2 py-1 bg-white"
-              >
-                {MESES.map((mes) => (
-                  <option key={mes.value} value={mes.value}>{mes.label}</option>
-                ))}
-              </select>
-            </div>
           </div>
         </div>
 
@@ -450,8 +436,8 @@ export default function PyGZonas({ escenarioId, marcaId }: PyGZonasProps) {
                                 zonaNombre={zona.zona.nombre}
                                 zonaParticipacion={zona.zona.participacion_ventas}
                                 ventasZona={ventasZona}
-                                escenarioId={escenarioId}
-                                marcaId={marcaId}
+                                escenarioId={escenarioId!}
+                                marcaId={marcaId!}
                                 formatCurrency={formatCurrency}
                                 formatPercent={formatPercent}
                                 tasaICA={zona.zona.tasa_ica || 0}

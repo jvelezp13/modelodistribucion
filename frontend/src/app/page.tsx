@@ -1,33 +1,30 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, Suspense } from 'react';
 import { apiClient, Escenario, Operacion, MarcaBasica } from '@/lib/api';
 import { LoadingOverlay } from '@/components/ui/LoadingSpinner';
-import { RefreshCw, AlertCircle, Check } from 'lucide-react';
+import { RefreshCw, AlertCircle } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
+import MonthSelector from '@/components/MonthSelector';
 import PyGDetallado from '@/components/PyGDetallado';
 import PyGZonas from '@/components/PyGZonas';
 import LejaniasComercial from '@/components/LejaniasComercial';
 import LejaniasLogistica from '@/components/LejaniasLogistica';
 import DistribucionVentas from '@/components/DistribucionVentas';
+import { useFilters, ViewType } from '@/hooks/useFilters';
 
-type ViewType = 'distribucion' | 'pyg' | 'pyg-zonas' | 'lejanias-comercial' | 'lejanias-logistica';
+// Componente interno que usa useFilters (requiere Suspense)
+function DashboardContent() {
+  const { filters, setEscenario, setMarca, setVista, updateFilters } = useFilters();
 
-export default function DashboardPage() {
-  // Datos base
+  // Datos base cargados desde API
   const [escenarios, setEscenarios] = useState<Escenario[]>([]);
-  const [operaciones, setOperaciones] = useState<Operacion[]>([]);
+  const [operacionesList, setOperacionesList] = useState<Operacion[]>([]);
   const [marcas, setMarcas] = useState<MarcaBasica[]>([]);
-
-  // Filtros seleccionados
-  const [selectedScenarioId, setSelectedScenarioId] = useState<number | null>(null);
-  const [selectedOperacionIds, setSelectedOperacionIds] = useState<number[]>([]);
-  const [selectedMarcaIds, setSelectedMarcaIds] = useState<string[]>([]);
 
   // UI State
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeView, setActiveView] = useState<ViewType>('distribucion');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -42,17 +39,21 @@ export default function DashboardPage() {
 
   // Cargar operaciones cuando cambia el escenario
   useEffect(() => {
-    if (selectedScenarioId) {
-      cargarOperaciones(selectedScenarioId);
+    if (filters.escenarioId) {
+      cargarOperaciones(filters.escenarioId);
     }
-  }, [selectedScenarioId]);
+  }, [filters.escenarioId]);
 
-  // Cargar marcas cuando cambian las operaciones seleccionadas
+  // Cargar marcas cuando cambian las operaciones
   useEffect(() => {
-    if (selectedScenarioId) {
-      cargarMarcas(selectedScenarioId, selectedOperacionIds);
+    if (filters.escenarioId && operacionesList.length > 0) {
+      // Si hay operaciones en URL, usarlas; si no, usar todas las disponibles
+      const idsToUse = filters.operacionIds.length > 0
+        ? filters.operacionIds
+        : operacionesList.map(o => o.id);
+      cargarMarcas(filters.escenarioId, idsToUse);
     }
-  }, [selectedScenarioId, selectedOperacionIds]);
+  }, [filters.escenarioId, filters.operacionIds, operacionesList]);
 
   const cargarDatosIniciales = async () => {
     setIsLoading(true);
@@ -61,9 +62,10 @@ export default function DashboardPage() {
       const listaEscenarios = await apiClient.listarEscenarios();
       setEscenarios(listaEscenarios);
 
-      if (listaEscenarios.length > 0) {
+      // Si no hay escenario en URL, establecer el primero activo
+      if (listaEscenarios.length > 0 && !filters.escenarioId) {
         const activo = listaEscenarios.find(e => e.activo) || listaEscenarios[0];
-        setSelectedScenarioId(activo.id);
+        setEscenario(activo.id);
       }
     } catch (err) {
       setError('Error al cargar escenarios');
@@ -76,14 +78,20 @@ export default function DashboardPage() {
   const cargarOperaciones = async (escenarioId: number) => {
     try {
       const response = await apiClient.obtenerOperaciones(escenarioId);
-      setOperaciones(response.operaciones);
-      // Seleccionar todas las operaciones por defecto
-      setSelectedOperacionIds(response.operaciones.map(o => o.id));
+      setOperacionesList(response.operaciones);
+
+      // Si no hay operaciones en URL, seleccionar todas por defecto
+      if (filters.operacionIds.length === 0 && response.operaciones.length > 0) {
+        setOperaciones_URL(response.operaciones.map(o => o.id));
+      }
     } catch (err) {
       console.error('Error cargando operaciones:', err);
-      setOperaciones([]);
-      setSelectedOperacionIds([]);
+      setOperacionesList([]);
     }
+  };
+
+  const setOperaciones_URL = (ids: number[]) => {
+    updateFilters({ operacionIds: ids });
   };
 
   const cargarMarcas = async (escenarioId: number, operacionIds: number[]) => {
@@ -93,90 +101,77 @@ export default function DashboardPage() {
         operacionIds.length > 0 ? operacionIds : undefined
       );
       setMarcas(response.marcas);
-      // Seleccionar todas las marcas por defecto
-      setSelectedMarcaIds(response.marcas.map(m => m.marca_id));
+
+      // Si no hay marca en URL, seleccionar la primera
+      if (!filters.marcaId && response.marcas.length > 0) {
+        setMarca(response.marcas[0].marca_id);
+      }
     } catch (err) {
       console.error('Error cargando marcas:', err);
       setMarcas([]);
-      setSelectedMarcaIds([]);
     }
   };
 
   const recargarDatos = async () => {
     setRefreshKey(prev => prev + 1);
-    if (selectedScenarioId) {
-      await cargarOperaciones(selectedScenarioId);
+    if (filters.escenarioId) {
+      await cargarOperaciones(filters.escenarioId);
     }
   };
 
   // Toggle operación
   const toggleOperacion = (operacionId: number) => {
-    setSelectedOperacionIds(prev => {
-      if (prev.includes(operacionId)) {
-        return prev.filter(id => id !== operacionId);
-      } else {
-        return [...prev, operacionId];
-      }
-    });
+    const currentIds = filters.operacionIds.length > 0
+      ? filters.operacionIds
+      : operacionesList.map(o => o.id);
+
+    const newIds = currentIds.includes(operacionId)
+      ? currentIds.filter(id => id !== operacionId)
+      : [...currentIds, operacionId];
+
+    updateFilters({ operacionIds: newIds });
   };
 
   // Toggle todas las operaciones
   const toggleAllOperaciones = () => {
-    if (selectedOperacionIds.length === operaciones.length) {
-      setSelectedOperacionIds([]);
+    const allIds = operacionesList.map(o => o.id);
+    const currentIds = filters.operacionIds.length > 0
+      ? filters.operacionIds
+      : allIds;
+
+    if (currentIds.length === allIds.length) {
+      updateFilters({ operacionIds: [] });
     } else {
-      setSelectedOperacionIds(operaciones.map(o => o.id));
+      updateFilters({ operacionIds: allIds });
     }
   };
 
-  // Toggle marca
-  const toggleMarca = (marcaId: string) => {
-    setSelectedMarcaIds(prev => {
-      if (prev.includes(marcaId)) {
-        return prev.filter(id => id !== marcaId);
-      } else {
-        return [...prev, marcaId];
-      }
-    });
-  };
-
-  // Toggle todas las marcas
-  const toggleAllMarcas = () => {
-    if (selectedMarcaIds.length === marcas.length) {
-      setSelectedMarcaIds([]);
-    } else {
-      setSelectedMarcaIds(marcas.map(m => m.marca_id));
-    }
-  };
+  // IDs de operaciones efectivos (para UI)
+  const selectedOperacionIds = filters.operacionIds.length > 0
+    ? filters.operacionIds
+    : operacionesList.map(o => o.id);
 
   // Labels para dropdowns
   const operacionesLabel = useMemo(() => {
     if (selectedOperacionIds.length === 0) return 'Ninguna';
-    if (selectedOperacionIds.length === operaciones.length) return 'Todas';
+    if (selectedOperacionIds.length === operacionesList.length) return 'Todas';
     if (selectedOperacionIds.length === 1) {
-      const op = operaciones.find(o => o.id === selectedOperacionIds[0]);
+      const op = operacionesList.find(o => o.id === selectedOperacionIds[0]);
       return op?.nombre || '1 seleccionada';
     }
     return `${selectedOperacionIds.length} seleccionadas`;
-  }, [selectedOperacionIds, operaciones]);
+  }, [selectedOperacionIds, operacionesList]);
 
   const marcasLabel = useMemo(() => {
-    if (selectedMarcaIds.length === 0) return 'Ninguna';
-    if (selectedMarcaIds.length === marcas.length) return 'Todas';
-    if (selectedMarcaIds.length === 1) {
-      const marca = marcas.find(m => m.marca_id === selectedMarcaIds[0]);
-      return marca?.nombre || '1 seleccionada';
-    }
-    return `${selectedMarcaIds.length} seleccionadas`;
-  }, [selectedMarcaIds, marcas]);
+    if (!filters.marcaId) return 'Ninguna';
+    const marca = marcas.find(m => m.marca_id === filters.marcaId);
+    return marca?.nombre || filters.marcaId;
+  }, [filters.marcaId, marcas]);
 
   // Verificar si hay datos para mostrar
-  const tieneSeleccion = selectedScenarioId && selectedMarcaIds.length > 0;
+  const tieneSeleccion = filters.escenarioId && filters.marcaId;
 
-  // Primera marca seleccionada (para vistas que necesitan una sola)
-  const primeraMarcaId = selectedMarcaIds[0] || null;
-
-  const escenarioActual = escenarios.find(e => e.id === selectedScenarioId);
+  const escenarioActual = escenarios.find(e => e.id === filters.escenarioId);
 
   if (isLoading) {
     return (
@@ -191,8 +186,8 @@ export default function DashboardPage() {
       <Sidebar
         isCollapsed={isSidebarCollapsed}
         onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-        activeView={activeView}
-        onViewChange={(view) => setActiveView(view as ViewType)}
+        activeView={filters.vista}
+        onViewChange={(view) => setVista(view as ViewType)}
       />
 
       {/* Main Content */}
@@ -220,8 +215,8 @@ export default function DashboardPage() {
               <div className="flex items-center gap-2">
                 <label className="text-xs text-gray-500">Escenario:</label>
                 <select
-                  value={selectedScenarioId || ''}
-                  onChange={(e) => setSelectedScenarioId(Number(e.target.value))}
+                  value={filters.escenarioId || ''}
+                  onChange={(e) => setEscenario(Number(e.target.value))}
                   className="text-xs px-2 py-1.5 border border-gray-300 rounded bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
                   {escenarios.map((esc) => (
@@ -252,11 +247,11 @@ export default function DashboardPage() {
                         onClick={toggleAllOperaciones}
                         className="text-xs text-blue-600 hover:text-blue-800"
                       >
-                        {selectedOperacionIds.length === operaciones.length ? 'Deseleccionar todas' : 'Seleccionar todas'}
+                        {selectedOperacionIds.length === operacionesList.length ? 'Deseleccionar todas' : 'Seleccionar todas'}
                       </button>
                     </div>
                     <div className="max-h-48 overflow-y-auto">
-                      {operaciones.map((op) => (
+                      {operacionesList.map((op) => (
                         <label
                           key={op.id}
                           className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer"
@@ -279,48 +274,25 @@ export default function DashboardPage() {
                 )}
               </div>
 
-              {/* Marcas (multi-select dropdown) */}
-              <div className="relative">
-                <label className="text-xs text-gray-500 mr-2">Marcas:</label>
-                <button
-                  onClick={() => {
-                    setMarcaDropdownOpen(!marcaDropdownOpen);
-                    setOperacionDropdownOpen(false);
-                  }}
-                  className="text-xs px-3 py-1.5 border border-gray-300 rounded bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 min-w-[120px] text-left"
+              {/* Marcas (single select) */}
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-gray-500">Marca:</label>
+                <select
+                  value={filters.marcaId || ''}
+                  onChange={(e) => setMarca(e.target.value || null)}
+                  className="text-xs px-2 py-1.5 border border-gray-300 rounded bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 min-w-[120px]"
                 >
-                  {marcasLabel}
-                  <span className="float-right ml-2">▼</span>
-                </button>
-                {marcaDropdownOpen && (
-                  <div className="absolute z-50 mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-lg">
-                    <div className="p-2 border-b border-gray-100">
-                      <button
-                        onClick={toggleAllMarcas}
-                        className="text-xs text-blue-600 hover:text-blue-800"
-                      >
-                        {selectedMarcaIds.length === marcas.length ? 'Deseleccionar todas' : 'Seleccionar todas'}
-                      </button>
-                    </div>
-                    <div className="max-h-48 overflow-y-auto">
-                      {marcas.map((marca) => (
-                        <label
-                          key={marca.marca_id}
-                          className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedMarcaIds.includes(marca.marca_id)}
-                            onChange={() => toggleMarca(marca.marca_id)}
-                            className="rounded text-blue-600 focus:ring-blue-500"
-                          />
-                          <span className="text-xs text-gray-700">{marca.nombre}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                  <option value="">Seleccionar...</option>
+                  {marcas.map((marca) => (
+                    <option key={marca.marca_id} value={marca.marca_id}>
+                      {marca.nombre}
+                    </option>
+                  ))}
+                </select>
               </div>
+
+              {/* Mes */}
+              <MonthSelector showLabel={true} size="sm" />
 
               {/* Recargar */}
               <button
@@ -357,65 +329,43 @@ export default function DashboardPage() {
           {!tieneSeleccion ? (
             <div className="bg-white border border-gray-200 rounded p-12 text-center">
               <p className="text-sm text-gray-600">
-                Selecciona al menos una marca para ver los resultados
+                Selecciona un escenario y una marca para ver los resultados
               </p>
             </div>
           ) : (
             <>
-              {/* Indicador de selección actual */}
-              {selectedMarcaIds.length > 1 && (
-                <div className="mb-3 bg-blue-50 border border-blue-200 rounded p-2">
-                  <p className="text-xs text-blue-700">
-                    <strong>Nota:</strong> Tienes {selectedMarcaIds.length} marcas seleccionadas.
-                    Las vistas muestran datos de la primera marca ({marcas.find(m => m.marca_id === primeraMarcaId)?.nombre}).
-                    Selecciona una sola marca para ver sus datos específicos.
-                  </p>
-                </div>
-              )}
-
               {/* Vista Distribucion de Ventas */}
-              {activeView === 'distribucion' && primeraMarcaId && (
+              {filters.vista === 'distribucion' && (
                 <DistribucionVentas
-                  key={`distribucion-${primeraMarcaId}-${refreshKey}`}
-                  escenarioId={selectedScenarioId}
-                  marcaId={primeraMarcaId}
+                  key={`distribucion-${filters.marcaId}-${refreshKey}`}
                 />
               )}
 
               {/* Vista P&G Detallado */}
-              {activeView === 'pyg' && primeraMarcaId && (
+              {filters.vista === 'pyg' && (
                 <PyGDetallado
-                  key={`pyg-${primeraMarcaId}-${refreshKey}`}
-                  escenarioId={selectedScenarioId!}
-                  marcaId={primeraMarcaId}
-                  operacionIds={selectedOperacionIds}
+                  key={`pyg-${filters.marcaId}-${refreshKey}`}
                 />
               )}
 
               {/* Vista P&G por Zonas */}
-              {activeView === 'pyg-zonas' && primeraMarcaId && (
+              {filters.vista === 'pyg-zonas' && (
                 <PyGZonas
-                  key={`pyg-zonas-${primeraMarcaId}-${refreshKey}`}
-                  escenarioId={selectedScenarioId!}
-                  marcaId={primeraMarcaId}
+                  key={`pyg-zonas-${filters.marcaId}-${refreshKey}`}
                 />
               )}
 
               {/* Vista Lejanías Comerciales */}
-              {activeView === 'lejanias-comercial' && primeraMarcaId && (
+              {filters.vista === 'lejanias-comercial' && (
                 <LejaniasComercial
-                  key={`lejanias-comercial-${primeraMarcaId}-${refreshKey}`}
-                  escenarioId={selectedScenarioId!}
-                  marcaId={primeraMarcaId}
+                  key={`lejanias-comercial-${filters.marcaId}-${refreshKey}`}
                 />
               )}
 
               {/* Vista Lejanías Logísticas */}
-              {activeView === 'lejanias-logistica' && primeraMarcaId && (
+              {filters.vista === 'lejanias-logistica' && (
                 <LejaniasLogistica
-                  key={`lejanias-logistica-${primeraMarcaId}-${refreshKey}`}
-                  escenarioId={selectedScenarioId!}
-                  marcaId={primeraMarcaId}
+                  key={`lejanias-logistica-${filters.marcaId}-${refreshKey}`}
                 />
               )}
             </>
@@ -423,5 +373,18 @@ export default function DashboardPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Página principal con Suspense para useSearchParams
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <LoadingOverlay message="Cargando sistema..." />
+      </div>
+    }>
+      <DashboardContent />
+    </Suspense>
   );
 }

@@ -2,24 +2,27 @@
 
 import React, { useState, useEffect } from 'react';
 import { apiClient, DetalleLejaniasComercial, DetalleZonaComercial } from '@/lib/api';
+import { useFilters } from '@/hooks/useFilters';
 import { ChevronDown, ChevronRight, MapPin, User, Car, Home } from 'lucide-react';
 
-interface LejaniasComercialProps {
-  escenarioId: number;
-  marcaId: string;
-}
+export default function LejaniasComercial() {
+  const { filters } = useFilters();
+  const { escenarioId, marcaId } = filters;
 
-export default function LejaniasComercial({ escenarioId, marcaId }: LejaniasComercialProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [datos, setDatos] = useState<DetalleLejaniasComercial | null>(null);
   const [zonasExpandidas, setZonasExpandidas] = useState<Set<number>>(new Set());
 
   useEffect(() => {
-    cargarDatos();
+    if (escenarioId && marcaId) {
+      cargarDatos();
+    }
   }, [escenarioId, marcaId]);
 
   const cargarDatos = async () => {
+    if (!escenarioId || !marcaId) return;
+
     try {
       setLoading(true);
       setError(null);

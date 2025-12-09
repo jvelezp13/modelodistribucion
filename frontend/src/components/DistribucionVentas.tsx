@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   ChevronDown,
   ChevronRight,
@@ -14,13 +14,10 @@ import {
   apiClient,
   DistribucionCascadaResponse,
   OperacionDistribucion,
-  ZonaDistribucion
+  ZonaDistribucion,
+  VentasMensualesDesglose
 } from '@/lib/api';
-
-interface DistribucionVentasProps {
-  escenarioId: number | null;
-  marcaId: string | null;
-}
+import { useFilters } from '@/hooks/useFilters';
 
 const formatCurrency = (value: number): string => {
   return new Intl.NumberFormat('es-CO', {
@@ -74,7 +71,10 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ value, color = 'bg-blue-500' 
   );
 };
 
-export default function DistribucionVentas({ escenarioId, marcaId }: DistribucionVentasProps) {
+export default function DistribucionVentas() {
+  const { filters } = useFilters();
+  const { escenarioId, marcaId, mes: mesSeleccionado } = filters;
+
   const [data, setData] = useState<DistribucionCascadaResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -106,6 +106,21 @@ export default function DistribucionVentas({ escenarioId, marcaId }: Distribucio
 
     fetchData();
   }, [escenarioId, marcaId]);
+
+  // Calcular ventas del mes seleccionado
+  const ventasMes = useMemo(() => {
+    if (!data?.marca.ventas_mensuales) {
+      return data?.marca.venta_total_mensual || 0;
+    }
+    const ventas = data.marca.ventas_mensuales as VentasMensualesDesglose;
+    return ventas[mesSeleccionado as keyof VentasMensualesDesglose] || data.marca.venta_total_mensual || 0;
+  }, [data, mesSeleccionado]);
+
+  // Factor de ajuste para recalcular ventas proyectadas según el mes
+  const factorAjuste = useMemo(() => {
+    if (!data?.marca.venta_total_mensual || data.marca.venta_total_mensual === 0) return 1;
+    return ventasMes / data.marca.venta_total_mensual;
+  }, [ventasMes, data?.marca.venta_total_mensual]);
 
   const toggleOperacion = (id: number) => {
     setExpandedOperaciones(prev => {
@@ -175,9 +190,11 @@ export default function DistribucionVentas({ escenarioId, marcaId }: Distribucio
             </p>
           </div>
           <div className="text-right">
-            <div className="text-sm text-gray-500">Venta Mensual Promedio</div>
+            <div className="text-sm text-gray-500">
+              Ventas {mesSeleccionado.charAt(0).toUpperCase() + mesSeleccionado.slice(1)}
+            </div>
             <div className="text-2xl font-bold text-blue-600">
-              {formatCurrency(data.marca.venta_total_mensual)}
+              {formatCurrency(ventasMes)}
             </div>
           </div>
         </div>
