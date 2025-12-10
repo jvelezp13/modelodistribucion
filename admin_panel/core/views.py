@@ -240,3 +240,44 @@ def guardar_distribucion_ventas(request):
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 
+
+
+# =============================================================================
+# FILTRO GLOBAL DE ESCENARIO/MARCA
+# =============================================================================
+
+@staff_member_required
+@require_POST
+def set_global_filter(request):
+    """
+    Vista AJAX para cambiar el escenario/marca global.
+    Guarda la selección en sesión.
+    """
+    try:
+        data = json.loads(request.body)
+        
+        escenario_id = data.get('escenario_id')
+        marca_id = data.get('marca_id')  # None o '' = "Todas"
+        
+        if escenario_id:
+            # Validar que existe
+            Escenario.objects.get(pk=escenario_id)
+            request.session['global_escenario_id'] = int(escenario_id)
+        
+        if marca_id:
+            # Validar que existe
+            Marca.objects.get(pk=marca_id)
+            request.session['global_marca_id'] = marca_id
+        else:
+            # "Todas las marcas"
+            request.session['global_marca_id'] = None
+        
+        return JsonResponse({'success': True})
+    
+    except Escenario.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Escenario no encontrado'}, status=400)
+    except Marca.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Marca no encontrada'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+

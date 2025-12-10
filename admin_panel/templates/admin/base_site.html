@@ -4,8 +4,120 @@
 {% block extrastyle %}
 {{ block.super }}
 <link rel="stylesheet" href="{% static 'admin/css/custom.css' %}">
+<style>
+    /* Estilos para el filtro global */
+    .global-filter-container {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin-left: auto;
+        padding-right: 20px;
+    }
+    .global-filter-group {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+    .global-filter-group label {
+        color: var(--header-link-color, #fff);
+        font-size: 12px;
+        font-weight: normal;
+        opacity: 0.8;
+    }
+    .global-filter-group select {
+        padding: 4px 8px;
+        border: 1px solid rgba(255,255,255,0.3);
+        border-radius: 4px;
+        background: rgba(255,255,255,0.1);
+        color: #fff;
+        font-size: 13px;
+        cursor: pointer;
+        min-width: 150px;
+    }
+    .global-filter-group select:hover {
+        background: rgba(255,255,255,0.2);
+    }
+    .global-filter-group select:focus {
+        outline: none;
+        border-color: rgba(255,255,255,0.5);
+    }
+    .global-filter-group select option {
+        background: #333;
+        color: #fff;
+    }
+    #header {
+        display: flex;
+        align-items: center;
+    }
+    #branding {
+        flex-shrink: 0;
+    }
+</style>
 {% endblock %}
 
 {% block branding %}
 <h1 id="site-name"><a href="{% url 'dxv_admin:index' %}">{{ site_header|default:_('Django administration') }}</a></h1>
+{% endblock %}
+
+{% block usertools %}
+<div class="global-filter-container">
+    <div class="global-filter-group">
+        <label for="global-escenario">Escenario:</label>
+        <select id="global-escenario" onchange="updateGlobalFilter()">
+            {% for escenario in global_escenarios %}
+            <option value="{{ escenario.id }}" {% if escenario.id == global_escenario_id %}selected{% endif %}>
+                {{ escenario.nombre }}
+            </option>
+            {% empty %}
+            <option value="">Sin escenarios</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="global-filter-group">
+        <label for="global-marca">Marca:</label>
+        <select id="global-marca" onchange="updateGlobalFilter()">
+            <option value="">Todas</option>
+            {% for marca in global_marcas %}
+            <option value="{{ marca.id }}" {% if marca.id == global_marca_id %}selected{% endif %}>
+                {{ marca.nombre }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+</div>
+{{ block.super }}
+{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<script>
+function updateGlobalFilter() {
+    const escenarioId = document.getElementById('global-escenario').value;
+    const marcaId = document.getElementById('global-marca').value;
+
+    fetch('{% url "dxv_admin:set_global_filter" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+            escenario_id: escenarioId,
+            marca_id: marcaId || null
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Recargar la página para aplicar el nuevo filtro
+            window.location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+    });
+}
+</script>
 {% endblock %}

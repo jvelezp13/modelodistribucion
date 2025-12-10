@@ -69,6 +69,54 @@ class DuplicarMixin:
     duplicar_registros.short_description = "Duplicar registro(s) seleccionado(s)"
 
 
+# =============================================================================
+# MIXIN PARA FILTRO GLOBAL POR ESCENARIO/MARCA
+# =============================================================================
+
+class GlobalFilterMixin:
+    """
+    Mixin que filtra automáticamente el queryset por el escenario y marca
+    seleccionados globalmente en la sesión.
+
+    Requisitos del modelo:
+    - Campo 'escenario' (ForeignKey a Escenario)
+    - Campo 'marca' opcional (ForeignKey a Marca)
+    """
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+
+        # Obtener filtros globales de sesión
+        escenario_id = request.session.get('global_escenario_id')
+        marca_id = request.session.get('global_marca_id')
+
+        # Filtrar por escenario si el modelo tiene el campo
+        if escenario_id and hasattr(qs.model, 'escenario'):
+            qs = qs.filter(escenario_id=escenario_id)
+
+        # Filtrar por marca si está seleccionada y el modelo tiene el campo
+        if marca_id and hasattr(qs.model, 'marca'):
+            qs = qs.filter(marca_id=marca_id)
+
+        return qs
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        """Pre-filtra los campos ForeignKey de escenario y marca en formularios"""
+        escenario_id = request.session.get('global_escenario_id')
+        marca_id = request.session.get('global_marca_id')
+
+        # Pre-seleccionar escenario en formularios
+        if db_field.name == 'escenario' and escenario_id:
+            kwargs['initial'] = escenario_id
+            kwargs['queryset'] = Escenario.objects.filter(pk=escenario_id)
+
+        # Pre-seleccionar marca en formularios (si hay una seleccionada)
+        if db_field.name == 'marca' and marca_id:
+            kwargs['initial'] = marca_id
+
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+
 @admin.register(Escenario, site=dxv_admin_site)
 class EscenarioAdmin(admin.ModelAdmin):
     list_display = ('nombre', 'tipo', 'anio', 'activo', 'fecha_modificacion')
@@ -387,7 +435,7 @@ class PersonalComercialForm(forms.ModelForm):
 
 
 @admin.register(PersonalComercial, site=dxv_admin_site)
-class PersonalComercialAdmin(DuplicarMixin, admin.ModelAdmin):
+class PersonalComercialAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin):
     form = PersonalComercialForm
     change_list_template = 'admin/core/change_list_with_total.html'
     list_display = ('marca', 'nombre', 'escenario', 'tipo', 'cantidad', 'salario_formateado', 'costo_total_estimado', 'asignacion', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento')
@@ -500,7 +548,7 @@ class PersonalLogisticoForm(forms.ModelForm):
 
 
 @admin.register(PersonalLogistico, site=dxv_admin_site)
-class PersonalLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
+class PersonalLogisticoAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin):
     form = PersonalLogisticoForm
     change_list_template = 'admin/core/change_list_with_total.html'
     list_display = ('marca', 'nombre', 'escenario', 'tipo', 'cantidad', 'salario_formateado', 'costo_total_estimado', 'asignacion', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento')
@@ -602,7 +650,7 @@ class PersonalLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
 
 
 @admin.register(Vehiculo, site=dxv_admin_site)
-class VehiculoAdmin(DuplicarMixin, admin.ModelAdmin):
+class VehiculoAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin):
     change_list_template = 'admin/core/change_list_with_total.html'
     list_display = ('nombre_display', 'marca', 'escenario', 'tipo_vehiculo', 'esquema', 'cantidad', 'costo_mensual_estimado_formateado', 'asignacion', 'tipo_asignacion_operacion', 'indice_incremento')
     list_filter = ('escenario', 'marca', 'tipo_vehiculo', 'esquema', 'asignacion', 'tipo_asignacion_operacion', 'indice_incremento')
@@ -771,7 +819,7 @@ class ParametrosMacroAdmin(admin.ModelAdmin):
 
 
 @admin.register(FactorPrestacional, site=dxv_admin_site)
-class FactorPrestacionalAdmin(DuplicarMixin, admin.ModelAdmin):
+class FactorPrestacionalAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin):
     list_display = ('perfil', 'arl_percent', 'factor_total_percent', 'salud_percent', 'pension_percent', 'fecha_modificacion')
     list_filter = ('perfil',)
     readonly_fields = ('factor_total_display', 'guia_arl_display', 'fecha_creacion', 'fecha_modificacion')
@@ -903,7 +951,7 @@ class PersonalAdministrativoForm(forms.ModelForm):
 
 
 @admin.register(PersonalAdministrativo, site=dxv_admin_site)
-class PersonalAdministrativoAdmin(DuplicarMixin, admin.ModelAdmin):
+class PersonalAdministrativoAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin):
     form = PersonalAdministrativoForm
     change_list_template = 'admin/core/change_list_with_total.html'
     list_display = ('nombre', 'marca', 'escenario', 'tipo', 'cantidad', 'asignacion', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'tipo_contrato', 'valor_mensual', 'costo_total_estimado', 'indice_incremento')
@@ -1030,7 +1078,7 @@ class GastoAdministrativoForm(forms.ModelForm):
 
 
 @admin.register(GastoAdministrativo, site=dxv_admin_site)
-class GastoAdministrativoAdmin(DuplicarMixin, admin.ModelAdmin):
+class GastoAdministrativoAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin):
     form = GastoAdministrativoForm
     change_list_template = 'admin/core/change_list_with_total.html'
     list_display = ('nombre', 'marca', 'escenario', 'tipo', 'valor_mensual_formateado', 'asignacion', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'criterio_prorrateo', 'indice_incremento')
@@ -1109,7 +1157,7 @@ class GastoComercialForm(forms.ModelForm):
 
 
 @admin.register(GastoComercial, site=dxv_admin_site)
-class GastoComercialAdmin(DuplicarMixin, admin.ModelAdmin):
+class GastoComercialAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin):
     form = GastoComercialForm
     change_list_template = 'admin/core/change_list_with_total.html'
     list_display = ('marca', 'escenario', 'nombre', 'tipo', 'valor_mensual_formateado', 'asignacion', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento')
@@ -1188,7 +1236,7 @@ class GastoLogisticoForm(forms.ModelForm):
 
 
 @admin.register(GastoLogistico, site=dxv_admin_site)
-class GastoLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
+class GastoLogisticoAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin):
     form = GastoLogisticoForm
     change_list_template = 'admin/core/change_list_with_total.html'
     list_display = ('marca', 'escenario', 'nombre', 'tipo', 'valor_mensual_formateado', 'asignacion', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento')
@@ -1421,7 +1469,7 @@ class PoliticaRecursosHumanosForm(forms.ModelForm):
 
 
 @admin.register(PoliticaRecursosHumanos, site=dxv_admin_site)
-class PoliticaRecursosHumanosAdmin(DuplicarMixin, admin.ModelAdmin):
+class PoliticaRecursosHumanosAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin):
     form = PoliticaRecursosHumanosForm
     list_display = (
         'anio',
@@ -1566,7 +1614,7 @@ class MatrizDesplazamientoAdmin(admin.ModelAdmin):
 
 
 @admin.register(ConfiguracionLejania, site=dxv_admin_site)
-class ConfiguracionLejaniaAdmin(admin.ModelAdmin):
+class ConfiguracionLejaniaAdmin(GlobalFilterMixin, admin.ModelAdmin):
     list_display = ('escenario', 'municipio_bodega', 'umbral_logistica', 'umbral_comercial')
     list_filter = ('escenario__anio',)
     search_fields = ('escenario__nombre',)
@@ -1651,7 +1699,7 @@ class ZonaMunicipioInline(admin.TabularInline):
 
 
 @admin.register(Zona, site=dxv_admin_site)
-class ZonaAdmin(DuplicarMixin, admin.ModelAdmin):
+class ZonaAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin):
     """Admin para Zonas Comerciales (vendedores)"""
     list_display = ('nombre', 'marca', 'operacion', 'vendedor', 'participacion_ventas_fmt', 'venta_proyectada_fmt', 'tipo_vehiculo_comercial', 'frecuencia', 'requiere_pernocta', 'activo')
     list_filter = ('marca', 'escenario', 'operacion', 'frecuencia', 'requiere_pernocta', 'tipo_vehiculo_comercial', 'activo')
@@ -1759,7 +1807,7 @@ class RecorridoMunicipioInline(admin.TabularInline):
 
 
 @admin.register(RutaLogistica, site=dxv_admin_site)
-class RecorridoLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
+class RecorridoLogisticoAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin):
     """Admin para Recorridos Logísticos (circuitos que hace un vehículo)"""
     list_display = ('nombre', 'marca', 'asignacion', 'vehiculo', 'esquema_vehiculo', 'tipo_asignacion_operacion', 'total_flete_base', 'viajes_por_periodo', 'requiere_pernocta', 'activo')
     list_filter = ('marca', 'escenario', 'asignacion', 'vehiculo__esquema', 'tipo_asignacion_operacion', 'frecuencia', 'requiere_pernocta', 'activo')
@@ -1931,7 +1979,7 @@ class PlantillaEstacionalForm(forms.ModelForm):
 
 
 @admin.register(PlantillaEstacional, site=dxv_admin_site)
-class PlantillaEstacionalAdmin(DuplicarMixin, admin.ModelAdmin):
+class PlantillaEstacionalAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin):
     form = PlantillaEstacionalForm
     list_display = ('nombre', 'marca', 'total_porcentaje_fmt')
     list_filter = ('marca',)
@@ -2051,7 +2099,7 @@ class ProyeccionPenetracionInline(admin.StackedInline):
 
 
 @admin.register(ProyeccionVentasConfig, site=dxv_admin_site)
-class ProyeccionVentasConfigAdmin(DuplicarMixin, admin.ModelAdmin):
+class ProyeccionVentasConfigAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin):
     list_display = ('marca', 'escenario', 'anio', 'metodo', 'venta_anual_fmt', 'fecha_modificacion')
     list_filter = ('marca', 'escenario', 'anio', 'metodo')
     search_fields = ('marca__nombre', 'escenario__nombre', 'notas')
