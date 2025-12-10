@@ -78,6 +78,26 @@
             tipoAsignacionGeoField.addEventListener('change', updateAsignacionGeo);
             updateAsignacionGeo();
         }
+
+        // =========================================
+        // PERNOCTA (Zona Comercial y Ruta Logística)
+        // =========================================
+        const requierePernoctaField = document.querySelector('#id_requiere_pernocta');
+        const nochesPernoctaRow = document.querySelector('.field-noches_pernocta');
+
+        function updatePernocta() {
+            if (!requierePernoctaField) return;
+            const requiere = requierePernoctaField.checked;
+
+            if (nochesPernoctaRow) {
+                nochesPernoctaRow.style.display = requiere ? '' : 'none';
+            }
+        }
+
+        if (requierePernoctaField) {
+            requierePernoctaField.addEventListener('change', updatePernocta);
+            updatePernocta();
+        }
     }
 
     // Ejecutar cuando el DOM esté listo

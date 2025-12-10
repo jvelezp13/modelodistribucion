@@ -1679,6 +1679,9 @@ class ZonaAdmin(DuplicarMixin, admin.ModelAdmin):
         }),
     )
 
+    class Media:
+        js = ('admin/js/personal_condicional.js',)
+
     def venta_proyectada_fmt(self, obj):
         return f"${obj.venta_proyectada:,.0f}"
     venta_proyectada_fmt.short_description = 'Venta Proy.'
