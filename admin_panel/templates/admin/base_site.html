@@ -60,7 +60,8 @@
 {% endblock %}
 
 {% block usertools %}
-<div class="global-filter-container">
+{# TODO: Filtro global temporalmente deshabilitado - reactivar con context processor #}
+{# <div class="global-filter-container">
     <div class="global-filter-group">
         <label for="global-escenario">Escenario:</label>
         <select id="global-escenario" onchange="updateGlobalFilter()">
@@ -84,12 +85,13 @@
             {% endfor %}
         </select>
     </div>
-</div>
+</div> #}
 {{ block.super }}
 {% endblock %}
 
 {% block extrahead %}
 {{ block.super }}
+{# TODO: JavaScript para filtro global - reactivar con context processor
 <script>
 function updateGlobalFilter() {
     const escenarioId = document.getElementById('global-escenario').value;
@@ -109,7 +111,6 @@ function updateGlobalFilter() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Recargar la página para aplicar el nuevo filtro
             window.location.reload();
         } else {
             alert('Error: ' + data.error);
@@ -120,4 +121,5 @@ function updateGlobalFilter() {
     });
 }
 </script>
+#}
 {% endblock %}
