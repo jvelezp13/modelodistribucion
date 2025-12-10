@@ -604,11 +604,14 @@ class PersonalLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
 @admin.register(Vehiculo, site=dxv_admin_site)
 class VehiculoAdmin(DuplicarMixin, admin.ModelAdmin):
     change_list_template = 'admin/core/change_list_with_total.html'
-    list_display = ('nombre_display', 'marca', 'escenario', 'tipo_vehiculo', 'esquema', 'cantidad', 'costo_mensual_estimado_formateado', 'asignacion', 'indice_incremento')
-    list_filter = ('escenario', 'marca', 'tipo_vehiculo', 'esquema', 'asignacion', 'indice_incremento')
+    list_display = ('nombre_display', 'marca', 'escenario', 'tipo_vehiculo', 'esquema', 'cantidad', 'costo_mensual_estimado_formateado', 'asignacion', 'tipo_asignacion_operacion', 'indice_incremento')
+    list_filter = ('escenario', 'marca', 'tipo_vehiculo', 'esquema', 'asignacion', 'tipo_asignacion_operacion', 'indice_incremento')
     search_fields = ['nombre', 'marca__nombre', 'tipo_vehiculo', 'esquema']
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
     actions = ['duplicar_registros']
+
+    class Media:
+        js = ('admin/js/vehiculo_condicional.js',)
 
     fieldsets = (
         ('Información Básica', {
@@ -618,6 +621,10 @@ class VehiculoAdmin(DuplicarMixin, admin.ModelAdmin):
         ('Asignación por Marca', {
             'fields': ('asignacion', 'porcentaje_uso', 'criterio_prorrateo'),
             'description': 'Individual = 100% a esta marca. Compartido = se distribuye entre marcas según criterio.'
+        }),
+        ('Distribución de Costos', {
+            'fields': ('tipo_asignacion_operacion', 'operacion', 'criterio_prorrateo_operacion'),
+            'description': 'Define cómo se distribuye el costo entre operaciones/centros de costo.'
         }),
         ('Proyección Anual', {
             'fields': ('indice_incremento',),
@@ -639,7 +646,7 @@ class VehiculoAdmin(DuplicarMixin, admin.ModelAdmin):
         }),
         ('Otros Costos Operativos (Propio/Renting)', {
             'fields': ('costo_lavado_mensual', 'costo_parqueadero_mensual'),
-            'description': 'Aseo y Parqueadero',
+            'description': 'Aplica solo a vehículos Propios y Renting.',
             'classes': ('collapse',)
         }),
         ('Otros Costos (Todos los Esquemas)', {
