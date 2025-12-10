@@ -423,7 +423,8 @@ class PersonalComercialAdmin(DuplicarMixin, admin.ModelAdmin):
         }),
         ('Auxilios No Prestacionales', {
             'fields': ('auxilios_no_prestacionales',),
-            'description': 'Auxilios que NO generan prestaciones sociales.'
+            'description': 'Auxilios que NO generan prestaciones sociales.',
+            'classes': ('collapse',)
         }),
         ('Metadata', {
             'fields': ('fecha_creacion', 'fecha_modificacion'),
@@ -535,7 +536,8 @@ class PersonalLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
         }),
         ('Auxilios No Prestacionales', {
             'fields': ('auxilios_no_prestacionales',),
-            'description': 'Auxilios que NO generan prestaciones sociales.'
+            'description': 'Auxilios que NO generan prestaciones sociales.',
+            'classes': ('collapse',)
         }),
         ('Metadata', {
             'fields': ('fecha_creacion', 'fecha_modificacion'),
@@ -919,7 +921,8 @@ class PersonalAdministrativoAdmin(DuplicarMixin, admin.ModelAdmin):
         }),
         ('Auxilios No Prestacionales', {
             'fields': ('auxilios_no_prestacionales',),
-            'description': 'Auxilios que NO generan prestaciones sociales.'
+            'description': 'Auxilios que NO generan prestaciones sociales.',
+            'classes': ('collapse',)
         }),
         ('Distribución de Costos', {
             'fields': (
