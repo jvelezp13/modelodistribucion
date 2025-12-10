@@ -1573,6 +1573,9 @@ class ConfiguracionLejaniaAdmin(admin.ModelAdmin):
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
     autocomplete_fields = ['municipio_bodega', 'municipio_comite']
 
+    class Media:
+        js = ('admin/js/config_lejania_condicional.js',)
+
     fieldsets = (
         ('Escenario y Bodega', {
             'fields': ('escenario', 'municipio_bodega')
