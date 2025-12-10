@@ -363,17 +363,19 @@ class APIClient {
     escenarioId?: number,
     operacionIds?: number[]
   ): Promise<SimulacionResult> {
-    const params = new URLSearchParams();
-    if (escenarioId) {
-      params.append('escenario_id', escenarioId.toString());
-    }
-    const queryString = params.toString();
-    const url = `/api/simulate${queryString ? `?${queryString}` : ''}`;
+    const url = `/api/simulate`;
 
-    // El body incluye marcas y operacion_ids
-    const body: { marcas_seleccionadas: string[]; operacion_ids?: number[] } = {
+    // El body incluye marcas, escenario_id y operacion_ids
+    const body: {
+      marcas_seleccionadas: string[];
+      escenario_id?: number;
+      operacion_ids?: number[]
+    } = {
       marcas_seleccionadas: marcas,
     };
+    if (escenarioId) {
+      body.escenario_id = escenarioId;
+    }
     if (operacionIds && operacionIds.length > 0) {
       body.operacion_ids = operacionIds;
     }

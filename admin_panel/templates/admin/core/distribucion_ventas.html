@@ -615,7 +615,8 @@
     }
 
     function initDistribucionVentas() {
-        var ventaTotalStr = '{{ venta_total_marca|default:"0" }}';
+        // Usar |unlocalize para evitar problemas con formato de miles (50.000.000 -> 50000000)
+        var ventaTotalStr = '{{ venta_total_marca|default:"0"|unlocalize }}';
         const VENTA_TOTAL_MARCA = parseFloat(ventaTotalStr) || 0;
         const CSRF_TOKEN = '{{ csrf_token }}';
         const GUARDAR_URL = '{% url "dxv_admin:guardar_distribucion_ventas" %}';
