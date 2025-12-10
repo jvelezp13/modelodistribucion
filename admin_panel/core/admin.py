@@ -618,13 +618,12 @@ class VehiculoAdmin(DuplicarMixin, admin.ModelAdmin):
             'fields': ('nombre', 'marca', 'escenario', 'tipo_vehiculo', 'esquema', 'cantidad'),
             'description': 'El campo "Nombre" permite identificar el vehículo de forma única (ej: "Turbo 01", "NKR Zona Norte")'
         }),
-        ('Asignación por Marca', {
-            'fields': ('asignacion', 'porcentaje_uso', 'criterio_prorrateo'),
-            'description': 'Individual = 100% a esta marca. Compartido = se distribuye entre marcas según criterio.'
-        }),
         ('Distribución de Costos', {
-            'fields': ('tipo_asignacion_operacion', 'operacion', 'criterio_prorrateo_operacion'),
-            'description': 'Define cómo se distribuye el costo entre operaciones/centros de costo.'
+            'fields': (
+                'asignacion', 'porcentaje_uso', 'criterio_prorrateo',
+                'tipo_asignacion_operacion', 'operacion', 'criterio_prorrateo_operacion',
+            ),
+            'description': 'Define cómo se distribuye el costo del vehículo entre marcas y operaciones.'
         }),
         ('Proyección Anual', {
             'fields': ('indice_incremento',),
@@ -640,23 +639,22 @@ class VehiculoAdmin(DuplicarMixin, admin.ModelAdmin):
             'description': 'Diligenciar solo si el esquema es "Tradicional (Propio)"',
             'classes': ('collapse',)
         }),
-        ('Consumo de Combustible (Todos los Esquemas)', {
+        ('Consumo de Combustible', {
             'fields': ('tipo_combustible', 'consumo_galon_km'),
-            'description': 'Requerido para calcular combustible en Recorridos Logísticos. Aplica a Propio, Renting y Tercero.',
+            'description': 'Requerido para calcular combustible en Recorridos Logísticos. Aplica a todos los esquemas.',
         }),
         ('Otros Costos Operativos (Propio/Renting)', {
             'fields': ('costo_lavado_mensual', 'costo_parqueadero_mensual'),
             'description': 'Aplica solo a vehículos Propios y Renting.',
             'classes': ('collapse',)
         }),
-        ('Otros Costos (Todos los Esquemas)', {
+        ('Otros Costos', {
             'fields': ('costo_monitoreo_mensual', 'costo_seguro_mercancia_mensual'),
-            'description': 'Monitoreo Satelital (GPS) y Seguro de Mercancía',
-            'classes': ('collapse',)
+            'description': 'Monitoreo Satelital (GPS) y Seguro de Mercancía. Aplica a todos los esquemas.',
         }),
         ('Personal del Vehículo', {
             'fields': ('cantidad_auxiliares',),
-            'description': 'Auxiliares de entrega fijos asignados a este vehículo (normalmente 1)'
+            'description': 'Auxiliares de entrega fijos asignados a este vehículo. Se usa para calcular costos de personal en rutas logísticas.'
         }),
         ('Metadata', {
             'fields': ('fecha_creacion', 'fecha_modificacion'),
