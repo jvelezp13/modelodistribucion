@@ -182,6 +182,7 @@ def calculate_hr_expenses(escenario):
                     'valor_mensual': valor_dotacion,
                     'asignacion': asignacion,
                     'tipo_asignacion_geo': tipo_asig_geo,
+                    'indice_incremento': 'ipc',  # Provisiones RRHH usan IPC
                 })
                 model_gasto.objects.create(**datos_gasto)
 
@@ -205,6 +206,7 @@ def calculate_hr_expenses(escenario):
                     'valor_mensual': valor_examenes,
                     'asignacion': asignacion,
                     'tipo_asignacion_geo': tipo_asig_geo,
+                    'indice_incremento': 'ipc',  # Provisiones RRHH usan IPC
                 })
                 model_gasto.objects.create(**datos_gasto)
 
@@ -221,6 +223,7 @@ def calculate_hr_expenses(escenario):
                         'valor_mensual': valor_epp,
                         'asignacion': asignacion,
                         'tipo_asignacion_geo': tipo_asig_geo,
+                        'indice_incremento': 'ipc',  # Provisiones RRHH usan IPC
                     })
                     model_gasto.objects.create(**datos_gasto)
 
