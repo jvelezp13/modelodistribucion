@@ -1639,7 +1639,7 @@ class ZonaMunicipioInline(admin.TabularInline):
     extra = 1
     autocomplete_fields = ['municipio']
     fields = ('municipio', 'visitas_por_periodo', 'participacion_ventas', 'venta_proyectada')
-    readonly_fields = ('venta_proyectada',)
+    readonly_fields = ('participacion_ventas', 'venta_proyectada')
 
 
 @admin.register(Zona, site=dxv_admin_site)
@@ -1648,7 +1648,7 @@ class ZonaAdmin(DuplicarMixin, admin.ModelAdmin):
     list_display = ('nombre', 'marca', 'operacion', 'vendedor', 'participacion_ventas_fmt', 'venta_proyectada_fmt', 'tipo_vehiculo_comercial', 'frecuencia', 'requiere_pernocta', 'activo')
     list_filter = ('marca', 'escenario', 'operacion', 'frecuencia', 'requiere_pernocta', 'tipo_vehiculo_comercial', 'activo')
     search_fields = ['nombre', 'vendedor__nombre', 'marca__nombre', 'operacion__nombre']
-    readonly_fields = ('venta_proyectada', 'fecha_creacion', 'fecha_modificacion')
+    readonly_fields = ('participacion_ventas', 'venta_proyectada', 'fecha_creacion', 'fecha_modificacion')
     autocomplete_fields = ['vendedor', 'municipio_base_vendedor', 'operacion']
     inlines = [ZonaMunicipioInline]
     actions = ['duplicar_registros']
@@ -1663,7 +1663,7 @@ class ZonaAdmin(DuplicarMixin, admin.ModelAdmin):
         }),
         ('Distribución de Ventas', {
             'fields': ('participacion_ventas', 'venta_proyectada'),
-            'description': 'Configure el % de ventas de la operación que corresponden a esta zona. La venta se calcula automáticamente.'
+            'description': 'Solo lectura. Para modificar participaciones use <a href="/dxv/distribucion-ventas/">Distribución de Ventas</a> donde se valida que sumen 100%.'
         }),
         ('Configuración Comercial', {
             'fields': ('tipo_vehiculo_comercial', 'frecuencia'),
