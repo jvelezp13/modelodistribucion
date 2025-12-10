@@ -1,15 +1,40 @@
 /**
  * JavaScript para ocultar/mostrar campos condicionales en formularios de Ruta Logística
  *
- * Maneja 2 tipos de condiciones:
- * 1. Asignación por Operación: oculta operacion si es "compartido", oculta criterio_prorrateo_operacion si es "individual"
- * 2. Pernocta: oculta noches_pernocta si no requiere pernocta
+ * Maneja 3 tipos de condiciones:
+ * 1. Asignación por Marca: oculta porcentaje_uso y criterio_prorrateo si es "individual"
+ * 2. Asignación por Operación: oculta operacion si es "compartido", oculta criterio_prorrateo_operacion si es "individual"
+ * 3. Pernocta: oculta noches_pernocta si no requiere pernocta
  */
 
 (function() {
     'use strict';
 
     function initConditionalFields() {
+        // =========================================
+        // ASIGNACIÓN POR MARCA
+        // =========================================
+        const asignacionField = document.querySelector('#id_asignacion');
+        const porcentajeUsoRow = document.querySelector('.field-porcentaje_uso');
+        const criterioProrrateoRow = document.querySelector('.field-criterio_prorrateo');
+
+        function updateAsignacionMarca() {
+            if (!asignacionField) return;
+            const isIndividual = asignacionField.value === 'individual';
+
+            if (porcentajeUsoRow) {
+                porcentajeUsoRow.style.display = isIndividual ? 'none' : '';
+            }
+            if (criterioProrrateoRow) {
+                criterioProrrateoRow.style.display = isIndividual ? 'none' : '';
+            }
+        }
+
+        if (asignacionField) {
+            asignacionField.addEventListener('change', updateAsignacionMarca);
+            updateAsignacionMarca();
+        }
+
         // =========================================
         // ASIGNACIÓN POR OPERACIÓN
         // =========================================

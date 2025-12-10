@@ -1758,8 +1758,8 @@ class RecorridoMunicipioInline(admin.TabularInline):
 @admin.register(RutaLogistica, site=dxv_admin_site)
 class RecorridoLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
     """Admin para Recorridos Logísticos (circuitos que hace un vehículo)"""
-    list_display = ('nombre', 'marca', 'vehiculo', 'esquema_vehiculo', 'tipo_asignacion_operacion', 'total_flete_base', 'viajes_por_periodo', 'requiere_pernocta', 'activo')
-    list_filter = ('marca', 'escenario', 'vehiculo__esquema', 'tipo_asignacion_operacion', 'frecuencia', 'requiere_pernocta', 'activo')
+    list_display = ('nombre', 'marca', 'asignacion', 'vehiculo', 'esquema_vehiculo', 'tipo_asignacion_operacion', 'total_flete_base', 'viajes_por_periodo', 'requiere_pernocta', 'activo')
+    list_filter = ('marca', 'escenario', 'asignacion', 'vehiculo__esquema', 'tipo_asignacion_operacion', 'frecuencia', 'requiere_pernocta', 'activo')
     search_fields = ['nombre', 'vehiculo__tipo_vehiculo']
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
     autocomplete_fields = ['vehiculo']
@@ -1771,15 +1771,15 @@ class RecorridoLogisticoAdmin(DuplicarMixin, admin.ModelAdmin):
 
     fieldsets = (
         ('Información Básica', {
-            'fields': ('nombre', 'activo')
-        }),
-        ('Asignación', {
-            'fields': ('marca', 'escenario', 'vehiculo'),
+            'fields': ('nombre', 'escenario', 'vehiculo', 'activo'),
             'description': 'El vehículo puede ser propio, renting o tercero. Los auxiliares se configuran en el vehículo.'
         }),
         ('Distribución de Costos', {
-            'fields': ('tipo_asignacion_operacion', 'operacion', 'criterio_prorrateo_operacion'),
-            'description': 'Define cómo se distribuye el costo de este recorrido entre operaciones/centros de costo.'
+            'fields': (
+                'marca', 'asignacion', 'porcentaje_uso', 'criterio_prorrateo',
+                'tipo_asignacion_operacion', 'operacion', 'criterio_prorrateo_operacion',
+            ),
+            'description': 'Define cómo se distribuye el costo de este recorrido entre marcas y operaciones.'
         }),
         ('Frecuencia', {
             'fields': ('frecuencia', 'viajes_por_periodo'),

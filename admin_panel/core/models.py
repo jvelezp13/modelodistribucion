@@ -2665,6 +2665,41 @@ class RutaLogistica(models.Model):
         related_name='recorridos',
         verbose_name="Marca"
     )
+
+    # Asignación por marca
+    asignacion = models.CharField(
+        max_length=20,
+        choices=[
+            ('individual', 'Individual'),
+            ('compartido', 'Compartido'),
+        ],
+        default='individual',
+        verbose_name="Asignación Marca",
+        help_text="Individual = 100% a esta marca. Compartido = se distribuye entre marcas."
+    )
+    porcentaje_uso = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(1)],
+        verbose_name="Porcentaje Uso",
+        help_text="Porcentaje de uso para esta marca (0-1). Solo aplica si es compartido."
+    )
+    criterio_prorrateo = models.CharField(
+        max_length=20,
+        choices=[
+            ('volumen', 'Por Volumen'),
+            ('ventas', 'Por Ventas'),
+            ('uso_real', 'Por Uso Real'),
+        ],
+        default='volumen',
+        null=True,
+        blank=True,
+        verbose_name="Criterio Prorrateo",
+        help_text="Criterio para distribuir entre marcas. Solo aplica si es compartido."
+    )
+
     escenario = models.ForeignKey(
         'Escenario',
         on_delete=models.CASCADE,
