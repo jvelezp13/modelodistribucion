@@ -35,7 +35,7 @@ def global_filters(request):
 
         # Obtener escenarios y marcas disponibles
         escenarios = list(Escenario.objects.filter(activo=True).order_by('-anio', 'nombre'))
-        marcas = list(Marca.objects.filter(activo=True).order_by('nombre'))
+        marcas = list(Marca.objects.filter(activa=True).order_by('nombre'))
 
         logger.info(f"global_filters: encontrados {len(escenarios)} escenarios activos, {len(marcas)} marcas activas")
 
