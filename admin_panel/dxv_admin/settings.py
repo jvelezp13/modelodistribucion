@@ -116,5 +116,5 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Admin site customization
 ADMIN_SITE_HEADER = "LogiFlow - Planeación"
-ADMIN_SITE_TITLE = "LogiFlow - Planeación"
+ADMIN_SITE_TITLE = "LogiFlow"  # Título corto para pestaña del navegador
 ADMIN_INDEX_TITLE = ""

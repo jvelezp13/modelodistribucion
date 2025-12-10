@@ -8,7 +8,7 @@ from django.urls import path
 
 class DxVAdminSite(admin.AdminSite):
     site_header = "LogiFlow - Planeación"
-    site_title = "LogiFlow - Planeación"
+    site_title = "LogiFlow"  # Título corto para la pestaña del navegador
     index_title = ""
 
     def get_urls(self):
