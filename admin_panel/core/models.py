@@ -2697,6 +2697,32 @@ class RutaLogistica(models.Model):
         help_text="Cantidad de noches por recorrido completo"
     )
 
+    # Asignación por operación (para P&G por operación/centro de costos)
+    operacion = models.ForeignKey(
+        'Operacion',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='rutas_logisticas',
+        verbose_name="Operación",
+        help_text="Operación asignada (si tipo_asignacion_operacion es 'individual')"
+    )
+    tipo_asignacion_operacion = models.CharField(
+        max_length=20,
+        choices=TIPO_ASIGNACION_OPERACION_CHOICES,
+        default='individual',
+        verbose_name="Asignación Operación",
+        help_text="Cómo se asigna este recorrido entre operaciones"
+    )
+    criterio_prorrateo_operacion = models.CharField(
+        max_length=20,
+        choices=CRITERIO_PRORRATEO_OPERACION_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name="Criterio Prorrateo Operación",
+        help_text="Solo aplica si tipo_asignacion_operacion es 'compartido'"
+    )
+
     activo = models.BooleanField(default=True, verbose_name="Activo")
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_modificacion = models.DateTimeField(auto_now=True)

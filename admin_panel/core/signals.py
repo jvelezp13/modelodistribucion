@@ -534,7 +534,7 @@ def calculate_lejanias_logisticas(escenario):
     rutas = RutaLogistica.objects.filter(
         escenario=escenario,
         activo=True
-    ).select_related('marca', 'vehiculo')
+    ).select_related('marca', 'vehiculo', 'operacion')
 
     for ruta in rutas:
         marca = ruta.marca
@@ -548,7 +548,12 @@ def calculate_lejanias_logisticas(escenario):
         pernocta = resultado['pernocta_mensual']
         flete_base = resultado['flete_base_mensual']
 
-        # Helper para guardar gasto logístico con asignación proporcional
+        # Obtener campos de operación de la ruta
+        tipo_asig_op = ruta.tipo_asignacion_operacion or 'individual'
+        operacion_obj = ruta.operacion
+        criterio_prorrateo_op = ruta.criterio_prorrateo_operacion
+
+        # Helper para guardar gasto logístico heredando operación de la ruta
         def save_gasto(tipo, nombre, valor):
             if valor > 0:
                 GastoLogistico.objects.update_or_create(
@@ -561,6 +566,10 @@ def calculate_lejanias_logisticas(escenario):
                         'asignacion': 'individual',
                         'tipo_asignacion_geo': 'proporcional',
                         'zona': None,  # Proporcional no asigna zona directa
+                        # Heredar operación de la ruta
+                        'tipo_asignacion_operacion': tipo_asig_op,
+                        'operacion': operacion_obj,
+                        'criterio_prorrateo_operacion': criterio_prorrateo_op,
                     }
                 )
             else:
