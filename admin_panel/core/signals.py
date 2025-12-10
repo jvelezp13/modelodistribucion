@@ -36,13 +36,15 @@ def calculate_hr_expenses(escenario):
 
     tope_dotacion = politica.tope_smlv_dotacion * smlv
     
-    # Función auxiliar para procesar gastos por grupo (marca, tipo_asignacion_geo, zona)
+    # Función auxiliar para procesar gastos por grupo (marca, operacion, tipo_asignacion_geo, zona)
     def process_expenses(model_personal, model_gasto, tipo_personal):
         try:
             qs = model_personal.objects.filter(escenario=escenario)
 
-            # Verificar si el modelo tiene campo 'zona'
-            tiene_zona = 'zona' in [f.name for f in model_personal._meta.get_fields()]
+            # Verificar campos disponibles en el modelo
+            campos_modelo = [f.name for f in model_personal._meta.get_fields()]
+            tiene_zona = 'zona' in campos_modelo
+            tiene_operacion = 'operacion' in campos_modelo
 
             # Procesar en dos fases:
             # 1. Personal con asignación directa (agrupa por zona)
@@ -50,23 +52,26 @@ def calculate_hr_expenses(escenario):
 
             grupos = []
 
+            # Campos base para agrupar (siempre incluir operación si existe)
+            campos_base = ['marca', 'tipo_asignacion_geo']
+            if tiene_operacion:
+                campos_base.extend(['tipo_asignacion_operacion', 'operacion', 'criterio_prorrateo_operacion'])
+
             # Fase 1: Personal con tipo_asignacion_geo = 'directo' (agrupa por zona)
             if tiene_zona:
+                campos_directos = campos_base + ['zona']
                 grupos_directos = qs.filter(tipo_asignacion_geo='directo').order_by().values(
-                    'marca', 'tipo_asignacion_geo', 'zona'
+                    *campos_directos
                 ).distinct()
                 grupos.extend(grupos_directos)
 
             # Fase 2: Personal con tipo_asignacion_geo != 'directo' o NULL (NO agrupa por zona)
-            # IMPORTANTE: usar .order_by() para limpiar el Meta.ordering del modelo,
-            # que causa que .distinct() agrupe por campos adicionales (como 'tipo')
             grupos_no_directos = qs.exclude(tipo_asignacion_geo='directo').order_by().values(
-                'marca', 'tipo_asignacion_geo'
+                *campos_base
             ).distinct()
             grupos.extend(grupos_no_directos)
 
             # Limpiar gastos de provisiones existentes para este escenario y modelo
-            # (se recrearán con los valores correctos)
             model_gasto.objects.filter(
                 escenario=escenario,
                 tipo__in=['dotacion', 'epp', 'examenes']
@@ -79,24 +84,38 @@ def calculate_hr_expenses(escenario):
             try:
                 marca_id = grupo['marca']
                 tipo_asig_geo_original = grupo['tipo_asignacion_geo']
-                zona_id = grupo.get('zona', None)  # Usar .get() porque PersonalAdministrativo no tiene 'zona'
+                zona_id = grupo.get('zona', None)
 
-                # Filtrar personal de este grupo (usar valores originales, incluyendo None)
-                filtro = {
-                    'marca_id': marca_id,
-                }
-                # Solo filtrar por zona si el grupo incluye 'zona' (tipo='directo')
-                # Para tipo='proporcional'/'compartido', NO filtrar por zona
+                # Campos de operación (heredados del personal)
+                tipo_asig_op = grupo.get('tipo_asignacion_operacion', 'individual')
+                operacion_id = grupo.get('operacion', None)
+                criterio_prorrateo_op = grupo.get('criterio_prorrateo_operacion', None)
+
+                # Filtrar personal de este grupo
+                filtro = {'marca_id': marca_id}
+
+                # Filtro por zona (solo si tipo='directo')
                 if tiene_zona and 'zona' in grupo:
                     filtro['zona_id'] = zona_id
+
+                # Filtro por tipo_asignacion_geo
                 if tipo_asig_geo_original is not None:
                     filtro['tipo_asignacion_geo'] = tipo_asig_geo_original
                 else:
                     filtro['tipo_asignacion_geo__isnull'] = True
 
+                # Filtro por operación (si el modelo lo soporta)
+                if tiene_operacion:
+                    if tipo_asig_op is not None:
+                        filtro['tipo_asignacion_operacion'] = tipo_asig_op
+                    if operacion_id is not None:
+                        filtro['operacion_id'] = operacion_id
+                    else:
+                        filtro['operacion_id__isnull'] = True
+
                 personal_grupo = qs.filter(**filtro)
 
-                # Aplicar default para tipo_asignacion_geo al crear el gasto
+                # Aplicar defaults
                 tipo_asig_geo = tipo_asig_geo_original or 'proporcional'
 
                 # Obtener objetos relacionados
@@ -104,6 +123,12 @@ def calculate_hr_expenses(escenario):
                 zona_obj = None
                 if zona_id and tipo_asig_geo == 'directo':
                     zona_obj = Zona.objects.get(pk=zona_id)
+
+                # Obtener operación
+                from .models import Operacion
+                operacion_obj = None
+                if operacion_id:
+                    operacion_obj = Operacion.objects.get(pk=operacion_id)
 
                 asignacion = 'compartido' if marca_id is None else 'individual'
 
@@ -113,14 +138,34 @@ def calculate_hr_expenses(escenario):
                     continue
 
                 # Generar nombre descriptivo para el gasto
+                nombre_parts = []
+                if operacion_obj:
+                    nombre_parts.append(operacion_obj.nombre)
                 if zona_obj:
-                    nombre_suffix = f" - {zona_obj.nombre}"
+                    nombre_parts.append(zona_obj.nombre)
+
+                if nombre_parts:
+                    nombre_suffix = f" - {' / '.join(nombre_parts)}"
                 else:
-                    # Para provisiones genéricas, incluir el tipo para diagnóstico
                     nombre_suffix = f" ({tipo_asig_geo})"
             except Exception as e:
                 logger.error(f"ERROR procesando grupo en {tipo_personal}: {str(e)}", exc_info=True)
                 continue
+
+            # Helper para agregar campos opcionales según el modelo de gasto
+            def agregar_campos_opcionales(datos_gasto):
+                campos_gasto = [f.name for f in model_gasto._meta.get_fields()]
+                # Zona
+                if 'zona' in campos_gasto:
+                    datos_gasto['zona'] = zona_obj
+                # Operación
+                if 'operacion' in campos_gasto:
+                    datos_gasto['operacion'] = operacion_obj
+                if 'tipo_asignacion_operacion' in campos_gasto:
+                    datos_gasto['tipo_asignacion_operacion'] = tipo_asig_op or 'individual'
+                if 'criterio_prorrateo_operacion' in campos_gasto:
+                    datos_gasto['criterio_prorrateo_operacion'] = criterio_prorrateo_op
+                return datos_gasto
 
             # --- 1. DOTACIÓN (Aplica a todos con salario <= tope) ---
             count_dotacion = personal_grupo.filter(salario_base__lte=tope_dotacion).aggregate(
@@ -129,8 +174,7 @@ def calculate_hr_expenses(escenario):
             valor_dotacion = (count_dotacion * politica.valor_dotacion_completa) / politica.frecuencia_dotacion_meses
 
             if valor_dotacion > 0:
-                # Preparar datos del gasto
-                datos_gasto = {
+                datos_gasto = agregar_campos_opcionales({
                     'escenario': escenario,
                     'tipo': 'dotacion',
                     'marca': marca_obj,
@@ -138,11 +182,7 @@ def calculate_hr_expenses(escenario):
                     'valor_mensual': valor_dotacion,
                     'asignacion': asignacion,
                     'tipo_asignacion_geo': tipo_asig_geo,
-                }
-                # Solo agregar zona si el modelo la soporta (GastoComercial/Logistico sí, GastoAdministrativo no)
-                if hasattr(model_gasto, '_meta') and 'zona' in [f.name for f in model_gasto._meta.get_fields()]:
-                    datos_gasto['zona'] = zona_obj
-
+                })
                 model_gasto.objects.create(**datos_gasto)
 
             # --- 2. EXÁMENES MÉDICOS ---
@@ -157,7 +197,7 @@ def calculate_hr_expenses(escenario):
                              (count_total * costo_periodico / 12)
 
             if valor_examenes > 0:
-                datos_gasto = {
+                datos_gasto = agregar_campos_opcionales({
                     'escenario': escenario,
                     'tipo': 'examenes',
                     'marca': marca_obj,
@@ -165,10 +205,7 @@ def calculate_hr_expenses(escenario):
                     'valor_mensual': valor_examenes,
                     'asignacion': asignacion,
                     'tipo_asignacion_geo': tipo_asig_geo,
-                }
-                if hasattr(model_gasto, '_meta') and 'zona' in [f.name for f in model_gasto._meta.get_fields()]:
-                    datos_gasto['zona'] = zona_obj
-
+                })
                 model_gasto.objects.create(**datos_gasto)
 
             # --- 3. EPP (SOLO COMERCIAL) ---
@@ -176,7 +213,7 @@ def calculate_hr_expenses(escenario):
                 valor_epp = (count_total * politica.valor_epp_anual_comercial) / politica.frecuencia_epp_meses
 
                 if valor_epp > 0:
-                    datos_gasto = {
+                    datos_gasto = agregar_campos_opcionales({
                         'escenario': escenario,
                         'tipo': 'epp',
                         'marca': marca_obj,
@@ -184,10 +221,7 @@ def calculate_hr_expenses(escenario):
                         'valor_mensual': valor_epp,
                         'asignacion': asignacion,
                         'tipo_asignacion_geo': tipo_asig_geo,
-                    }
-                    if hasattr(model_gasto, '_meta') and 'zona' in [f.name for f in model_gasto._meta.get_fields()]:
-                        datos_gasto['zona'] = zona_obj
-
+                    })
                     model_gasto.objects.create(**datos_gasto)
 
     # Ejecutar para cada tipo de personal
