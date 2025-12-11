@@ -817,24 +817,33 @@ export default function PyGDetallado() {
             </>
           )}
 
-          {/* Gastos Comerciales (excluyendo lejanías que se muestran aparte) */}
+          {/* Gastos Comerciales (excluyendo lejanías y comité que se muestran en el total de Lejanías Comerciales) */}
           {grupos.comercialGastos.filter(r =>
             !r.nombre.startsWith('Combustible Lejanía') &&
-            !r.nombre.startsWith('Viáticos Pernocta')
+            !r.nombre.startsWith('Viáticos Pernocta') &&
+            !r.nombre.startsWith('Mant/Deprec/Llantas') &&
+            !r.nombre.startsWith('Comité Comercial')
           ).length > 0 && (
             <>
               <SubSeccionHeader
                 titulo="Gastos Comerciales"
                 subSeccion="comercialGastos"
                 valor={grupos.comercialGastos
-                  .filter(r => !r.nombre.startsWith('Combustible Lejanía') && !r.nombre.startsWith('Viáticos Pernocta'))
+                  .filter(r =>
+                    !r.nombre.startsWith('Combustible Lejanía') &&
+                    !r.nombre.startsWith('Viáticos Pernocta') &&
+                    !r.nombre.startsWith('Mant/Deprec/Llantas') &&
+                    !r.nombre.startsWith('Comité Comercial')
+                  )
                   .reduce((sum, r) => sum + r.valor_total, 0)}
                 mostrarPorcentaje
               />
               {subSeccionesAbiertas.comercialGastos && (() => {
                 const gastosFiltrados = grupos.comercialGastos.filter(r =>
                   !r.nombre.startsWith('Combustible Lejanía') &&
-                  !r.nombre.startsWith('Viáticos Pernocta')
+                  !r.nombre.startsWith('Viáticos Pernocta') &&
+                  !r.nombre.startsWith('Mant/Deprec/Llantas') &&
+                  !r.nombre.startsWith('Comité Comercial')
                 );
                 const { provisiones, otrosGastos } = agruparProvisionesYGastos(gastosFiltrados);
 
@@ -884,7 +893,7 @@ export default function PyGDetallado() {
 
           {/* Lejanías Comerciales */}
           {typeof marca.lejania_comercial === 'number' && marca.lejania_comercial > 0 && (
-            <LineaItem titulo="Lejanías Comerciales (Combustible + Pernocta)" valor={marca.lejania_comercial} indent={1} />
+            <LineaItem titulo="Lejanías Comerciales (Combustible + Mant/Deprec + Pernocta + Comité)" valor={marca.lejania_comercial} indent={1} />
           )}
 
           <LineaItem titulo="Total Costos Comerciales" valor={totalComercial} bold />

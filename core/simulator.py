@@ -798,6 +798,16 @@ class Simulator:
                     marca.lejania_comercial = float(resultado['comercial']['total_mensual'])
                     marca.lejania_logistica = float(resultado['logistica']['total_mensual'])
 
+                    # Agregar costos del comité comercial (ya calculados en signals.py y persistidos en GastoComercial)
+                    from core.models import GastoComercial
+                    from django.db.models import Sum
+                    comite_total = GastoComercial.objects.filter(
+                        escenario=escenario,
+                        marca=marca_django,
+                        nombre__startswith='Comité Comercial'
+                    ).aggregate(total=Sum('valor_mensual'))['total'] or 0
+                    marca.lejania_comercial += float(comite_total)
+
                     # Agregar a costos totales
                     marca.costo_comercial += marca.lejania_comercial
                     marca.costo_logistico += marca.lejania_logistica
@@ -809,7 +819,7 @@ class Simulator:
 
                     logger.info(
                         f"Lejanías calculadas para {marca.nombre}: "
-                        f"Comercial=${marca.lejania_comercial:,.0f}, "
+                        f"Comercial=${marca.lejania_comercial:,.0f} (incl. comité=${comite_total:,.0f}), "
                         f"Logística=${marca.lejania_logistica:,.0f}"
                     )
                 except Exception as e:

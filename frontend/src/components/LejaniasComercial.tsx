@@ -162,69 +162,6 @@ export default function LejaniasComercial() {
         </div>
       </div>
 
-      {/* Comité Comercial (si está configurado) */}
-      {datos.comite_comercial && (
-        <div className="bg-white border border-gray-200 rounded">
-          <div className="bg-indigo-700 text-white px-4 py-2 flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <Users size={16} />
-              <span className="text-xs font-semibold uppercase tracking-wide">
-                Comité Comercial
-              </span>
-              <span className="text-xs opacity-75">
-                - {datos.comite_comercial.municipio} ({datos.comite_comercial.frecuencia})
-              </span>
-            </div>
-            <div className="text-sm font-semibold">
-              {formatCurrency(datos.comite_comercial.total_mensual)}/mes
-            </div>
-          </div>
-          <div className="p-4">
-            <div className="text-xs text-gray-600 mb-3">
-              <MapPin size={12} className="inline mr-1" />
-              Desplazamiento de vendedores al comité ({datos.comite_comercial.viajes_mes} viajes/mes).
-              Umbral: {formatNumber(datos.comite_comercial.umbral_km)} km
-            </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-xs">
-                <thead className="bg-indigo-50">
-                  <tr>
-                    <th className="px-2 py-1 text-left">Zona</th>
-                    <th className="px-2 py-1 text-left">Vendedor</th>
-                    <th className="px-2 py-1 text-left">Ciudad Base</th>
-                    <th className="px-2 py-1 text-center">Vehículo</th>
-                    <th className="px-2 py-1 text-right">Distancia (km)</th>
-                    <th className="px-2 py-1 text-right">Viajes/mes</th>
-                    <th className="px-2 py-1 text-right">Total Mensual</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {datos.comite_comercial.detalle_por_zona.map((item, idx) => (
-                    <tr key={idx} className="border-b border-gray-100">
-                      <td className="px-2 py-1 font-medium">{item.zona_nombre}</td>
-                      <td className="px-2 py-1">{item.vendedor}</td>
-                      <td className="px-2 py-1">{item.ciudad_base}</td>
-                      <td className="px-2 py-1 text-center">{item.tipo_vehiculo}</td>
-                      <td className="px-2 py-1 text-right">{formatNumber(item.distancia_km)}</td>
-                      <td className="px-2 py-1 text-right">{item.viajes_mes}</td>
-                      <td className="px-2 py-1 text-right text-indigo-600 font-medium">
-                        {formatCurrency(item.total_mensual)}
-                      </td>
-                    </tr>
-                  ))}
-                  <tr className="bg-indigo-100 font-semibold">
-                    <td className="px-2 py-1" colSpan={6}>TOTAL COMITÉ</td>
-                    <td className="px-2 py-1 text-right text-indigo-700">
-                      {formatCurrency(datos.comite_comercial.total_mensual)}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Lista de zonas */}
       <div className="bg-white border border-gray-200 rounded">
         <div className="bg-gray-700 text-white px-4 py-2 flex justify-between items-center">
@@ -266,11 +203,14 @@ export default function LejaniasComercial() {
         {zonasOrdenadas.map((zona) => {
           const expandida = zonasExpandidas.has(zona.zona_id);
 
+          // Buscar si esta zona tiene comité comercial asignado
+          const comiteZona = datos.comite_comercial?.detalle_por_zona.find(c => c.zona_id === zona.zona_id);
+
           // Calcular totales de municipios para la fila de totales
           const municipios = zona.detalle?.municipios || [];
-          const totalKmMunicipios = municipios.reduce((sum: number, m: any) => sum + (m.distancia_km || 0), 0);
-          const totalVisitasMes = municipios.reduce((sum: number, m: any) => sum + (m.visitas_mensuales || 0), 0);
-          const totalCombustible = municipios.reduce((sum: number, m: any) => sum + (m.combustible_mensual || 0), 0);
+          const totalKmMunicipios = municipios.reduce((sum: number, m: any) => sum + (m.distancia_km || 0), 0) + (comiteZona?.distancia_km || 0);
+          const totalVisitasMes = municipios.reduce((sum: number, m: any) => sum + (m.visitas_mensuales || 0), 0) + (comiteZona?.viajes_mes || 0);
+          const totalCombustible = municipios.reduce((sum: number, m: any) => sum + (m.combustible_mensual || 0), 0) + (comiteZona?.total_mensual || 0);
           const totalCostosAdicionales = municipios.reduce((sum: number, m: any) => sum + (m.costos_adicionales_mensual || 0), 0);
 
           return (
@@ -417,6 +357,25 @@ export default function LejaniasComercial() {
                                 </td>
                               </tr>
                             ))}
+                            {/* Fila de Comité Comercial (si aplica a esta zona) */}
+                            {comiteZona && (
+                              <tr className="border-b border-indigo-200 bg-indigo-50">
+                                <td className="px-2 py-1 text-indigo-700 font-medium">
+                                  <span className="flex items-center gap-1">
+                                    <Users size={12} className="text-indigo-500" />
+                                    Comité ({datos.comite_comercial?.municipio})
+                                  </span>
+                                </td>
+                                <td className="px-2 py-1 text-right">{comiteZona.distancia_km}</td>
+                                <td className="px-2 py-1 text-right">1</td>
+                                <td className="px-2 py-1 text-right">{comiteZona.viajes_mes.toFixed(1)}</td>
+                                <td className="px-2 py-1 text-right text-gray-600">-</td>
+                                <td className="px-2 py-1 text-right text-indigo-600 font-medium">
+                                  {formatCurrency(comiteZona.total_mensual)}
+                                </td>
+                                <td className="px-2 py-1 text-right text-gray-400">incl.</td>
+                              </tr>
+                            )}
                             {/* Fila de totales */}
                             <tr className="bg-gray-200 font-semibold border-t border-gray-300">
                               <td className="px-2 py-1">TOTAL</td>
