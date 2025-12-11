@@ -2158,16 +2158,16 @@ class ConfiguracionLejania(models.Model):
     consumo_galon_km_moto = models.DecimalField(
         max_digits=5,
         decimal_places=2,
-        default=40,
+        default=90,
         verbose_name="Consumo Moto (km/galón)",
-        help_text="Rendimiento moto: típicamente 40 km/galón"
+        help_text="Rendimiento moto: típicamente 80-100 km/galón"
     )
     consumo_galon_km_automovil = models.DecimalField(
         max_digits=5,
         decimal_places=2,
-        default=12,
+        default=40,
         verbose_name="Consumo Automóvil (km/galón)",
-        help_text="Rendimiento automóvil: típicamente 12 km/galón"
+        help_text="Rendimiento automóvil: típicamente 35-50 km/galón"
     )
 
     # === GASTOS PERNOCTA LOGÍSTICA - CONDUCTOR ===
