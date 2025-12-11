@@ -373,7 +373,7 @@ export default function LejaniasComercial() {
                                 <td className="px-2 py-1 text-right text-indigo-600 font-medium">
                                   {formatCurrency(comiteZona.total_mensual)}
                                 </td>
-                                <td className="px-2 py-1 text-right text-gray-400">incl.</td>
+                                <td className="px-2 py-1 text-right text-gray-400">-</td>
                               </tr>
                             )}
                             {/* Fila de totales */}

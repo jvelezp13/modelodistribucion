@@ -605,13 +605,8 @@ def _calcular_comite_comercial(escenario, config):
         # Aplicar umbral (mismo que lejanías comerciales)
         distancia_efectiva = max(Decimal('0'), distancia_km - umbral)
 
-        if distancia_efectiva == 0:
-            # No supera umbral, eliminar gasto previo si existe
-            GastoComercial.objects.filter(
-                escenario=escenario,
-                nombre=f'Comité Comercial - {zona.nombre}'
-            ).delete()
-            continue
+        # Nota: NO excluimos zonas con distancia_efectiva == 0
+        # El vendedor sigue asistiendo al comité aunque esté en el mismo municipio (costo $0)
 
         distancia_ida_vuelta = distancia_efectiva * 2
 
@@ -634,20 +629,19 @@ def _calcular_comite_comercial(escenario, config):
 
         total_mensual = combustible_mes + costos_adicionales_mes
 
-        # Guardar como gasto comercial
-        if total_mensual > 0:
-            GastoComercial.objects.update_or_create(
-                escenario=escenario,
-                tipo='transporte_vendedores',
-                marca=marca,
-                nombre=f'Comité Comercial - {zona.nombre}',
-                defaults={
-                    'valor_mensual': total_mensual,
-                    'asignacion': 'individual',
-                    'tipo_asignacion_geo': 'directo',
-                    'zona': zona,
-                }
-            )
+        # Guardar como gasto comercial (incluso si es $0, para mostrar que el vendedor asiste)
+        GastoComercial.objects.update_or_create(
+            escenario=escenario,
+            tipo='transporte_vendedores',
+            marca=marca,
+            nombre=f'Comité Comercial - {zona.nombre}',
+            defaults={
+                'valor_mensual': total_mensual,
+                'asignacion': 'individual',
+                'tipo_asignacion_geo': 'directo',
+                'zona': zona,
+            }
+        )
 
     # Limpiar gastos de comité de zonas que ya no existen o no están activas
     GastoComercial.objects.filter(

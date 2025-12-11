@@ -186,7 +186,7 @@ def _calcular_lejanias_zona(escenario, zona, participacion: Decimal) -> Dict:
     """
     Calcula las lejanías para una zona específica usando CalculadoraLejanias.
 
-    - Lejanías comerciales: se calculan directamente para la zona
+    - Lejanías comerciales: se calculan directamente para la zona + comité comercial
     - Lejanías logísticas: se prorratean según participación de la zona en ventas de marca
 
     NOTA: Las lejanías logísticas incluyen:
@@ -194,7 +194,7 @@ def _calcular_lejanias_zona(escenario, zona, participacion: Decimal) -> Dict:
     - Combustible, peajes, pernocta
     - Costos fijos de vehículos (monitoreo, seguros, etc.) - calculados aparte
     """
-    from core.models import Vehiculo
+    from core.models import Vehiculo, GastoComercial
 
     try:
         calc = CalculadoraLejanias(escenario)
@@ -203,6 +203,14 @@ def _calcular_lejanias_zona(escenario, zona, participacion: Decimal) -> Dict:
         # Lejanía comercial: directa para esta zona
         lejania_comercial_zona = calc.calcular_lejania_comercial_zona(zona)
         comercial_total = lejania_comercial_zona['total_mensual']
+
+        # Agregar costo del comité comercial para esta zona
+        comite_zona = GastoComercial.objects.filter(
+            escenario=escenario,
+            nombre=f'Comité Comercial - {zona.nombre}'
+        ).first()
+        if comite_zona:
+            comercial_total += Decimal(str(comite_zona.valor_mensual))
 
         # Lejanía logística: calcular para toda la marca y prorratear
         logistica_marca = calc.calcular_lejanias_logisticas_marca(marca)
@@ -499,11 +507,20 @@ def calcular_pyg_todas_zonas(escenario, marca, operacion_ids: Optional[List[int]
     costos_logisticos_por_zona = calc.distribuir_costos_logisticos_a_zonas(marca)
     flota_por_zona = calc.distribuir_flota_a_zonas(marca)
 
-    # 5. Pre-calcular lejanías comerciales por zona
-    lejanias_comerciales_por_zona = {
-        zona.id: calc.calcular_lejania_comercial_zona(zona)['total_mensual']
-        for zona in zonas_list
-    }
+    # 5. Pre-calcular lejanías comerciales por zona (incluyendo comité comercial)
+    lejanias_comerciales_por_zona = {}
+    for zona in zonas_list:
+        # Lejanía comercial base (combustible + mant/deprec + pernocta)
+        lejania_base = calc.calcular_lejania_comercial_zona(zona)['total_mensual']
+
+        # Agregar costo del comité comercial para esta zona
+        comite_zona = GastoComercial.objects.filter(
+            escenario=escenario,
+            nombre=f'Comité Comercial - {zona.nombre}'
+        ).first()
+        comite_costo = Decimal(str(comite_zona.valor_mensual)) if comite_zona else Decimal('0')
+
+        lejanias_comerciales_por_zona[zona.id] = lejania_base + comite_costo
 
     # =========================================================================
     # FUNCIÓN DE DISTRIBUCIÓN
