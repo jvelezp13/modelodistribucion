@@ -550,8 +550,6 @@ def calculate_lejanias_logisticas(escenario):
 
         # Obtener campos de asignación de marca de la ruta
         asignacion_marca = ruta.asignacion or 'individual'
-        porcentaje_uso = ruta.porcentaje_uso
-        criterio_prorrateo_marca = ruta.criterio_prorrateo
 
         # Obtener campos de operación de la ruta
         tipo_asig_op = ruta.tipo_asignacion_operacion or 'individual'
@@ -572,8 +570,6 @@ def calculate_lejanias_logisticas(escenario):
                         'zona': None,  # Proporcional no asigna zona directa
                         # Heredar asignación de marca de la ruta
                         'asignacion': asignacion_marca,
-                        'porcentaje_dedicacion': porcentaje_uso,
-                        'criterio_prorrateo': criterio_prorrateo_marca,
                         # Heredar operación de la ruta
                         'tipo_asignacion_operacion': tipo_asig_op,
                         'operacion': operacion_obj,
