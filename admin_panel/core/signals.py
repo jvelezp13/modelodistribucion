@@ -459,6 +459,9 @@ def calculate_lejanias_comerciales(escenario):
                 nombre=f'Viáticos Pernocta - {zona.nombre}'
             ).delete()
 
+    # Calcular costos del comité comercial (si está configurado)
+    _calcular_comite_comercial(escenario, config)
+
 
 def _calcular_lejania_comercial_zona(zona, config):
     """
@@ -543,6 +546,114 @@ def _calcular_lejania_comercial_zona(zona, config):
         'pernocta_mensual': pernocta_total,
         'total_mensual': combustible_total + costos_adicionales_total + pernocta_total
     }
+
+
+def _calcular_comite_comercial(escenario, config):
+    """
+    Calcula y persiste los costos de desplazamiento al comité comercial para cada zona/vendedor.
+
+    El comité comercial es una reunión periódica donde todos los vendedores se desplazan
+    a un municipio fijo. Aplica el mismo umbral de lejanía comercial.
+    """
+    if not config.tiene_comite_comercial or not config.municipio_comite:
+        # Eliminar gastos de comité previos si ya no aplica
+        GastoComercial.objects.filter(
+            escenario=escenario,
+            nombre__startswith='Comité Comercial -'
+        ).delete()
+        return
+
+    frecuencia_map = {'SEMANAL': 4, 'TRISEMANAL': 3, 'QUINCENAL': 2, 'MENSUAL': 1}
+    viajes_mes = frecuencia_map.get(config.frecuencia_comite, 1)
+    umbral = config.umbral_lejania_comercial_km
+
+    # Obtener todas las zonas activas del escenario
+    zonas = Zona.objects.filter(
+        escenario=escenario,
+        activo=True
+    ).select_related('marca', 'municipio_base_vendedor', 'vendedor')
+
+    zonas_procesadas = set()
+
+    for zona in zonas:
+        marca = zona.marca
+        if not marca:
+            continue
+
+        zonas_procesadas.add(zona.id)
+
+        # Base del vendedor
+        base_vendedor = zona.municipio_base_vendedor or config.municipio_bodega
+        if not base_vendedor:
+            # Eliminar gasto previo si existe
+            GastoComercial.objects.filter(
+                escenario=escenario,
+                nombre=f'Comité Comercial - {zona.nombre}'
+            ).delete()
+            continue
+
+        # Calcular distancia al municipio del comité
+        try:
+            matriz = MatrizDesplazamiento.objects.get(
+                origen_id=base_vendedor.id,
+                destino_id=config.municipio_comite.id
+            )
+            distancia_km = matriz.distancia_km
+        except MatrizDesplazamiento.DoesNotExist:
+            distancia_km = Decimal('0')
+
+        # Aplicar umbral (mismo que lejanías comerciales)
+        distancia_efectiva = max(Decimal('0'), distancia_km - umbral)
+
+        if distancia_efectiva == 0:
+            # No supera umbral, eliminar gasto previo si existe
+            GastoComercial.objects.filter(
+                escenario=escenario,
+                nombre=f'Comité Comercial - {zona.nombre}'
+            ).delete()
+            continue
+
+        distancia_ida_vuelta = distancia_efectiva * 2
+
+        # Determinar tipo de vehículo y costos
+        if zona.tipo_vehiculo_comercial == 'MOTO':
+            consumo_km_galon = config.consumo_galon_km_moto
+            costo_adicional_km = config.costo_adicional_km_moto
+        else:
+            consumo_km_galon = config.consumo_galon_km_automovil
+            costo_adicional_km = config.costo_adicional_km_automovil
+
+        # Combustible mensual
+        combustible_mes = Decimal('0')
+        if consumo_km_galon > 0:
+            galones_mes = (distancia_ida_vuelta * viajes_mes) / consumo_km_galon
+            combustible_mes = galones_mes * config.precio_galon_gasolina
+
+        # Costos adicionales mensual (mantenimiento, depreciación, llantas)
+        costos_adicionales_mes = distancia_ida_vuelta * costo_adicional_km * viajes_mes
+
+        total_mensual = combustible_mes + costos_adicionales_mes
+
+        # Guardar como gasto comercial
+        if total_mensual > 0:
+            GastoComercial.objects.update_or_create(
+                escenario=escenario,
+                tipo='transporte_vendedores',
+                marca=marca,
+                nombre=f'Comité Comercial - {zona.nombre}',
+                defaults={
+                    'valor_mensual': total_mensual,
+                    'asignacion': 'individual',
+                    'tipo_asignacion_geo': 'directo',
+                    'zona': zona,
+                }
+            )
+
+    # Limpiar gastos de comité de zonas que ya no existen o no están activas
+    GastoComercial.objects.filter(
+        escenario=escenario,
+        nombre__startswith='Comité Comercial -'
+    ).exclude(zona_id__in=zonas_procesadas).delete()
 
 
 # =============================================================================

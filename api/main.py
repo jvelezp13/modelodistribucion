@@ -482,6 +482,12 @@ def obtener_detalle_lejanias_comercial(
             tipo='transporte_vendedores',
             nombre__startswith='Mant/Deprec/Llantas'
         )
+        gastos_comite = GastoComercial.objects.filter(
+            escenario=escenario,
+            marca=marca,
+            tipo='transporte_vendedores',
+            nombre__startswith='Comité Comercial'
+        ).select_related('zona', 'zona__vendedor', 'zona__municipio_base_vendedor')
 
         # Parsear operacion_ids si se proporcionan
         operacion_ids_list = None
@@ -653,7 +659,62 @@ def obtener_detalle_lejanias_comercial(
         # Ordenar zonas de mayor a menor por total_mensual
         detalle_zonas.sort(key=lambda x: x['total_mensual'], reverse=True)
 
-        total_mensual = total_combustible + total_costos_adicionales + total_pernocta
+        # Construir datos del comité comercial (si está configurado)
+        comite_data = None
+        total_comite = 0.0
+        if config and config.tiene_comite_comercial and config.municipio_comite:
+            frecuencia_map = {'SEMANAL': 4, 'TRISEMANAL': 3, 'QUINCENAL': 2, 'MENSUAL': 1}
+            viajes_mes = frecuencia_map.get(config.frecuencia_comite, 1)
+            umbral = float(config.umbral_lejania_comercial_km)
+
+            # Filtrar gastos de comité por operaciones si aplica
+            gastos_comite_filtrados = gastos_comite
+            if operacion_ids_list:
+                gastos_comite_filtrados = gastos_comite.filter(zona__operacion_id__in=operacion_ids_list)
+
+            detalle_comite = []
+            for gasto in gastos_comite_filtrados:
+                zona = gasto.zona
+                if not zona:
+                    continue
+
+                # Calcular distancia al comité para mostrar
+                base_vendedor = zona.municipio_base_vendedor or (config.municipio_bodega if config else None)
+                distancia_km = 0.0
+                if base_vendedor:
+                    try:
+                        matriz = MatrizDesplazamiento.objects.get(
+                            origen_id=base_vendedor.id,
+                            destino_id=config.municipio_comite.id
+                        )
+                        distancia_km = float(matriz.distancia_km)
+                    except MatrizDesplazamiento.DoesNotExist:
+                        pass
+
+                detalle_comite.append({
+                    'zona_id': zona.id,
+                    'zona_nombre': zona.nombre,
+                    'vendedor': zona.vendedor.nombre if zona.vendedor else 'Sin asignar',
+                    'ciudad_base': base_vendedor.nombre if base_vendedor else 'Sin configurar',
+                    'tipo_vehiculo': zona.tipo_vehiculo_comercial,
+                    'distancia_km': distancia_km,
+                    'viajes_mes': viajes_mes,
+                    'total_mensual': float(gasto.valor_mensual),
+                })
+
+            total_comite = sum(d['total_mensual'] for d in detalle_comite)
+
+            if detalle_comite:
+                comite_data = {
+                    'municipio': config.municipio_comite.nombre,
+                    'frecuencia': config.get_frecuencia_comite_display(),
+                    'viajes_mes': viajes_mes,
+                    'umbral_km': umbral,
+                    'total_mensual': total_comite,
+                    'detalle_por_zona': sorted(detalle_comite, key=lambda x: x['total_mensual'], reverse=True),
+                }
+
+        total_mensual = total_combustible + total_costos_adicionales + total_pernocta + total_comite
         return {
             'marca_id': marca_id,
             'marca_nombre': marca.nombre,
@@ -663,9 +724,11 @@ def obtener_detalle_lejanias_comercial(
             'total_combustible_mensual': total_combustible,
             'total_costos_adicionales_mensual': total_costos_adicionales,
             'total_pernocta_mensual': total_pernocta,
+            'total_comite_mensual': total_comite,
             'total_mensual': total_mensual,
             'total_anual': total_mensual * 12,
-            'zonas': detalle_zonas
+            'zonas': detalle_zonas,
+            'comite_comercial': comite_data,
         }
 
     except Escenario.DoesNotExist:

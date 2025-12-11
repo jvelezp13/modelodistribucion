@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { apiClient, DetalleLejaniasComercial, DetalleZonaComercial } from '@/lib/api';
+import { apiClient, DetalleLejaniasComercial, DetalleZonaComercial, ComiteComercialData } from '@/lib/api';
 import { useFilters } from '@/hooks/useFilters';
-import { ChevronDown, ChevronRight, Calendar, User, Car, Home, ChevronsUpDown } from 'lucide-react';
+import { ChevronDown, ChevronRight, Calendar, User, Car, Home, ChevronsUpDown, Users, MapPin } from 'lucide-react';
 
 type OrdenamientoType = 'nombre' | 'costo' | 'km';
 
@@ -116,7 +116,7 @@ export default function LejaniasComercial() {
         <h2 className="text-lg font-bold text-gray-800 mb-3">
           Lejanías Comerciales - {datos.marca_nombre}
         </h2>
-        <div className="grid grid-cols-6 gap-4">
+        <div className="grid grid-cols-7 gap-3">
           <div>
             <div className="text-xs text-gray-500">Km Mensuales</div>
             <div className="text-sm font-semibold text-gray-700">
@@ -124,21 +124,27 @@ export default function LejaniasComercial() {
             </div>
           </div>
           <div>
-            <div className="text-xs text-gray-500">Combustible Mensual</div>
+            <div className="text-xs text-gray-500">Combustible</div>
             <div className="text-sm font-semibold text-blue-600">
               {formatCurrency(datos.total_combustible_mensual)}
             </div>
           </div>
           <div>
-            <div className="text-xs text-gray-500">Mant/Deprec/Llantas</div>
+            <div className="text-xs text-gray-500">Mant/Deprec/Llan</div>
             <div className="text-sm font-semibold text-orange-600">
               {formatCurrency(datos.total_costos_adicionales_mensual || 0)}
             </div>
           </div>
           <div>
-            <div className="text-xs text-gray-500">Pernocta Mensual</div>
+            <div className="text-xs text-gray-500">Pernocta</div>
             <div className="text-sm font-semibold text-purple-600">
               {formatCurrency(datos.total_pernocta_mensual)}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-gray-500">Comité Comercial</div>
+            <div className="text-sm font-semibold text-indigo-600">
+              {formatCurrency(datos.total_comite_mensual || 0)}
             </div>
           </div>
           <div>
@@ -155,6 +161,69 @@ export default function LejaniasComercial() {
           </div>
         </div>
       </div>
+
+      {/* Comité Comercial (si está configurado) */}
+      {datos.comite_comercial && (
+        <div className="bg-white border border-gray-200 rounded">
+          <div className="bg-indigo-700 text-white px-4 py-2 flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <Users size={16} />
+              <span className="text-xs font-semibold uppercase tracking-wide">
+                Comité Comercial
+              </span>
+              <span className="text-xs opacity-75">
+                - {datos.comite_comercial.municipio} ({datos.comite_comercial.frecuencia})
+              </span>
+            </div>
+            <div className="text-sm font-semibold">
+              {formatCurrency(datos.comite_comercial.total_mensual)}/mes
+            </div>
+          </div>
+          <div className="p-4">
+            <div className="text-xs text-gray-600 mb-3">
+              <MapPin size={12} className="inline mr-1" />
+              Desplazamiento de vendedores al comité ({datos.comite_comercial.viajes_mes} viajes/mes).
+              Umbral: {formatNumber(datos.comite_comercial.umbral_km)} km
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-xs">
+                <thead className="bg-indigo-50">
+                  <tr>
+                    <th className="px-2 py-1 text-left">Zona</th>
+                    <th className="px-2 py-1 text-left">Vendedor</th>
+                    <th className="px-2 py-1 text-left">Ciudad Base</th>
+                    <th className="px-2 py-1 text-center">Vehículo</th>
+                    <th className="px-2 py-1 text-right">Distancia (km)</th>
+                    <th className="px-2 py-1 text-right">Viajes/mes</th>
+                    <th className="px-2 py-1 text-right">Total Mensual</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {datos.comite_comercial.detalle_por_zona.map((item, idx) => (
+                    <tr key={idx} className="border-b border-gray-100">
+                      <td className="px-2 py-1 font-medium">{item.zona_nombre}</td>
+                      <td className="px-2 py-1">{item.vendedor}</td>
+                      <td className="px-2 py-1">{item.ciudad_base}</td>
+                      <td className="px-2 py-1 text-center">{item.tipo_vehiculo}</td>
+                      <td className="px-2 py-1 text-right">{formatNumber(item.distancia_km)}</td>
+                      <td className="px-2 py-1 text-right">{item.viajes_mes}</td>
+                      <td className="px-2 py-1 text-right text-indigo-600 font-medium">
+                        {formatCurrency(item.total_mensual)}
+                      </td>
+                    </tr>
+                  ))}
+                  <tr className="bg-indigo-100 font-semibold">
+                    <td className="px-2 py-1" colSpan={6}>TOTAL COMITÉ</td>
+                    <td className="px-2 py-1 text-right text-indigo-700">
+                      {formatCurrency(datos.comite_comercial.total_mensual)}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Lista de zonas */}
       <div className="bg-white border border-gray-200 rounded">

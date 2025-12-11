@@ -268,6 +268,26 @@ export interface DetalleRutaLogistica {
   detalle: any;
 }
 
+export interface DetalleComiteZona {
+  zona_id: number;
+  zona_nombre: string;
+  vendedor: string;
+  ciudad_base: string;
+  tipo_vehiculo: string;
+  distancia_km: number;
+  viajes_mes: number;
+  total_mensual: number;
+}
+
+export interface ComiteComercialData {
+  municipio: string;
+  frecuencia: string;
+  viajes_mes: number;
+  umbral_km: number;
+  total_mensual: number;
+  detalle_por_zona: DetalleComiteZona[];
+}
+
 export interface DetalleLejaniasComercial {
   marca_id: string;
   marca_nombre: string;
@@ -277,9 +297,11 @@ export interface DetalleLejaniasComercial {
   total_combustible_mensual: number;
   total_costos_adicionales_mensual: number;
   total_pernocta_mensual: number;
+  total_comite_mensual: number;
   total_mensual: number;
   total_anual: number;
   zonas: DetalleZonaComercial[];
+  comite_comercial: ComiteComercialData | null;
 }
 
 export interface DetalleLejaniasLogistica {
