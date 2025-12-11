@@ -439,31 +439,51 @@ class Simulator:
             if cantidad == 0:
                 continue
 
-            salario_base = empleado_data.get('salario_base', 0)
-            perfil = empleado_data.get('perfil_prestacional', 'administrativo')
+            tipo_contrato = empleado_data.get('tipo_contrato', 'nomina')
             asignacion_str = empleado_data.get('asignacion', 'individual')
 
-            # Calcular costo con la calculadora para obtener desglose
-            costo = self.calc_nomina.calcular_costo_empleado(
-                salario_base=salario_base,
-                perfil=perfil
-            )
+            # Diferenciar entre honorarios y nómina
+            if tipo_contrato == 'honorarios':
+                # Honorarios: usar directamente el valor sin calcular prestaciones
+                honorarios = empleado_data.get('honorarios_mensuales', 0)
 
-            # Crear rubro de personal con desglose completo
-            rubro = RubroPersonal(
-                id=f"admin_{empleado_data.get('tipo')}_{marca.marca_id}",
-                nombre=empleado_data.get('nombre', empleado_data.get('tipo', 'Personal Admin')),
-                categoria='administrativo',
-                tipo='personal',
-                tipo_asignacion=TipoAsignacion(asignacion_str),
-                marca_id=marca.marca_id if asignacion_str == 'individual' else None,
-                cantidad=cantidad,
-                salario_base=salario_base,
-                prestaciones=costo.prestaciones,
-                subsidio_transporte=costo.subsidio_transporte,
-                factor_prestacional=0.378 if perfil == 'administrativo' else 0.49 if perfil == 'aprendiz_sena' else 0.378,
-                auxilios_no_prestacionales=empleado_data.get('auxilios_no_prestacionales', {})
-            )
+                # Crear rubro simple (sin desglose de prestaciones)
+                rubro = Rubro(
+                    id=f"admin_{empleado_data.get('tipo')}_{marca.marca_id}",
+                    nombre=empleado_data.get('nombre', empleado_data.get('tipo', 'Personal Admin')),
+                    categoria='administrativo',
+                    tipo='personal',
+                    tipo_asignacion=TipoAsignacion(asignacion_str),
+                    marca_id=marca.marca_id if asignacion_str == 'individual' else None,
+                    valor_unitario=honorarios,
+                    cantidad=cantidad
+                )
+            else:
+                # Nómina: calcular con prestaciones
+                salario_base = empleado_data.get('salario_base', 0)
+                perfil = empleado_data.get('perfil_prestacional', 'administrativo')
+
+                # Calcular costo con la calculadora para obtener desglose
+                costo = self.calc_nomina.calcular_costo_empleado(
+                    salario_base=salario_base,
+                    perfil=perfil
+                )
+
+                # Crear rubro de personal con desglose completo
+                rubro = RubroPersonal(
+                    id=f"admin_{empleado_data.get('tipo')}_{marca.marca_id}",
+                    nombre=empleado_data.get('nombre', empleado_data.get('tipo', 'Personal Admin')),
+                    categoria='administrativo',
+                    tipo='personal',
+                    tipo_asignacion=TipoAsignacion(asignacion_str),
+                    marca_id=marca.marca_id if asignacion_str == 'individual' else None,
+                    cantidad=cantidad,
+                    salario_base=salario_base,
+                    prestaciones=costo.prestaciones,
+                    subsidio_transporte=costo.subsidio_transporte,
+                    factor_prestacional=0.378 if perfil == 'administrativo' else 0.49 if perfil == 'aprendiz_sena' else 0.378,
+                    auxilios_no_prestacionales=empleado_data.get('auxilios_no_prestacionales', {})
+                )
 
             if rubro.es_individual():
                 marca.agregar_rubro_individual(rubro)
