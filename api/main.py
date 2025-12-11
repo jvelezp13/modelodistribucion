@@ -507,6 +507,7 @@ def obtener_detalle_lejanias_comercial(
         total_combustible = 0.0
         total_costos_adicionales = 0.0
         total_pernocta = 0.0
+        total_km = 0.0
 
         for zona in zonas:
             # Buscar gastos de esta zona específica
@@ -594,6 +595,12 @@ def obtener_detalle_lejanias_comercial(
                         'es_visita_local': False,
                     })
 
+            # Calcular km totales de la zona (ida y vuelta × visitas mensuales)
+            km_zona_mensual = sum(
+                m['distancia_km'] * 2 * m['visitas_mensuales']
+                for m in detalle_municipios
+            )
+
             # Construir detalle de pernocta si aplica
             detalle_pernocta = None
             if zona.requiere_pernocta and zona.noches_pernocta > 0 and config:
@@ -624,6 +631,7 @@ def obtener_detalle_lejanias_comercial(
                 'frecuencia': zona.get_frecuencia_display(),
                 'requiere_pernocta': zona.requiere_pernocta,
                 'noches_pernocta': zona.noches_pernocta,
+                'km_mensual': km_zona_mensual,
                 'combustible_mensual': combustible_mensual,
                 'costos_adicionales_mensual': costos_adicionales_mensual,
                 'pernocta_mensual': pernocta_mensual,
@@ -640,6 +648,7 @@ def obtener_detalle_lejanias_comercial(
             total_combustible += combustible_mensual
             total_costos_adicionales += costos_adicionales_mensual
             total_pernocta += pernocta_mensual
+            total_km += km_zona_mensual
 
         # Ordenar zonas de mayor a menor por total_mensual
         detalle_zonas.sort(key=lambda x: x['total_mensual'], reverse=True)
@@ -650,6 +659,7 @@ def obtener_detalle_lejanias_comercial(
             'marca_nombre': marca.nombre,
             'escenario_id': escenario_id,
             'escenario_nombre': escenario.nombre,
+            'total_km_mensual': total_km,
             'total_combustible_mensual': total_combustible,
             'total_costos_adicionales_mensual': total_costos_adicionales,
             'total_pernocta_mensual': total_pernocta,

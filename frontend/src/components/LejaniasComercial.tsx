@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { apiClient, DetalleLejaniasComercial, DetalleZonaComercial } from '@/lib/api';
 import { useFilters } from '@/hooks/useFilters';
-import { ChevronDown, ChevronRight, MapPin, User, Car, Home } from 'lucide-react';
+import { ChevronDown, ChevronRight, Calendar, User, Car, Home, ChevronsUpDown } from 'lucide-react';
+
+type OrdenamientoType = 'nombre' | 'costo' | 'km';
 
 export default function LejaniasComercial() {
   const { filters } = useFilters();
@@ -13,6 +15,7 @@ export default function LejaniasComercial() {
   const [error, setError] = useState<string | null>(null);
   const [datos, setDatos] = useState<DetalleLejaniasComercial | null>(null);
   const [zonasExpandidas, setZonasExpandidas] = useState<Set<number>>(new Set());
+  const [ordenamiento, setOrdenamiento] = useState<OrdenamientoType>('costo');
 
   useEffect(() => {
     if (escenarioId && marcaId) {
@@ -37,6 +40,16 @@ export default function LejaniasComercial() {
     }
   };
 
+  // Ordenar zonas según criterio seleccionado
+  const zonasOrdenadas = useMemo(() => {
+    if (!datos) return [];
+    return [...datos.zonas].sort((a, b) => {
+      if (ordenamiento === 'costo') return b.total_mensual - a.total_mensual;
+      if (ordenamiento === 'km') return (b.km_mensual || 0) - (a.km_mensual || 0);
+      return a.zona_nombre.localeCompare(b.zona_nombre);
+    });
+  }, [datos, ordenamiento]);
+
   const toggleZona = (zonaId: number) => {
     const nuevasExpandidas = new Set(zonasExpandidas);
     if (nuevasExpandidas.has(zonaId)) {
@@ -47,12 +60,28 @@ export default function LejaniasComercial() {
     setZonasExpandidas(nuevasExpandidas);
   };
 
+  const expandirTodo = () => {
+    if (!datos) return;
+    setZonasExpandidas(new Set(datos.zonas.map(z => z.zona_id)));
+  };
+
+  const colapsarTodo = () => {
+    setZonasExpandidas(new Set());
+  };
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-CO', {
       style: 'currency',
       currency: 'COP',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
+    }).format(value);
+  };
+
+  const formatNumber = (value: number, decimals: number = 0) => {
+    return new Intl.NumberFormat('es-CO', {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
     }).format(value);
   };
 
@@ -87,7 +116,13 @@ export default function LejaniasComercial() {
         <h2 className="text-lg font-bold text-gray-800 mb-3">
           Lejanías Comerciales - {datos.marca_nombre}
         </h2>
-        <div className="grid grid-cols-5 gap-4">
+        <div className="grid grid-cols-6 gap-4">
+          <div>
+            <div className="text-xs text-gray-500">Km Mensuales</div>
+            <div className="text-sm font-semibold text-gray-700">
+              {formatNumber(datos.total_km_mensual || 0)} km
+            </div>
+          </div>
           <div>
             <div className="text-xs text-gray-500">Combustible Mensual</div>
             <div className="text-sm font-semibold text-blue-600">
@@ -123,14 +158,51 @@ export default function LejaniasComercial() {
 
       {/* Lista de zonas */}
       <div className="bg-white border border-gray-200 rounded">
-        <div className="bg-gray-700 text-white px-4 py-2">
+        <div className="bg-gray-700 text-white px-4 py-2 flex justify-between items-center">
           <span className="text-xs font-semibold uppercase tracking-wide">
             Zonas Comerciales ({datos.zonas.length})
           </span>
+          <div className="flex items-center gap-3">
+            {/* Selector de ordenamiento */}
+            <div className="flex items-center gap-1 text-xs">
+              <ChevronsUpDown size={12} />
+              <select
+                value={ordenamiento}
+                onChange={(e) => setOrdenamiento(e.target.value as OrdenamientoType)}
+                className="bg-gray-600 text-white text-xs rounded px-2 py-1 border-none focus:ring-1 focus:ring-gray-400"
+              >
+                <option value="costo">Por Costo</option>
+                <option value="km">Por Km</option>
+                <option value="nombre">Por Nombre</option>
+              </select>
+            </div>
+            {/* Botones expandir/colapsar */}
+            <div className="flex gap-1">
+              <button
+                onClick={expandirTodo}
+                className="text-xs bg-gray-600 hover:bg-gray-500 px-2 py-1 rounded"
+              >
+                Expandir
+              </button>
+              <button
+                onClick={colapsarTodo}
+                className="text-xs bg-gray-600 hover:bg-gray-500 px-2 py-1 rounded"
+              >
+                Colapsar
+              </button>
+            </div>
+          </div>
         </div>
 
-        {datos.zonas.map((zona) => {
+        {zonasOrdenadas.map((zona) => {
           const expandida = zonasExpandidas.has(zona.zona_id);
+
+          // Calcular totales de municipios para la fila de totales
+          const municipios = zona.detalle?.municipios || [];
+          const totalKmMunicipios = municipios.reduce((sum: number, m: any) => sum + (m.distancia_km || 0), 0);
+          const totalVisitasMes = municipios.reduce((sum: number, m: any) => sum + (m.visitas_mensuales || 0), 0);
+          const totalCombustible = municipios.reduce((sum: number, m: any) => sum + (m.combustible_mensual || 0), 0);
+          const totalCostosAdicionales = municipios.reduce((sum: number, m: any) => sum + (m.costos_adicionales_mensual || 0), 0);
 
           return (
             <div key={zona.zona_id} className="border-b border-gray-200 last:border-b-0">
@@ -143,8 +215,15 @@ export default function LejaniasComercial() {
                   <div className="flex items-center gap-3">
                     {expandida ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                     <div>
-                      <div className="text-sm font-semibold text-gray-900">
-                        {zona.zona_nombre}
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-gray-900">
+                          {zona.zona_nombre}
+                        </span>
+                        {zona.requiere_pernocta && (
+                          <span className="px-2 py-0.5 text-xs bg-purple-100 text-purple-700 rounded-full">
+                            Pernocta
+                          </span>
+                        )}
                       </div>
                       <div className="flex gap-4 mt-1 text-xs text-gray-600">
                         <span className="flex items-center gap-1">
@@ -159,9 +238,12 @@ export default function LejaniasComercial() {
                           <Car size={12} />
                           {zona.tipo_vehiculo}
                         </span>
-                        <span className="flex items-center gap-1">
-                          <MapPin size={12} />
+                        <span className="flex items-center gap-1" title="Frecuencia de visita">
+                          <Calendar size={12} />
                           {zona.frecuencia}
+                        </span>
+                        <span className="text-gray-400">
+                          {formatNumber(zona.km_mensual || 0)} km/mes
                         </span>
                       </div>
                     </div>
@@ -178,7 +260,13 @@ export default function LejaniasComercial() {
               {/* Detalle de zona expandida */}
               {expandida && (
                 <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
-                  <div className="grid grid-cols-3 gap-4 mb-4">
+                  <div className="grid grid-cols-4 gap-4 mb-4">
+                    <div>
+                      <div className="text-xs text-gray-500">Km Mensuales</div>
+                      <div className="text-sm font-medium text-gray-700">
+                        {formatNumber(zona.km_mensual || 0)} km
+                      </div>
+                    </div>
                     <div>
                       <div className="text-xs text-gray-500">Combustible Mensual</div>
                       <div className="text-sm font-medium text-blue-600">
@@ -190,7 +278,7 @@ export default function LejaniasComercial() {
                       <div className="text-sm font-medium text-orange-600">
                         {formatCurrency(zona.costos_adicionales_mensual || 0)}
                       </div>
-                      {zona.detalle?.costo_adicional_km && (
+                      {zona.detalle?.costo_adicional_km > 0 && (
                         <div className="text-xs text-gray-400">
                           @ {formatCurrency(zona.detalle.costo_adicional_km)}/km
                         </div>
@@ -204,50 +292,34 @@ export default function LejaniasComercial() {
                     </div>
                   </div>
 
-                  {/* Detalle de Pernocta */}
+                  {/* Detalle de Pernocta - Compactado */}
                   {zona.detalle?.pernocta && (
-                    <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded">
-                      <div className="text-xs font-semibold text-purple-800 mb-2">
-                        Detalle Pernocta ({zona.detalle.pernocta.noches} noche{zona.detalle.pernocta.noches > 1 ? 's' : ''} × {zona.detalle.pernocta.periodos_mes.toFixed(2)} viajes/mes)
-                      </div>
-                      <div className="grid grid-cols-5 gap-2 text-xs">
-                        <div>
-                          <span className="text-gray-500">Desayuno:</span>{' '}
-                          <span className="font-medium">{formatCurrency(zona.detalle.pernocta.desayuno)}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Almuerzo:</span>{' '}
-                          <span className="font-medium">{formatCurrency(zona.detalle.pernocta.almuerzo)}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Cena:</span>{' '}
-                          <span className="font-medium">{formatCurrency(zona.detalle.pernocta.cena)}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Alojamiento:</span>{' '}
-                          <span className="font-medium">{formatCurrency(zona.detalle.pernocta.alojamiento)}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Total/noche:</span>{' '}
-                          <span className="font-medium">{formatCurrency(zona.detalle.pernocta.gasto_por_noche)}</span>
-                        </div>
-                      </div>
+                    <div className="mb-4 p-2 bg-purple-50 border border-purple-200 rounded text-xs">
+                      <span className="font-semibold text-purple-800">Pernocta:</span>{' '}
+                      <span className="text-purple-700">
+                        {zona.detalle.pernocta.noches} noche{zona.detalle.pernocta.noches > 1 ? 's' : ''} × {zona.detalle.pernocta.periodos_mes.toFixed(1)} viajes/mes
+                        {' '}({formatCurrency(zona.detalle.pernocta.gasto_por_noche)}/noche:
+                        Desay. {formatCurrency(zona.detalle.pernocta.desayuno)} +
+                        Alm. {formatCurrency(zona.detalle.pernocta.almuerzo)} +
+                        Cena {formatCurrency(zona.detalle.pernocta.cena)} +
+                        Aloj. {formatCurrency(zona.detalle.pernocta.alojamiento)})
+                      </span>
                     </div>
                   )}
 
                   {/* Tabla de municipios */}
-                  {zona.detalle?.municipios && zona.detalle.municipios.length > 0 && (
+                  {municipios.length > 0 && (
                     <div>
                       <div className="text-xs font-semibold text-gray-700 mb-2">
-                        Municipios ({zona.detalle.municipios.length})
+                        Municipios ({municipios.length})
                       </div>
                       <div className="overflow-x-auto">
                         <table className="min-w-full text-xs">
                           <thead className="bg-gray-100">
                             <tr>
                               <th className="px-2 py-1 text-left">Municipio</th>
-                              <th className="px-2 py-1 text-right">Distancia (km)</th>
-                              <th className="px-2 py-1 text-right">Visitas/periodo</th>
+                              <th className="px-2 py-1 text-right">Dist. (km)</th>
+                              <th className="px-2 py-1 text-right" title={`Visitas por ciclo de ${zona.frecuencia}`}>Visitas/ciclo</th>
                               <th className="px-2 py-1 text-right">Visitas/mes</th>
                               <th className="px-2 py-1 text-right">Comb/visita</th>
                               <th className="px-2 py-1 text-right">Combustible</th>
@@ -255,7 +327,7 @@ export default function LejaniasComercial() {
                             </tr>
                           </thead>
                           <tbody>
-                            {zona.detalle.municipios.map((municipio: any, idx: number) => (
+                            {municipios.map((municipio: any, idx: number) => (
                               <tr key={idx} className="border-b border-gray-100">
                                 <td className="px-2 py-1">{municipio.municipio}</td>
                                 <td className="px-2 py-1 text-right">{municipio.distancia_km}</td>
@@ -276,6 +348,20 @@ export default function LejaniasComercial() {
                                 </td>
                               </tr>
                             ))}
+                            {/* Fila de totales */}
+                            <tr className="bg-gray-200 font-semibold border-t border-gray-300">
+                              <td className="px-2 py-1">TOTAL</td>
+                              <td className="px-2 py-1 text-right">{formatNumber(totalKmMunicipios)}</td>
+                              <td className="px-2 py-1 text-right">-</td>
+                              <td className="px-2 py-1 text-right">{formatNumber(totalVisitasMes, 1)}</td>
+                              <td className="px-2 py-1 text-right">-</td>
+                              <td className="px-2 py-1 text-right text-blue-600">
+                                {formatCurrency(totalCombustible)}
+                              </td>
+                              <td className="px-2 py-1 text-right text-orange-600">
+                                {formatCurrency(totalCostosAdicionales)}
+                              </td>
+                            </tr>
                           </tbody>
                         </table>
                       </div>
