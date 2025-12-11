@@ -6,6 +6,7 @@ from decimal import Decimal
 from typing import Dict, List, Optional
 import logging
 
+from django.db.models import Sum
 from core.calculator_lejanias import CalculadoraLejanias
 
 logger = logging.getLogger(__name__)
@@ -204,13 +205,14 @@ def _calcular_lejanias_zona(escenario, zona, participacion: Decimal) -> Dict:
         lejania_comercial_zona = calc.calcular_lejania_comercial_zona(zona)
         comercial_total = lejania_comercial_zona['total_mensual']
 
-        # Agregar costo del comité comercial para esta zona
-        comite_zona = GastoComercial.objects.filter(
+        # Agregar costo del comité comercial para esta zona (ambos registros: Combustible y Mant/Dep/Llan)
+        comite_gastos = GastoComercial.objects.filter(
             escenario=escenario,
-            nombre=f'Comité Comercial - {zona.nombre}'
-        ).first()
-        if comite_zona:
-            comercial_total += Decimal(str(comite_zona.valor_mensual))
+            nombre__startswith=f'Comité Comercial',
+            zona=zona
+        )
+        for comite_gasto in comite_gastos:
+            comercial_total += Decimal(str(comite_gasto.valor_mensual))
 
         # Lejanía logística: calcular para toda la marca y prorratear
         logistica_marca = calc.calcular_lejanias_logisticas_marca(marca)
@@ -513,12 +515,12 @@ def calcular_pyg_todas_zonas(escenario, marca, operacion_ids: Optional[List[int]
         # Lejanía comercial base (combustible + mant/deprec + pernocta)
         lejania_base = calc.calcular_lejania_comercial_zona(zona)['total_mensual']
 
-        # Agregar costo del comité comercial para esta zona
-        comite_zona = GastoComercial.objects.filter(
+        # Agregar costo del comité comercial para esta zona (ambos registros: Combustible y Mant/Dep/Llan)
+        comite_costo = GastoComercial.objects.filter(
             escenario=escenario,
-            nombre=f'Comité Comercial - {zona.nombre}'
-        ).first()
-        comite_costo = Decimal(str(comite_zona.valor_mensual)) if comite_zona else Decimal('0')
+            nombre__startswith='Comité Comercial',
+            zona=zona
+        ).aggregate(total=Sum('valor_mensual'))['total'] or Decimal('0')
 
         lejanias_comerciales_por_zona[zona.id] = lejania_base + comite_costo
 

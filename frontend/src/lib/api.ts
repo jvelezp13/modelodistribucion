@@ -276,6 +276,8 @@ export interface DetalleComiteZona {
   tipo_vehiculo: string;
   distancia_km: number;
   viajes_mes: number;
+  combustible_mensual: number;
+  costos_adicionales_mensual: number;
   total_mensual: number;
 }
 

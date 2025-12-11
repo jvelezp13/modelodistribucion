@@ -210,8 +210,8 @@ export default function LejaniasComercial() {
           const municipios = zona.detalle?.municipios || [];
           const totalKmMunicipios = municipios.reduce((sum: number, m: any) => sum + (m.distancia_km || 0), 0) + (comiteZona?.distancia_km || 0);
           const totalVisitasMes = municipios.reduce((sum: number, m: any) => sum + (m.visitas_mensuales || 0), 0) + (comiteZona?.viajes_mes || 0);
-          const totalCombustible = municipios.reduce((sum: number, m: any) => sum + (m.combustible_mensual || 0), 0) + (comiteZona?.total_mensual || 0);
-          const totalCostosAdicionales = municipios.reduce((sum: number, m: any) => sum + (m.costos_adicionales_mensual || 0), 0);
+          const totalCombustible = municipios.reduce((sum: number, m: any) => sum + (m.combustible_mensual || 0), 0) + (comiteZona?.combustible_mensual || 0);
+          const totalCostosAdicionales = municipios.reduce((sum: number, m: any) => sum + (m.costos_adicionales_mensual || 0), 0) + (comiteZona?.costos_adicionales_mensual || 0);
 
           return (
             <div key={zona.zona_id} className="border-b border-gray-200 last:border-b-0">
@@ -370,10 +370,12 @@ export default function LejaniasComercial() {
                                 <td className="px-2 py-1 text-right">1</td>
                                 <td className="px-2 py-1 text-right">{comiteZona.viajes_mes.toFixed(1)}</td>
                                 <td className="px-2 py-1 text-right text-gray-600">-</td>
-                                <td className="px-2 py-1 text-right text-indigo-600 font-medium">
-                                  {formatCurrency(comiteZona.total_mensual)}
+                                <td className="px-2 py-1 text-right text-blue-600">
+                                  {formatCurrency(comiteZona.combustible_mensual || 0)}
                                 </td>
-                                <td className="px-2 py-1 text-right text-gray-400">-</td>
+                                <td className="px-2 py-1 text-right text-orange-600">
+                                  {formatCurrency(comiteZona.costos_adicionales_mensual || 0)}
+                                </td>
                               </tr>
                             )}
                             {/* Fila de totales */}

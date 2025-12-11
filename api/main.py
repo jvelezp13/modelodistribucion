@@ -672,11 +672,32 @@ def obtener_detalle_lejanias_comercial(
             if operacion_ids_list:
                 gastos_comite_filtrados = gastos_comite.filter(zona__operacion_id__in=operacion_ids_list)
 
-            detalle_comite = []
+            # Agrupar gastos por zona (ahora hay 2 registros por zona: Combustible y Mant/Dep/Llan)
+            gastos_por_zona = {}
             for gasto in gastos_comite_filtrados:
                 zona = gasto.zona
                 if not zona:
                     continue
+
+                if zona.id not in gastos_por_zona:
+                    gastos_por_zona[zona.id] = {
+                        'zona': zona,
+                        'combustible': 0.0,
+                        'costos_adicionales': 0.0,
+                    }
+
+                # Identificar tipo de gasto por el nombre
+                if '(Combustible)' in gasto.nombre:
+                    gastos_por_zona[zona.id]['combustible'] = float(gasto.valor_mensual)
+                elif '(Mant/Dep/Llan)' in gasto.nombre:
+                    gastos_por_zona[zona.id]['costos_adicionales'] = float(gasto.valor_mensual)
+                else:
+                    # Registro con nomenclatura antigua - asignar a combustible por compatibilidad
+                    gastos_por_zona[zona.id]['combustible'] = float(gasto.valor_mensual)
+
+            detalle_comite = []
+            for zona_id, datos in gastos_por_zona.items():
+                zona = datos['zona']
 
                 # Calcular distancia al comité para mostrar
                 base_vendedor = zona.municipio_base_vendedor or (config.municipio_bodega if config else None)
@@ -699,7 +720,9 @@ def obtener_detalle_lejanias_comercial(
                     'tipo_vehiculo': zona.tipo_vehiculo_comercial,
                     'distancia_km': distancia_km,
                     'viajes_mes': viajes_mes,
-                    'total_mensual': float(gasto.valor_mensual),
+                    'combustible_mensual': datos['combustible'],
+                    'costos_adicionales_mensual': datos['costos_adicionales'],
+                    'total_mensual': datos['combustible'] + datos['costos_adicionales'],
                 })
 
             total_comite = sum(d['total_mensual'] for d in detalle_comite)

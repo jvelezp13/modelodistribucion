@@ -627,16 +627,29 @@ def _calcular_comite_comercial(escenario, config):
         # Costos adicionales mensual (mantenimiento, depreciación, llantas)
         costos_adicionales_mes = distancia_ida_vuelta * costo_adicional_km * viajes_mes
 
-        total_mensual = combustible_mes + costos_adicionales_mes
-
-        # Guardar como gasto comercial (incluso si es $0, para mostrar que el vendedor asiste)
+        # Guardar como DOS registros separados (igual que las zonas comerciales)
+        # Registro 1: Combustible
         GastoComercial.objects.update_or_create(
             escenario=escenario,
             tipo='transporte_vendedores',
             marca=marca,
-            nombre=f'Comité Comercial - {zona.nombre}',
+            nombre=f'Comité Comercial (Combustible) - {zona.nombre}',
             defaults={
-                'valor_mensual': total_mensual,
+                'valor_mensual': combustible_mes,
+                'asignacion': 'individual',
+                'tipo_asignacion_geo': 'directo',
+                'zona': zona,
+            }
+        )
+
+        # Registro 2: Costos adicionales (Mant/Dep/Llan)
+        GastoComercial.objects.update_or_create(
+            escenario=escenario,
+            tipo='transporte_vendedores',
+            marca=marca,
+            nombre=f'Comité Comercial (Mant/Dep/Llan) - {zona.nombre}',
+            defaults={
+                'valor_mensual': costos_adicionales_mes,
                 'asignacion': 'individual',
                 'tipo_asignacion_geo': 'directo',
                 'zona': zona,
@@ -644,10 +657,17 @@ def _calcular_comite_comercial(escenario, config):
         )
 
     # Limpiar gastos de comité de zonas que ya no existen o no están activas
+    # Incluye ambos tipos de registro (Combustible y Mant/Dep/Llan)
     GastoComercial.objects.filter(
         escenario=escenario,
-        nombre__startswith='Comité Comercial -'
+        nombre__startswith='Comité Comercial'
     ).exclude(zona_id__in=zonas_procesadas).delete()
+
+    # Limpiar registros con nomenclatura antigua (sin paréntesis)
+    GastoComercial.objects.filter(
+        escenario=escenario,
+        nombre__regex=r'^Comité Comercial - [^(]'
+    ).delete()
 
 
 # =============================================================================
