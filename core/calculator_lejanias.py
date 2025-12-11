@@ -64,6 +64,7 @@ class CalculadoraLejanias:
         from core.models import MatrizDesplazamiento
 
         combustible_total = Decimal('0')
+        costos_adicionales_total = Decimal('0')
         pernocta_total = Decimal('0')
         detalle_municipios = []
 
@@ -73,11 +74,13 @@ class CalculadoraLejanias:
             logger.warning(f"Zona {zona} no tiene base de vendedor ni bodega configurada")
             return self._resultado_vacio_comercial()
 
-        # Consumo según tipo de vehículo
+        # Consumo y costo adicional según tipo de vehículo
         if zona.tipo_vehiculo_comercial == 'MOTO':
             consumo_km_galon = self.config.consumo_galon_km_moto
+            costo_adicional_km = self.config.costo_adicional_km_moto
         else:  # AUTOMOVIL
             consumo_km_galon = self.config.consumo_galon_km_automovil
+            costo_adicional_km = self.config.costo_adicional_km_automovil
 
         # Precio gasolina (comerciales usan gasolina)
         precio_galon = self.config.precio_galon_gasolina
@@ -103,14 +106,22 @@ class CalculadoraLejanias:
             umbral = self.config.umbral_lejania_comercial_km
             distancia_efectiva = max(Decimal('0'), matriz.distancia_km - umbral)
 
-            # Calcular combustible (solo km después del umbral)
+            # Calcular combustible y costos adicionales (solo km después del umbral)
             combustible_municipio = Decimal('0')
+            costos_adicionales_municipio = Decimal('0')
             if distancia_efectiva > 0:
                 distancia_ida_vuelta = distancia_efectiva * 2
+
+                # Combustible
                 galones_por_visita = distancia_ida_vuelta / consumo_km_galon
                 costo_combustible_visita = galones_por_visita * precio_galon
                 combustible_municipio = costo_combustible_visita * visitas_mensuales
                 combustible_total += combustible_municipio
+
+                # Costos adicionales (mantenimiento, depreciación, llantas)
+                costo_adicional_visita = distancia_ida_vuelta * costo_adicional_km
+                costos_adicionales_municipio = costo_adicional_visita * visitas_mensuales
+                costos_adicionales_total += costos_adicionales_municipio
 
             detalle_municipios.append({
                 'municipio': municipio.nombre,
@@ -120,6 +131,7 @@ class CalculadoraLejanias:
                 'visitas_por_periodo': zona_mun.visitas_por_periodo,
                 'visitas_mensuales': float(visitas_mensuales),
                 'combustible_mensual': float(combustible_municipio),
+                'costos_adicionales_mensual': float(costos_adicionales_municipio),
             })
 
         # Pernocta se calcula a nivel de ZONA (una vez por viaje, no por municipio)
@@ -146,16 +158,18 @@ class CalculadoraLejanias:
                 'total_mensual': float(pernocta_total),
             }
 
-        total = combustible_total + pernocta_total
+        total = combustible_total + costos_adicionales_total + pernocta_total
 
         return {
             'combustible_mensual': combustible_total,
+            'costos_adicionales_mensual': costos_adicionales_total,
             'pernocta_mensual': pernocta_total,
             'total_mensual': total,
             'detalle': {
                 'base': base_vendedor.nombre,
                 'tipo_vehiculo': zona.tipo_vehiculo_comercial,
                 'consumo_km_galon': float(consumo_km_galon),
+                'costo_adicional_km': float(costo_adicional_km),
                 'precio_galon': float(precio_galon),
                 'umbral_km': self.config.umbral_lejania_comercial_km,
                 'municipios': detalle_municipios,
@@ -171,6 +185,7 @@ class CalculadoraLejanias:
         Returns:
             {
                 'total_combustible_mensual': Decimal,
+                'total_costos_adicionales_mensual': Decimal,
                 'total_pernocta_mensual': Decimal,
                 'total_mensual': Decimal,
                 'total_anual': Decimal,
@@ -186,12 +201,14 @@ class CalculadoraLejanias:
         ).prefetch_related('municipios__municipio').select_related('vendedor', 'municipio_base_vendedor')
 
         total_combustible = Decimal('0')
+        total_costos_adicionales = Decimal('0')
         total_pernocta = Decimal('0')
         detalle_zonas = []
 
         for zona in zonas:
             resultado = self.calcular_lejania_comercial_zona(zona)
             total_combustible += resultado['combustible_mensual']
+            total_costos_adicionales += resultado['costos_adicionales_mensual']
             total_pernocta += resultado['pernocta_mensual']
 
             detalle_zonas.append({
@@ -203,15 +220,17 @@ class CalculadoraLejanias:
                 'requiere_pernocta': zona.requiere_pernocta,
                 'noches_pernocta': zona.noches_pernocta,
                 'combustible_mensual': float(resultado['combustible_mensual']),
+                'costos_adicionales_mensual': float(resultado['costos_adicionales_mensual']),
                 'pernocta_mensual': float(resultado['pernocta_mensual']),
                 'total_mensual': float(resultado['total_mensual']),
                 'detalle': resultado['detalle'],
             })
 
-        total_mensual = total_combustible + total_pernocta
+        total_mensual = total_combustible + total_costos_adicionales + total_pernocta
 
         return {
             'total_combustible_mensual': total_combustible,
+            'total_costos_adicionales_mensual': total_costos_adicionales,
             'total_pernocta_mensual': total_pernocta,
             'total_mensual': total_mensual,
             'total_anual': total_mensual * 12,
@@ -544,6 +563,7 @@ class CalculadoraLejanias:
         """Retorna resultado vacío para lejanías comerciales"""
         return {
             'combustible_mensual': Decimal('0'),
+            'costos_adicionales_mensual': Decimal('0'),
             'pernocta_mensual': Decimal('0'),
             'total_mensual': Decimal('0'),
             'detalle': {}

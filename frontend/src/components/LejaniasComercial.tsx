@@ -87,11 +87,17 @@ export default function LejaniasComercial() {
         <h2 className="text-lg font-bold text-gray-800 mb-3">
           Lejanías Comerciales - {datos.marca_nombre}
         </h2>
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-5 gap-4">
           <div>
             <div className="text-xs text-gray-500">Combustible Mensual</div>
             <div className="text-sm font-semibold text-blue-600">
               {formatCurrency(datos.total_combustible_mensual)}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-gray-500">Mant/Deprec/Llantas</div>
+            <div className="text-sm font-semibold text-orange-600">
+              {formatCurrency(datos.total_costos_adicionales_mensual || 0)}
             </div>
           </div>
           <div>
@@ -172,12 +178,23 @@ export default function LejaniasComercial() {
               {/* Detalle de zona expandida */}
               {expandida && (
                 <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
-                  <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="grid grid-cols-3 gap-4 mb-4">
                     <div>
                       <div className="text-xs text-gray-500">Combustible Mensual</div>
                       <div className="text-sm font-medium text-blue-600">
                         {formatCurrency(zona.combustible_mensual)}
                       </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-500">Mant/Deprec/Llantas</div>
+                      <div className="text-sm font-medium text-orange-600">
+                        {formatCurrency(zona.costos_adicionales_mensual || 0)}
+                      </div>
+                      {zona.detalle?.costo_adicional_km && (
+                        <div className="text-xs text-gray-400">
+                          @ {formatCurrency(zona.detalle.costo_adicional_km)}/km
+                        </div>
+                      )}
                     </div>
                     <div>
                       <div className="text-xs text-gray-500">Pernocta Mensual</div>
@@ -234,6 +251,7 @@ export default function LejaniasComercial() {
                               <th className="px-2 py-1 text-right">Visitas/mes</th>
                               <th className="px-2 py-1 text-right">Comb/visita</th>
                               <th className="px-2 py-1 text-right">Combustible</th>
+                              <th className="px-2 py-1 text-right">Mant/Dep/Llan</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -252,6 +270,9 @@ export default function LejaniasComercial() {
                                 </td>
                                 <td className="px-2 py-1 text-right text-blue-600">
                                   {formatCurrency(municipio.combustible_mensual)}
+                                </td>
+                                <td className="px-2 py-1 text-right text-orange-600">
+                                  {formatCurrency(municipio.costos_adicionales_mensual || 0)}
                                 </td>
                               </tr>
                             ))}

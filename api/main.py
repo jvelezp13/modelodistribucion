@@ -476,6 +476,12 @@ def obtener_detalle_lejanias_comercial(
             tipo='viaticos',
             nombre__startswith='Viáticos Pernocta'
         )
+        gastos_adicionales = GastoComercial.objects.filter(
+            escenario=escenario,
+            marca=marca,
+            tipo='transporte_vendedores',
+            nombre__startswith='Mant/Deprec/Llantas'
+        )
 
         # Parsear operacion_ids si se proporcionan
         operacion_ids_list = None
@@ -499,6 +505,7 @@ def obtener_detalle_lejanias_comercial(
         # Construir detalle por zona
         detalle_zonas = []
         total_combustible = 0.0
+        total_costos_adicionales = 0.0
         total_pernocta = 0.0
 
         for zona in zonas:
@@ -506,11 +513,15 @@ def obtener_detalle_lejanias_comercial(
             combustible_zona = gastos_combustible.filter(
                 nombre=f'Combustible Lejanía - {zona.nombre}'
             ).first()
+            adicionales_zona = gastos_adicionales.filter(
+                nombre=f'Mant/Deprec/Llantas - {zona.nombre}'
+            ).first()
             pernocta_zona = gastos_pernocta.filter(
                 nombre=f'Viáticos Pernocta - {zona.nombre}'
             ).first()
 
             combustible_mensual = float(combustible_zona.valor_mensual) if combustible_zona else 0.0
+            costos_adicionales_mensual = float(adicionales_zona.valor_mensual) if adicionales_zona else 0.0
             pernocta_mensual = float(pernocta_zona.valor_mensual) if pernocta_zona else 0.0
 
             # Generar detalle de municipios para visualización
@@ -519,6 +530,7 @@ def obtener_detalle_lejanias_comercial(
 
             if base_vendedor and config:
                 consumo_km_galon = float(config.consumo_galon_km_moto if zona.tipo_vehiculo_comercial == 'MOTO' else config.consumo_galon_km_automovil)
+                costo_adicional_km = float(config.costo_adicional_km_moto if zona.tipo_vehiculo_comercial == 'MOTO' else config.costo_adicional_km_automovil)
                 precio_galon = float(config.precio_galon_gasolina)
                 umbral = float(config.umbral_lejania_comercial_km)
 
@@ -536,6 +548,7 @@ def obtener_detalle_lejanias_comercial(
                             'visitas_mensuales': float(zona_mun.visitas_mensuales()),
                             'combustible_por_visita': 0,
                             'combustible_mensual': 0,
+                            'costos_adicionales_mensual': 0,
                             'es_visita_local': True,
                         })
                         continue
@@ -553,14 +566,20 @@ def obtener_detalle_lejanias_comercial(
                     distancia_efectiva = max(0, distancia_km - umbral)
                     visitas_mensuales = float(zona_mun.visitas_mensuales())
 
-                    # Calcular combustible por municipio
+                    # Calcular combustible y costos adicionales por municipio
                     combustible_por_visita = 0.0
                     combustible_municipio = 0.0
-                    if distancia_efectiva > 0 and consumo_km_galon > 0:
+                    costos_adicionales_municipio = 0.0
+                    if distancia_efectiva > 0:
                         distancia_ida_vuelta = distancia_efectiva * 2
-                        galones_por_visita = distancia_ida_vuelta / consumo_km_galon
-                        combustible_por_visita = galones_por_visita * precio_galon
-                        combustible_municipio = combustible_por_visita * visitas_mensuales
+                        # Combustible
+                        if consumo_km_galon > 0:
+                            galones_por_visita = distancia_ida_vuelta / consumo_km_galon
+                            combustible_por_visita = galones_por_visita * precio_galon
+                            combustible_municipio = combustible_por_visita * visitas_mensuales
+                        # Costos adicionales (mant, deprec, llantas)
+                        costo_adicional_visita = distancia_ida_vuelta * costo_adicional_km
+                        costos_adicionales_municipio = costo_adicional_visita * visitas_mensuales
 
                     detalle_municipios.append({
                         'municipio': municipio.nombre,
@@ -571,6 +590,7 @@ def obtener_detalle_lejanias_comercial(
                         'visitas_mensuales': visitas_mensuales,
                         'combustible_por_visita': combustible_por_visita,
                         'combustible_mensual': combustible_municipio,
+                        'costos_adicionales_mensual': costos_adicionales_municipio,
                         'es_visita_local': False,
                     })
 
@@ -605,31 +625,36 @@ def obtener_detalle_lejanias_comercial(
                 'requiere_pernocta': zona.requiere_pernocta,
                 'noches_pernocta': zona.noches_pernocta,
                 'combustible_mensual': combustible_mensual,
+                'costos_adicionales_mensual': costos_adicionales_mensual,
                 'pernocta_mensual': pernocta_mensual,
-                'total_mensual': combustible_mensual + pernocta_mensual,
+                'total_mensual': combustible_mensual + costos_adicionales_mensual + pernocta_mensual,
                 'detalle': {
                     'base': base_vendedor.nombre if base_vendedor else None,
                     'tipo_vehiculo': zona.tipo_vehiculo_comercial,
+                    'costo_adicional_km': costo_adicional_km if base_vendedor and config else 0,
                     'municipios': detalle_municipios,
                     'pernocta': detalle_pernocta,
                 }
             })
 
             total_combustible += combustible_mensual
+            total_costos_adicionales += costos_adicionales_mensual
             total_pernocta += pernocta_mensual
 
         # Ordenar zonas de mayor a menor por total_mensual
         detalle_zonas.sort(key=lambda x: x['total_mensual'], reverse=True)
 
+        total_mensual = total_combustible + total_costos_adicionales + total_pernocta
         return {
             'marca_id': marca_id,
             'marca_nombre': marca.nombre,
             'escenario_id': escenario_id,
             'escenario_nombre': escenario.nombre,
             'total_combustible_mensual': total_combustible,
+            'total_costos_adicionales_mensual': total_costos_adicionales,
             'total_pernocta_mensual': total_pernocta,
-            'total_mensual': total_combustible + total_pernocta,
-            'total_anual': (total_combustible + total_pernocta) * 12,
+            'total_mensual': total_mensual,
+            'total_anual': total_mensual * 12,
             'zonas': detalle_zonas
         }
 

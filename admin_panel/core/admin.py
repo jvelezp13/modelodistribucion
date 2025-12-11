@@ -1640,6 +1640,10 @@ class ConfiguracionLejaniaAdmin(GlobalFilterMixin, admin.ModelAdmin):
             'fields': ('consumo_galon_km_moto', 'consumo_galon_km_automovil'),
             'description': 'Rendimiento en km por galón (solo para vehículos comerciales). Los logísticos usan el consumo del vehículo.'
         }),
+        ('Costos Adicionales por KM (Comercial)', {
+            'fields': ('costo_adicional_km_moto', 'costo_adicional_km_automovil'),
+            'description': 'Mantenimiento, depreciación y llantas por km. Aplica desde el mismo umbral que combustible.'
+        }),
         ('Pernocta Logística - Conductor', {
             'fields': (
                 ('desayuno_conductor', 'almuerzo_conductor', 'cena_conductor'),

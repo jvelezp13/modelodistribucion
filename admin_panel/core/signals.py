@@ -390,6 +390,7 @@ def calculate_lejanias_comerciales(escenario):
         resultado = _calcular_lejania_comercial_zona(zona, config)
 
         combustible = resultado['combustible_mensual']
+        costos_adicionales = resultado['costos_adicionales_mensual']
         pernocta = resultado['pernocta_mensual']
 
         # Guardar combustible como gasto comercial
@@ -412,6 +413,28 @@ def calculate_lejanias_comerciales(escenario):
                 tipo='transporte_vendedores',
                 marca=marca,
                 nombre=f'Combustible Lejanía - {zona.nombre}'
+            ).delete()
+
+        # Guardar costos adicionales (mantenimiento, depreciación, llantas) como gasto comercial
+        if costos_adicionales > 0:
+            GastoComercial.objects.update_or_create(
+                escenario=escenario,
+                tipo='transporte_vendedores',
+                marca=marca,
+                nombre=f'Mant/Deprec/Llantas - {zona.nombre}',
+                defaults={
+                    'valor_mensual': costos_adicionales,
+                    'asignacion': 'individual',
+                    'tipo_asignacion_geo': 'directo',
+                    'zona': zona,
+                }
+            )
+        else:
+            GastoComercial.objects.filter(
+                escenario=escenario,
+                tipo='transporte_vendedores',
+                marca=marca,
+                nombre=f'Mant/Deprec/Llantas - {zona.nombre}'
             ).delete()
 
         # Guardar viáticos/pernocta como gasto comercial
@@ -442,26 +465,34 @@ def _calcular_lejania_comercial_zona(zona, config):
     Calcula lejanía comercial mensual para una zona.
 
     Returns:
-        dict con combustible_mensual, pernocta_mensual, total_mensual
+        dict con combustible_mensual, costos_adicionales_mensual, pernocta_mensual, total_mensual
     """
     combustible_total = Decimal('0')
+    costos_adicionales_total = Decimal('0')
     pernocta_total = Decimal('0')
 
     # Base del vendedor
     base_vendedor = zona.municipio_base_vendedor or config.municipio_bodega
     if not base_vendedor:
-        return {'combustible_mensual': Decimal('0'), 'pernocta_mensual': Decimal('0'), 'total_mensual': Decimal('0')}
+        return {
+            'combustible_mensual': Decimal('0'),
+            'costos_adicionales_mensual': Decimal('0'),
+            'pernocta_mensual': Decimal('0'),
+            'total_mensual': Decimal('0')
+        }
 
-    # Consumo según tipo de vehículo
+    # Consumo y costo adicional según tipo de vehículo
     if zona.tipo_vehiculo_comercial == 'MOTO':
         consumo_km_galon = config.consumo_galon_km_moto
+        costo_adicional_km = config.costo_adicional_km_moto
     else:
         consumo_km_galon = config.consumo_galon_km_automovil
+        costo_adicional_km = config.costo_adicional_km_automovil
 
     precio_galon = config.precio_galon_gasolina
     umbral = config.umbral_lejania_comercial_km
 
-    # Calcular combustible por cada municipio de la zona
+    # Calcular combustible y costos adicionales por cada municipio de la zona
     for zona_mun in zona.municipios.all():
         municipio = zona_mun.municipio
 
@@ -482,11 +513,18 @@ def _calcular_lejania_comercial_zona(zona, config):
         distancia_efectiva = max(Decimal('0'), distancia_km - umbral)
         visitas_mensuales = zona_mun.visitas_mensuales()
 
-        if distancia_efectiva > 0 and consumo_km_galon > 0:
+        if distancia_efectiva > 0:
             distancia_ida_vuelta = distancia_efectiva * 2
-            galones_por_visita = distancia_ida_vuelta / consumo_km_galon
-            costo_combustible_visita = galones_por_visita * precio_galon
-            combustible_total += costo_combustible_visita * visitas_mensuales
+
+            # Combustible
+            if consumo_km_galon > 0:
+                galones_por_visita = distancia_ida_vuelta / consumo_km_galon
+                costo_combustible_visita = galones_por_visita * precio_galon
+                combustible_total += costo_combustible_visita * visitas_mensuales
+
+            # Costos adicionales (mantenimiento, depreciación, llantas)
+            costo_adicional_visita = distancia_ida_vuelta * costo_adicional_km
+            costos_adicionales_total += costo_adicional_visita * visitas_mensuales
 
     # Calcular pernocta (a nivel de zona)
     if zona.requiere_pernocta and zona.noches_pernocta > 0:
@@ -501,8 +539,9 @@ def _calcular_lejania_comercial_zona(zona, config):
 
     return {
         'combustible_mensual': combustible_total,
+        'costos_adicionales_mensual': costos_adicionales_total,
         'pernocta_mensual': pernocta_total,
-        'total_mensual': combustible_total + pernocta_total
+        'total_mensual': combustible_total + costos_adicionales_total + pernocta_total
     }
 
 

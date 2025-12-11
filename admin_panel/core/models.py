@@ -2170,6 +2170,23 @@ class ConfiguracionLejania(models.Model):
         help_text="Rendimiento automóvil: típicamente 35-50 km/galón"
     )
 
+    # === COSTOS ADICIONALES POR KM (Comercial) ===
+    # Incluye mantenimiento, depreciación y llantas
+    costo_adicional_km_moto = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        default=60,
+        verbose_name="Costo Adicional Moto ($/km)",
+        help_text="Mantenimiento (~$30/km) + Depreciación (~$20/km) + Llantas (~$10/km). Ref: SICE-TAC"
+    )
+    costo_adicional_km_automovil = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        default=120,
+        verbose_name="Costo Adicional Automóvil ($/km)",
+        help_text="Mantenimiento (~$50/km) + Depreciación (~$50/km) + Llantas (~$20/km). Ref: SICE-TAC"
+    )
+
     # === GASTOS PERNOCTA LOGÍSTICA - CONDUCTOR ===
     # Estos gastos van al tercero cuando el esquema es 'tercero'
     desayuno_conductor = models.DecimalField(

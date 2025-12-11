@@ -239,6 +239,7 @@ export interface DetalleZonaComercial {
   requiere_pernocta: boolean;
   noches_pernocta: number;
   combustible_mensual: number;
+  costos_adicionales_mensual: number;
   pernocta_mensual: number;
   total_mensual: number;
   detalle: any;
@@ -272,6 +273,7 @@ export interface DetalleLejaniasComercial {
   escenario_id: number;
   escenario_nombre: string;
   total_combustible_mensual: number;
+  total_costos_adicionales_mensual: number;
   total_pernocta_mensual: number;
   total_mensual: number;
   total_anual: number;
