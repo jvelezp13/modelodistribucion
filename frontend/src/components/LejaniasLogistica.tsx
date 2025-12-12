@@ -436,10 +436,11 @@ export default function LejaniasLogistica() {
 
           {vehiculosAgrupados.map((vehiculo) => {
             const expandido = vehiculosExpandidos.has(vehiculo.vehiculo_id);
+            const kmTotales = vehiculo.recorridos.reduce((sum, r) => sum + (r.detalle?.distancia_circuito_km || 0), 0);
 
             return (
               <div key={vehiculo.vehiculo_id} className="border-b border-gray-200 last:border-b-0">
-                {/* Header de vehículo */}
+                {/* Header de vehículo - compacto */}
                 <div
                   className="px-4 py-3 hover:bg-gray-50 cursor-pointer"
                   onClick={() => toggleVehiculo(vehiculo.vehiculo_id)}
@@ -449,25 +450,17 @@ export default function LejaniasLogistica() {
                       {expandido ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                       <div>
                         <div className="flex items-center gap-2">
-                          <Truck size={16} className="text-gray-600" />
                           <span className="text-sm font-semibold text-gray-900">
                             {vehiculo.vehiculo}
                           </span>
-                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${getEsquemaColor(vehiculo.esquema)}`}>
-                            {getEsquemaLabel(vehiculo.esquema)}
-                          </span>
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-gray-400">
                             ({vehiculo.tipo_vehiculo || 'N/A'})
                           </span>
                         </div>
-                        <div className="flex gap-4 mt-1 text-xs text-gray-600">
-                          <span className="flex items-center gap-1">
-                            <Route size={12} />
-                            {vehiculo.recorridos.length} recorrido(s)
-                          </span>
-                          <span className="text-blue-600 font-medium">
-                            {formatNumber(vehiculo.recorridos.reduce((sum, r) => sum + (r.detalle?.distancia_circuito_km || 0), 0), 0)} km totales
-                          </span>
+                        <div className="text-xs text-gray-500">
+                          {vehiculo.recorridos.length} recorrido(s)
+                          <span className="text-gray-300 mx-1">•</span>
+                          {formatNumber(kmTotales, 0)} km
                         </div>
                       </div>
                     </div>
@@ -483,87 +476,72 @@ export default function LejaniasLogistica() {
                 {/* Detalle de vehículo expandido */}
                 {expandido && (
                   <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
-                    {/* Totales del vehículo */}
-                    <div className="grid grid-cols-6 gap-3 mb-4 p-3 bg-white rounded border border-gray-200">
-                      <div>
-                        <div className="text-xs text-gray-500">Flete Base</div>
-                        <div className="text-sm font-medium text-orange-600">
-                          {formatCurrency(vehiculo.total_flete_base)}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-xs text-gray-500">Combustible</div>
-                        <div className="text-sm font-medium text-blue-600">
-                          {formatCurrency(vehiculo.total_combustible)}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-xs text-gray-500">Peajes</div>
-                        <div className="text-sm font-medium text-yellow-600">
-                          {formatCurrency(vehiculo.total_peaje)}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-xs text-gray-500">Pernocta</div>
-                        <div className="text-sm font-medium text-purple-600">
-                          {formatCurrency(vehiculo.total_pernocta)}
-                        </div>
-                        {vehiculo.total_pernocta > 0 && (
-                          <div className="text-[10px] text-gray-400 mt-0.5">
-                            <span>Cond: {formatCurrency(vehiculo.total_pernocta_conductor)}</span>
-                            <span className="mx-1">|</span>
-                            <span>Aux: {formatCurrency(vehiculo.total_pernocta_auxiliar)}</span>
-                          </div>
-                        )}
-                      </div>
-                      <div>
-                        <div className="text-xs text-gray-500">Parqueadero</div>
-                        <div className="text-sm font-medium text-gray-600">
-                          {formatCurrency(vehiculo.total_parqueadero)}
-                        </div>
-                      </div>
-                      <div className="border-l-2 border-green-500 pl-2">
-                        <div className="text-xs text-gray-500">Total Anual</div>
-                        <div className="text-sm font-bold text-green-600">
-                          {formatCurrency(vehiculo.total_mensual * 12)}
-                        </div>
-                      </div>
+                    {/* Totales del vehículo - tabla sobria */}
+                    <div className="mb-4 p-3 bg-white rounded border border-gray-200">
+                      <div className="text-xs font-medium text-gray-600 mb-2">Desglose mensual</div>
+                      <table className="w-full text-xs">
+                        <tbody className="text-gray-700">
+                          <tr>
+                            <td className="py-0.5">Flete Base</td>
+                            <td className="text-right">{formatCurrency(vehiculo.total_flete_base)}</td>
+                          </tr>
+                          <tr>
+                            <td className="py-0.5">Combustible</td>
+                            <td className="text-right">{formatCurrency(vehiculo.total_combustible)}</td>
+                          </tr>
+                          <tr>
+                            <td className="py-0.5">Peajes</td>
+                            <td className="text-right">{formatCurrency(vehiculo.total_peaje)}</td>
+                          </tr>
+                          {vehiculo.total_pernocta > 0 && (
+                            <tr>
+                              <td className="py-0.5">Pernocta</td>
+                              <td className="text-right">{formatCurrency(vehiculo.total_pernocta)}</td>
+                            </tr>
+                          )}
+                          {vehiculo.total_parqueadero > 0 && (
+                            <tr>
+                              <td className="py-0.5">Parqueadero</td>
+                              <td className="text-right">{formatCurrency(vehiculo.total_parqueadero)}</td>
+                            </tr>
+                          )}
+                          <tr className="border-t border-gray-200 font-medium">
+                            <td className="pt-1">Total Mensual</td>
+                            <td className="text-right pt-1">{formatCurrency(vehiculo.total_mensual)}</td>
+                          </tr>
+                          <tr className="text-gray-500">
+                            <td className="py-0.5">Total Anual</td>
+                            <td className="text-right">{formatCurrency(vehiculo.total_mensual * 12)}</td>
+                          </tr>
+                        </tbody>
+                      </table>
                     </div>
 
                     {/* Lista de recorridos del vehículo */}
-                    <div className="text-xs font-semibold text-gray-700 mb-2">
-                      Recorridos de este vehículo ({vehiculo.recorridos.length})
+                    <div className="text-xs font-medium text-gray-600 mb-2">
+                      Recorridos ({vehiculo.recorridos.length})
                     </div>
-                    <div className="space-y-2">
-                      {vehiculo.recorridos.map((recorrido) => (
-                        <div key={recorrido.ruta_id} className="p-3 bg-white rounded border border-gray-200">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">
-                                {recorrido.ruta_nombre}
-                              </div>
-                              <div className="flex gap-3 mt-1 text-xs text-gray-500">
-                                <span>{recorrido.frecuencia}</span>
-                                <span>{recorrido.detalle?.municipios?.length || 0} municipios</span>
-                                <span>{recorrido.detalle?.distancia_circuito_km?.toFixed(1) || 0} km</span>
-                              </div>
+                    <div className="space-y-1">
+                      {vehiculo.recorridos.map((recorrido) => {
+                        const recorridosMes = recorrido.detalle?.recorridos_mensuales || 1;
+                        const costoUnitario = recorrido.total_mensual / recorridosMes;
+                        return (
+                          <div key={recorrido.ruta_id} className="p-2 bg-white rounded border border-gray-200 flex justify-between items-center">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-gray-900">{recorrido.ruta_nombre}</span>
+                              {recorrido.requiere_pernocta && <Moon size={12} className="text-purple-500" />}
+                              <span className="text-xs text-gray-400">
+                                {formatNumber(recorrido.detalle?.distancia_circuito_km || 0, 0)} km
+                              </span>
                             </div>
-                            <div className="text-right">
-                              <div className="text-sm font-semibold text-gray-900">
-                                {formatCurrency(recorrido.total_mensual)}
-                              </div>
-                              <div className="text-[10px] text-gray-400 mt-1">
-                                <div>Flete: {formatCurrency(recorrido.flete_base_mensual)}</div>
-                                <div>Comb: {formatCurrency(recorrido.combustible_mensual)}</div>
-                                <div>Peajes: {formatCurrency(recorrido.peaje_mensual)}</div>
-                                {recorrido.pernocta_mensual > 0 && (
-                                  <div>Pernocta: {formatCurrency(recorrido.pernocta_mensual)}</div>
-                                )}
-                              </div>
+                            <div className="text-right text-sm">
+                              <span className="text-gray-500">{formatCurrency(costoUnitario)}</span>
+                              <span className="text-gray-400 mx-1">×{recorridosMes}</span>
+                              <span className="font-medium text-gray-900">= {formatCurrency(recorrido.total_mensual)}</span>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}
