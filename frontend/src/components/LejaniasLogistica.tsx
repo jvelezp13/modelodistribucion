@@ -561,71 +561,65 @@ export default function LejaniasLogistica() {
           </div>
 
           <div className="p-4">
-            {/* KPIs de Resumen */}
-            <div className="grid grid-cols-4 gap-3 mb-6">
-              <div className="p-3 bg-orange-50 rounded border border-orange-200">
-                <div className="text-xs text-orange-700">Flete Fijo Total</div>
-                <div className="text-lg font-bold text-orange-600">
-                  {formatCurrency(distribucion.distribucion_a_zonas.reduce((sum, z) => sum + (z.flete_fijo_asignado || 0), 0))}
+            {/* KPIs de Resumen - sobrios */}
+            <div className="mb-6 p-3 bg-gray-50 rounded border border-gray-200">
+              <div className="grid grid-cols-4 gap-4 text-sm">
+                <div>
+                  <div className="text-xs text-gray-500">Flete Fijo</div>
+                  <div className="font-semibold text-gray-900">
+                    {formatCurrency(distribucion.distribucion_a_zonas.reduce((sum, z) => sum + (z.flete_fijo_asignado || 0), 0))}
+                  </div>
                 </div>
-              </div>
-              <div className="p-3 bg-blue-50 rounded border border-blue-200">
-                <div className="text-xs text-blue-700">Lejanías Total</div>
-                <div className="text-lg font-bold text-blue-600">
-                  {formatCurrency(distribucion.distribucion_a_zonas.reduce((sum, z) => sum + (z.lejanias_asignado || 0), 0))}
+                <div>
+                  <div className="text-xs text-gray-500">Lejanías</div>
+                  <div className="font-semibold text-gray-900">
+                    {formatCurrency(distribucion.distribucion_a_zonas.reduce((sum, z) => sum + (z.lejanias_asignado || 0), 0))}
+                  </div>
                 </div>
-              </div>
-              <div className="p-3 bg-purple-50 rounded border border-purple-200">
-                <div className="text-xs text-purple-700">Gastos Fijos Flota</div>
-                <div className="text-lg font-bold text-purple-600">
-                  {formatCurrency(distribucion.distribucion_a_zonas.reduce((sum, z) => sum + z.costo_flota_asignado, 0))}
+                <div>
+                  <div className="text-xs text-gray-500">Gastos Fijos Flota</div>
+                  <div className="font-semibold text-gray-900">
+                    {formatCurrency(distribucion.distribucion_a_zonas.reduce((sum, z) => sum + z.costo_flota_asignado, 0))}
+                  </div>
                 </div>
-              </div>
-              <div className="p-3 bg-green-50 rounded border border-green-200">
-                <div className="text-xs text-green-700">Total Distribuido</div>
-                <div className="text-lg font-bold text-green-600">
-                  {formatCurrency(distribucion.distribucion_a_zonas.reduce((sum, z) => sum + z.costo_total_asignado, 0))}
+                <div className="border-l border-gray-300 pl-4">
+                  <div className="text-xs text-gray-500">Total Distribuido</div>
+                  <div className="font-bold text-gray-900">
+                    {formatCurrency(distribucion.distribucion_a_zonas.reduce((sum, z) => sum + z.costo_total_asignado, 0))}
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Tabla Rutas → Municipios → Zonas */}
             <div className="mb-6">
-              <h4 className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
-                <Route size={14} />
+              <div className="text-xs font-medium text-gray-600 mb-2">
                 Rutas Logísticas → Municipios → Zonas
-              </h4>
+              </div>
               <div className="bg-white rounded border overflow-hidden">
                 <table className="w-full text-xs">
-                  <thead className="bg-slate-100">
+                  <thead className="bg-gray-100">
                     <tr>
-                      <th className="text-left px-3 py-2 font-semibold">Ruta / Vehículo</th>
-                      <th className="text-center px-3 py-2 font-semibold">Frecuencia</th>
-                      <th className="text-left px-3 py-2 font-semibold">Municipios</th>
-                      <th className="text-left px-3 py-2 font-semibold">Zonas que Atienden</th>
+                      <th className="text-left px-3 py-2 font-medium text-gray-600">Ruta / Vehículo</th>
+                      <th className="text-left px-3 py-2 font-medium text-gray-600">Municipios</th>
+                      <th className="text-left px-3 py-2 font-medium text-gray-600">Zonas</th>
                     </tr>
                   </thead>
                   <tbody>
                     {distribucion.rutas_logisticas.map((ruta) => (
-                      <tr key={ruta.ruta_id} className="border-t border-slate-100 hover:bg-slate-50">
+                      <tr key={ruta.ruta_id} className="border-t border-gray-100 hover:bg-gray-50">
                         <td className="px-3 py-2 align-top">
                           <div className="font-medium text-gray-800">{ruta.ruta_nombre}</div>
                           <div className="text-[10px] text-gray-500">{ruta.vehiculo}</div>
-                          <div className="text-[10px] text-gray-400">{ruta.esquema}</div>
-                        </td>
-                        <td className="px-3 py-2 text-center align-top">
-                          <div className="text-gray-700">{ruta.frecuencia}</div>
-                          <div className="text-[10px] text-gray-500">{ruta.recorridos_mensuales.toFixed(1)}/mes</div>
                         </td>
                         <td className="px-3 py-2 align-top">
-                          <div className="space-y-1">
+                          <div className="space-y-0.5">
                             {ruta.municipios.map((mun) => (
-                              <div key={mun.municipio_id} className="flex items-center gap-1">
-                                <span className="text-[10px] text-gray-400">{mun.orden}.</span>
-                                <span className="text-gray-700">{mun.municipio_nombre}</span>
+                              <div key={mun.municipio_id} className="text-gray-700">
+                                {mun.municipio_nombre}
                                 {mun.flete_base > 0 && (
-                                  <span className="text-[10px] text-orange-600">
-                                    (${(mun.flete_base / 1000).toFixed(0)}K)
+                                  <span className="text-gray-400 ml-1">
+                                    ({formatCurrency(mun.flete_base)})
                                   </span>
                                 )}
                               </div>
@@ -633,29 +627,18 @@ export default function LejaniasLogistica() {
                           </div>
                         </td>
                         <td className="px-3 py-2 align-top">
-                          <div className="space-y-1">
+                          <div className="space-y-0.5">
                             {ruta.municipios.map((mun) => (
-                              <div key={mun.municipio_id} className="flex items-center gap-1">
+                              <div key={mun.municipio_id}>
                                 {mun.cantidad_zonas === 0 ? (
-                                  <span
-                                    className="text-red-500 flex items-center gap-1 font-medium cursor-help"
-                                    title="Este municipio no tiene zona comercial asignada. Los costos logísticos de este municipio no se pueden distribuir a ninguna zona."
-                                  >
-                                    <AlertTriangle size={12} />
-                                    Sin zona asignada
-                                  </span>
-                                ) : mun.cantidad_zonas === 1 ? (
-                                  <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-[10px]">
-                                    {mun.zonas_que_lo_atienden[0]?.zona_nombre}
+                                  <span className="text-red-500 flex items-center gap-1">
+                                    <AlertTriangle size={10} />
+                                    Sin zona
                                   </span>
                                 ) : (
-                                  <div className="flex flex-wrap gap-1">
-                                    {mun.zonas_que_lo_atienden.map((z) => (
-                                      <span key={z.zona_id} className="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px]">
-                                        {z.zona_nombre}
-                                      </span>
-                                    ))}
-                                  </div>
+                                  <span className="text-gray-600">
+                                    {mun.zonas_que_lo_atienden.map(z => z.zona_nombre).join(', ')}
+                                  </span>
                                 )}
                               </div>
                             ))}
@@ -689,59 +672,58 @@ export default function LejaniasLogistica() {
             </div>
 
             {/* Tabla de distribución por zona */}
-            <h4 className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
-              <Building2 size={14} />
+            <div className="text-xs font-medium text-gray-600 mb-2">
               Costos Asignados por Zona
-            </h4>
+            </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-xs">
                 <thead className="bg-gray-100">
                   <tr>
-                    <th className="text-left px-3 py-2 font-semibold">Zona</th>
-                    <th className="text-right px-3 py-2 font-semibold">Part. Ventas</th>
-                    <th className="text-right px-3 py-2 font-semibold text-orange-700">Flete Fijo</th>
-                    <th className="text-right px-3 py-2 font-semibold text-blue-700">Lejanías</th>
-                    <th className="text-right px-3 py-2 font-semibold text-purple-700">Gastos Fijos Veh.</th>
-                    <th className="text-right px-3 py-2 font-semibold text-green-700">Total</th>
+                    <th className="text-left px-3 py-2 font-medium text-gray-600">Zona</th>
+                    <th className="text-right px-3 py-2 font-medium text-gray-600">Part.</th>
+                    <th className="text-right px-3 py-2 font-medium text-gray-600">Flete Fijo</th>
+                    <th className="text-right px-3 py-2 font-medium text-gray-600">Lejanías</th>
+                    <th className="text-right px-3 py-2 font-medium text-gray-600">Gastos Flota</th>
+                    <th className="text-right px-3 py-2 font-medium text-gray-600">Total</th>
                   </tr>
                 </thead>
                 <tbody>
                   {distribucion.distribucion_a_zonas.map((zona) => (
                     <tr key={zona.zona_id} className="border-t border-gray-100 hover:bg-gray-50">
-                      <td className="px-3 py-2 font-medium text-gray-800">
+                      <td className="px-3 py-2 text-gray-800">
                         {zona.zona_nombre}
                       </td>
-                      <td className="px-3 py-2 text-right text-gray-600">
+                      <td className="px-3 py-2 text-right text-gray-500">
                         {zona.participacion_ventas.toFixed(1)}%
                       </td>
-                      <td className="px-3 py-2 text-right text-orange-700">
+                      <td className="px-3 py-2 text-right text-gray-700">
                         {formatCurrency(zona.flete_fijo_asignado || 0)}
                       </td>
-                      <td className="px-3 py-2 text-right text-blue-700">
+                      <td className="px-3 py-2 text-right text-gray-700">
                         {formatCurrency(zona.lejanias_asignado || 0)}
                       </td>
-                      <td className="px-3 py-2 text-right text-purple-700">
+                      <td className="px-3 py-2 text-right text-gray-700">
                         {formatCurrency(zona.costo_flota_asignado)}
                       </td>
-                      <td className="px-3 py-2 text-right font-bold text-green-700">
+                      <td className="px-3 py-2 text-right font-medium text-gray-900">
                         {formatCurrency(zona.costo_total_asignado)}
                       </td>
                     </tr>
                   ))}
                   {/* Fila de totales */}
-                  <tr className="border-t-2 border-gray-300 bg-gray-100 font-bold">
+                  <tr className="border-t-2 border-gray-300 bg-gray-50 font-medium">
                     <td className="px-3 py-2 text-gray-800">TOTAL</td>
-                    <td className="px-3 py-2 text-right text-gray-600">100%</td>
-                    <td className="px-3 py-2 text-right text-orange-700">
+                    <td className="px-3 py-2 text-right text-gray-500">100%</td>
+                    <td className="px-3 py-2 text-right text-gray-700">
                       {formatCurrency(distribucion.distribucion_a_zonas.reduce((sum, z) => sum + (z.flete_fijo_asignado || 0), 0))}
                     </td>
-                    <td className="px-3 py-2 text-right text-blue-700">
+                    <td className="px-3 py-2 text-right text-gray-700">
                       {formatCurrency(distribucion.distribucion_a_zonas.reduce((sum, z) => sum + (z.lejanias_asignado || 0), 0))}
                     </td>
-                    <td className="px-3 py-2 text-right text-purple-700">
+                    <td className="px-3 py-2 text-right text-gray-700">
                       {formatCurrency(distribucion.distribucion_a_zonas.reduce((sum, z) => sum + z.costo_flota_asignado, 0))}
                     </td>
-                    <td className="px-3 py-2 text-right text-green-700">
+                    <td className="px-3 py-2 text-right font-bold text-gray-900">
                       {formatCurrency(distribucion.distribucion_a_zonas.reduce((sum, z) => sum + z.costo_total_asignado, 0))}
                     </td>
                   </tr>
