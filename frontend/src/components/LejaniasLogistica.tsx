@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { apiClient, DetalleLejaniasLogistica, DetalleRutaLogistica, DiagnosticoLogisticoResponse } from '@/lib/api';
 import { useFilters } from '@/hooks/useFilters';
-import { ChevronDown, ChevronRight, MapPin, Truck, DollarSign, Fuel, Route, Building2, AlertTriangle, ChevronsUpDown } from 'lucide-react';
+import { ChevronDown, ChevronRight, MapPin, Truck, DollarSign, Fuel, Route, Building2, AlertTriangle, ChevronsUpDown, Moon } from 'lucide-react';
 
 type VistaType = 'recorrido' | 'vehiculo' | 'distribucion';
 type OrdenamientoType = 'nombre' | 'costo' | 'km';
@@ -369,29 +369,17 @@ export default function LejaniasLogistica() {
                           <span className="text-sm font-semibold text-gray-900">
                             {recorrido.ruta_nombre}
                           </span>
-                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${getEsquemaColor(recorrido.esquema)}`}>
-                            {getEsquemaLabel(recorrido.esquema)}
-                          </span>
                           {recorrido.requiere_pernocta && (
-                            <span className="px-2 py-0.5 text-xs bg-purple-100 text-purple-700 rounded-full">
-                              {recorrido.noches_pernocta} noche(s)
-                            </span>
+                            <Moon size={14} className="text-purple-500" />
                           )}
                         </div>
-                        <div className="flex gap-2 mt-1 text-xs text-gray-500">
-                          <span>{recorrido.vehiculo || 'Sin vehículo'}</span>
+                        <div className="text-xs text-gray-500">
+                          {recorrido.vehiculo || 'Sin vehículo'}
                           {recorrido.tipo_vehiculo && (
-                            <span className="text-gray-400">({recorrido.tipo_vehiculo})</span>
+                            <span className="text-gray-400"> ({recorrido.tipo_vehiculo})</span>
                           )}
-                          <span className="text-gray-300">•</span>
-                          <span>{recorrido.frecuencia}</span>
-                          <span className="text-gray-300">•</span>
-                          <span>{recorrido.detalle?.municipios?.length || 0} municipios</span>
-                          <span className="text-gray-300">•</span>
+                          <span className="text-gray-300 mx-1">•</span>
                           <span>{formatNumber(recorrido.detalle?.distancia_circuito_km || 0, 0)} km</span>
-                          {(recorrido.detalle?.distancia_circuito_km || 0) > 100 && (
-                            <span className="text-orange-600 ml-1">ruta larga</span>
-                          )}
                         </div>
                       </div>
                     </div>
