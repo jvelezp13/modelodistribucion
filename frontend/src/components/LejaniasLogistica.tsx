@@ -185,6 +185,20 @@ export default function LejaniasLogistica() {
     }
   };
 
+  // Colores sobrios pero distintos para cada zona
+  const zonaColors = [
+    'bg-slate-200 text-slate-700',
+    'bg-stone-200 text-stone-700',
+    'bg-zinc-200 text-zinc-700',
+    'bg-neutral-300 text-neutral-700',
+    'bg-gray-300 text-gray-700',
+    'bg-slate-300 text-slate-700',
+  ];
+
+  const getZonaColor = (zonaId: number) => {
+    return zonaColors[zonaId % zonaColors.length];
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -638,7 +652,7 @@ export default function LejaniasLogistica() {
                                 ) : (
                                   <div className="flex flex-wrap gap-1">
                                     {mun.zonas_que_lo_atienden.map((z) => (
-                                      <span key={z.zona_id} className="px-1.5 py-0.5 bg-gray-200 text-gray-700 rounded text-[10px]">
+                                      <span key={z.zona_id} className={`px-1.5 py-0.5 rounded text-[10px] ${getZonaColor(z.zona_id)}`}>
                                         {z.zona_nombre}
                                       </span>
                                     ))}
