@@ -3,9 +3,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { apiClient, DetalleLejaniasLogistica, DetalleRutaLogistica, DiagnosticoLogisticoResponse } from '@/lib/api';
 import { useFilters } from '@/hooks/useFilters';
-import { ChevronDown, ChevronRight, MapPin, Truck, DollarSign, Fuel, Route, ArrowRight, Building2, AlertTriangle } from 'lucide-react';
+import { ChevronDown, ChevronRight, MapPin, Truck, DollarSign, Fuel, Route, ArrowRight, Building2, AlertTriangle, ChevronsUpDown } from 'lucide-react';
 
 type VistaType = 'recorrido' | 'vehiculo' | 'distribucion';
+type OrdenamientoType = 'nombre' | 'costo' | 'km';
 
 interface VehiculoAgrupado {
   vehiculo_id: number;
@@ -34,6 +35,7 @@ export default function LejaniasLogistica() {
   const [recorridosExpandidos, setRecorridosExpandidos] = useState<Set<number>>(new Set());
   const [vehiculosExpandidos, setVehiculosExpandidos] = useState<Set<number>>(new Set());
   const [vistaActiva, setVistaActiva] = useState<VistaType>('recorrido');
+  const [ordenamiento, setOrdenamiento] = useState<OrdenamientoType>('costo');
 
   useEffect(() => {
     if (escenarioId && marcaId) {
@@ -104,6 +106,16 @@ export default function LejaniasLogistica() {
     return Array.from(vehiculoMap.values()).sort((a, b) => b.total_mensual - a.total_mensual);
   }, [datos]);
 
+  // Ordenar rutas según criterio seleccionado
+  const rutasOrdenadas = useMemo(() => {
+    if (!datos) return [];
+    return [...datos.rutas].sort((a, b) => {
+      if (ordenamiento === 'costo') return b.total_mensual - a.total_mensual;
+      if (ordenamiento === 'km') return (b.detalle?.distancia_circuito_km || 0) - (a.detalle?.distancia_circuito_km || 0);
+      return a.ruta_nombre.localeCompare(b.ruta_nombre);
+    });
+  }, [datos, ordenamiento]);
+
   const toggleRecorrido = (recorridoId: number) => {
     const nuevosExpandidos = new Set(recorridosExpandidos);
     if (nuevosExpandidos.has(recorridoId)) {
@@ -124,12 +136,32 @@ export default function LejaniasLogistica() {
     setVehiculosExpandidos(nuevosExpandidos);
   };
 
+  const expandirTodoRecorridos = () => {
+    if (!datos) return;
+    setRecorridosExpandidos(new Set(datos.rutas.map(r => r.ruta_id)));
+  };
+
+  const colapsarTodoRecorridos = () => setRecorridosExpandidos(new Set());
+
+  const expandirTodoVehiculos = () => {
+    setVehiculosExpandidos(new Set(vehiculosAgrupados.map(v => v.vehiculo_id)));
+  };
+
+  const colapsarTodoVehiculos = () => setVehiculosExpandidos(new Set());
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-CO', {
       style: 'currency',
       currency: 'COP',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
+    }).format(value);
+  };
+
+  const formatNumber = (value: number, decimals: number = 0) => {
+    return new Intl.NumberFormat('es-CO', {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
     }).format(value);
   };
 
@@ -282,13 +314,43 @@ export default function LejaniasLogistica() {
       {/* Vista por Recorrido */}
       {vistaActiva === 'recorrido' && (
         <div className="bg-white border border-gray-200 rounded">
-          <div className="bg-gray-700 text-white px-4 py-2">
+          <div className="bg-gray-700 text-white px-4 py-2 flex justify-between items-center">
             <span className="text-xs font-semibold uppercase tracking-wide">
-              Recorridos Logísticos ({datos.rutas.length})
+              Recorridos Logísticos ({rutasOrdenadas.length})
             </span>
+            <div className="flex items-center gap-3">
+              {/* Selector de ordenamiento */}
+              <div className="flex items-center gap-1 text-xs">
+                <ChevronsUpDown size={12} />
+                <select
+                  value={ordenamiento}
+                  onChange={(e) => setOrdenamiento(e.target.value as OrdenamientoType)}
+                  className="bg-gray-600 text-white text-xs rounded px-2 py-1 border-none cursor-pointer"
+                >
+                  <option value="costo">Por Costo</option>
+                  <option value="km">Por Km</option>
+                  <option value="nombre">Por Nombre</option>
+                </select>
+              </div>
+              {/* Botones expandir/colapsar */}
+              <div className="flex gap-1">
+                <button
+                  onClick={expandirTodoRecorridos}
+                  className="text-xs bg-gray-600 hover:bg-gray-500 px-2 py-1 rounded"
+                >
+                  Expandir
+                </button>
+                <button
+                  onClick={colapsarTodoRecorridos}
+                  className="text-xs bg-gray-600 hover:bg-gray-500 px-2 py-1 rounded"
+                >
+                  Colapsar
+                </button>
+              </div>
+            </div>
           </div>
 
-          {datos.rutas.map((recorrido) => {
+          {rutasOrdenadas.map((recorrido) => {
             const expandido = recorridosExpandidos.has(recorrido.ruta_id);
 
             return (
@@ -309,6 +371,21 @@ export default function LejaniasLogistica() {
                           <span className={`px-2 py-0.5 rounded text-xs font-medium ${getEsquemaColor(recorrido.esquema)}`}>
                             {getEsquemaLabel(recorrido.esquema)}
                           </span>
+                          {recorrido.tipo_vehiculo && (
+                            <span className="px-2 py-0.5 bg-slate-100 rounded text-xs text-gray-600">
+                              {recorrido.tipo_vehiculo}
+                            </span>
+                          )}
+                          {recorrido.requiere_pernocta && (
+                            <span className="px-2 py-0.5 text-xs bg-purple-100 text-purple-700 rounded-full">
+                              {recorrido.noches_pernocta} noche(s)
+                            </span>
+                          )}
+                          {(recorrido.detalle?.distancia_circuito_km || 0) > 100 && (
+                            <span className="px-2 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
+                              Ruta larga
+                            </span>
+                          )}
                         </div>
                         <div className="flex gap-4 mt-1 text-xs text-gray-600">
                           <span className="flex items-center gap-1">
@@ -325,7 +402,12 @@ export default function LejaniasLogistica() {
                           </span>
                           {recorrido.detalle?.distancia_circuito_km != null && (
                             <span className="text-blue-600 font-medium">
-                              {Number(recorrido.detalle.distancia_circuito_km).toFixed(1)} km/circuito
+                              {formatNumber(recorrido.detalle.distancia_circuito_km, 1)} km total
+                            </span>
+                          )}
+                          {(recorrido.detalle?.distancia_efectiva_km || 0) > 0 && (
+                            <span className="text-orange-600 font-medium">
+                              {formatNumber(recorrido.detalle?.distancia_efectiva_km || 0, 1)} km lejanía
                             </span>
                           )}
                         </div>
@@ -353,10 +435,24 @@ export default function LejaniasLogistica() {
       {/* Vista por Vehículo */}
       {vistaActiva === 'vehiculo' && (
         <div className="bg-white border border-gray-200 rounded">
-          <div className="bg-gray-700 text-white px-4 py-2">
+          <div className="bg-gray-700 text-white px-4 py-2 flex justify-between items-center">
             <span className="text-xs font-semibold uppercase tracking-wide">
               Vehículos ({vehiculosAgrupados.length})
             </span>
+            <div className="flex gap-1">
+              <button
+                onClick={expandirTodoVehiculos}
+                className="text-xs bg-gray-600 hover:bg-gray-500 px-2 py-1 rounded"
+              >
+                Expandir
+              </button>
+              <button
+                onClick={colapsarTodoVehiculos}
+                className="text-xs bg-gray-600 hover:bg-gray-500 px-2 py-1 rounded"
+              >
+                Colapsar
+              </button>
+            </div>
           </div>
 
           {vehiculosAgrupados.map((vehiculo) => {
@@ -390,6 +486,9 @@ export default function LejaniasLogistica() {
                             <Route size={12} />
                             {vehiculo.recorridos.length} recorrido(s)
                           </span>
+                          <span className="text-blue-600 font-medium">
+                            {formatNumber(vehiculo.recorridos.reduce((sum, r) => sum + (r.detalle?.distancia_circuito_km || 0), 0), 0)} km totales
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -406,7 +505,7 @@ export default function LejaniasLogistica() {
                 {expandido && (
                   <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
                     {/* Totales del vehículo */}
-                    <div className="grid grid-cols-5 gap-4 mb-4 p-3 bg-white rounded border border-gray-200">
+                    <div className="grid grid-cols-6 gap-3 mb-4 p-3 bg-white rounded border border-gray-200">
                       <div>
                         <div className="text-xs text-gray-500">Flete Base</div>
                         <div className="text-sm font-medium text-orange-600">
@@ -442,6 +541,12 @@ export default function LejaniasLogistica() {
                         <div className="text-xs text-gray-500">Parqueadero</div>
                         <div className="text-sm font-medium text-gray-600">
                           {formatCurrency(vehiculo.total_parqueadero)}
+                        </div>
+                      </div>
+                      <div className="bg-green-50 rounded p-2 -m-1">
+                        <div className="text-xs text-gray-500">Total Anual</div>
+                        <div className="text-sm font-bold text-green-600">
+                          {formatCurrency(vehiculo.total_mensual * 12)}
                         </div>
                       </div>
                     </div>
@@ -499,6 +604,34 @@ export default function LejaniasLogistica() {
           </div>
 
           <div className="p-4">
+            {/* KPIs de Resumen */}
+            <div className="grid grid-cols-4 gap-3 mb-6">
+              <div className="p-3 bg-orange-50 rounded border border-orange-200">
+                <div className="text-xs text-orange-700">Flete Fijo Total</div>
+                <div className="text-lg font-bold text-orange-600">
+                  {formatCurrency(distribucion.distribucion_a_zonas.reduce((sum, z) => sum + (z.flete_fijo_asignado || 0), 0))}
+                </div>
+              </div>
+              <div className="p-3 bg-blue-50 rounded border border-blue-200">
+                <div className="text-xs text-blue-700">Lejanías Total</div>
+                <div className="text-lg font-bold text-blue-600">
+                  {formatCurrency(distribucion.distribucion_a_zonas.reduce((sum, z) => sum + (z.lejanias_asignado || 0), 0))}
+                </div>
+              </div>
+              <div className="p-3 bg-purple-50 rounded border border-purple-200">
+                <div className="text-xs text-purple-700">Gastos Fijos Flota</div>
+                <div className="text-lg font-bold text-purple-600">
+                  {formatCurrency(distribucion.distribucion_a_zonas.reduce((sum, z) => sum + z.costo_flota_asignado, 0))}
+                </div>
+              </div>
+              <div className="p-3 bg-green-50 rounded border border-green-200">
+                <div className="text-xs text-green-700">Total Distribuido</div>
+                <div className="text-lg font-bold text-green-600">
+                  {formatCurrency(distribucion.distribucion_a_zonas.reduce((sum, z) => sum + z.costo_total_asignado, 0))}
+                </div>
+              </div>
+            </div>
+
             {/* Tabla Rutas → Municipios → Zonas */}
             <div className="mb-6">
               <h4 className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
@@ -547,7 +680,10 @@ export default function LejaniasLogistica() {
                             {ruta.municipios.map((mun) => (
                               <div key={mun.municipio_id} className="flex items-center gap-1">
                                 {mun.cantidad_zonas === 0 ? (
-                                  <span className="text-red-500 flex items-center gap-1 font-medium">
+                                  <span
+                                    className="text-red-500 flex items-center gap-1 font-medium cursor-help"
+                                    title="Este municipio no tiene zona comercial asignada. Los costos logísticos de este municipio no se pueden distribuir a ninguna zona."
+                                  >
                                     <AlertTriangle size={12} />
                                     Sin zona asignada
                                   </span>
@@ -905,6 +1041,14 @@ function DetalleRecorrido({
                     </td>
                   </tr>
                 ))}
+                {/* Fila TOTAL */}
+                <tr className="bg-gray-200 font-semibold border-t border-gray-300">
+                  <td className="px-2 py-1 text-center">-</td>
+                  <td className="px-2 py-1">TOTAL</td>
+                  <td className="px-2 py-1 text-right text-orange-600">
+                    {formatCurrency(recorrido.detalle.municipios.reduce((sum: number, m: any) => sum + (m.flete_base || 0), 0))}
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
