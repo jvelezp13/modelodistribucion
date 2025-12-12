@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { apiClient, DetalleLejaniasLogistica, DetalleRutaLogistica, DiagnosticoLogisticoResponse } from '@/lib/api';
 import { useFilters } from '@/hooks/useFilters';
-import { ChevronDown, ChevronRight, MapPin, Truck, DollarSign, Fuel, Route, ArrowRight, Building2, AlertTriangle, ChevronsUpDown } from 'lucide-react';
+import { ChevronDown, ChevronRight, MapPin, Truck, DollarSign, Fuel, Route, Building2, AlertTriangle, ChevronsUpDown } from 'lucide-react';
 
 type VistaType = 'recorrido' | 'vehiculo' | 'distribucion';
 type OrdenamientoType = 'nombre' | 'costo' | 'km';
@@ -36,6 +36,8 @@ export default function LejaniasLogistica() {
   const [vehiculosExpandidos, setVehiculosExpandidos] = useState<Set<number>>(new Set());
   const [vistaActiva, setVistaActiva] = useState<VistaType>('recorrido');
   const [ordenamiento, setOrdenamiento] = useState<OrdenamientoType>('costo');
+  const [mostrarExplicacion, setMostrarExplicacion] = useState(false);
+  const [mostrarComparacion, setMostrarComparacion] = useState(false);
 
   useEffect(() => {
     if (escenarioId && marcaId) {
@@ -214,61 +216,50 @@ export default function LejaniasLogistica() {
         <h2 className="text-lg font-bold text-gray-800 mb-3">
           Recorridos Logísticos - {datos.marca_nombre}
         </h2>
-        <div className="grid grid-cols-8 gap-3">
-          <div>
-            <div className="text-xs text-gray-500">Flete Base</div>
-            <div className="text-sm font-semibold text-orange-600">
-              {formatCurrency(datos.total_flete_base_mensual)}
+        <div className="grid grid-cols-4 gap-4">
+          {/* Transporte (Flete + Peajes) */}
+          <div className="p-3 bg-gray-50 rounded border border-gray-200">
+            <div className="text-xs font-medium text-gray-600 mb-2">Transporte</div>
+            <div className="space-y-1">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Flete Base</span>
+                <span className="font-semibold text-gray-700">{formatCurrency(datos.total_flete_base_mensual)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Peajes</span>
+                <span className="font-semibold text-gray-700">{formatCurrency(datos.total_peaje_mensual)}</span>
+              </div>
             </div>
           </div>
-          <div>
-            <div className="text-xs text-gray-500">Combustible</div>
-            <div className="text-sm font-semibold text-blue-600">
+
+          {/* Combustible */}
+          <div className="p-3 bg-blue-50 rounded border border-blue-200">
+            <div className="text-xs font-medium text-blue-700 mb-1">Combustible</div>
+            <div className="text-lg font-bold text-blue-600">
               {formatCurrency(datos.total_combustible_mensual)}
             </div>
           </div>
-          <div>
-            <div className="text-xs text-gray-500">Peajes</div>
-            <div className="text-sm font-semibold text-yellow-600">
-              {formatCurrency(datos.total_peaje_mensual)}
-            </div>
-          </div>
-          <div>
-            <div className="text-xs text-gray-500">Pernocta (Vehículo)</div>
-            <div className="text-sm font-semibold text-purple-600">
-              {formatCurrency((datos.total_pernocta_conductor_mensual || 0) + (datos.total_parqueadero_mensual || 0))}
-            </div>
-            <div className="text-[10px] text-gray-400 mt-0.5">
-              <span>Cond: {formatCurrency(datos.total_pernocta_conductor_mensual || 0)}</span>
-              <span className="mx-1">|</span>
-              <span>Parq: {formatCurrency(datos.total_parqueadero_mensual || 0)}</span>
-            </div>
-          </div>
-          <div>
-            <div className="text-xs text-gray-500">Auxiliar (Empresa)</div>
-            <div className="text-sm font-semibold text-teal-600">
-              {formatCurrency(datos.total_auxiliar_empresa_mensual || 0)}
-            </div>
-            <div className="text-[10px] text-gray-400 mt-0.5">
-              Siempre paga empresa
-            </div>
-          </div>
-          <div>
-            <div className="text-xs text-gray-500">Pernocta Total</div>
-            <div className="text-sm font-semibold text-purple-800">
+
+          {/* Pernocta (consolidado) */}
+          <div className="p-3 bg-purple-50 rounded border border-purple-200">
+            <div className="text-xs font-medium text-purple-700 mb-1">Pernocta</div>
+            <div className="text-lg font-bold text-purple-600">
               {formatCurrency(datos.total_pernocta_mensual)}
             </div>
           </div>
-          <div>
-            <div className="text-xs text-gray-500">Total Mensual</div>
-            <div className="text-sm font-semibold text-gray-900">
-              {formatCurrency(datos.total_mensual)}
-            </div>
-          </div>
-          <div>
-            <div className="text-xs text-gray-500">Total Anual</div>
-            <div className="text-sm font-semibold text-green-600">
-              {formatCurrency(datos.total_anual)}
+
+          {/* Totales */}
+          <div className="p-3 bg-green-50 rounded border border-green-200">
+            <div className="text-xs font-medium text-green-700 mb-2">Totales</div>
+            <div className="space-y-1">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Mensual</span>
+                <span className="font-bold text-gray-900">{formatCurrency(datos.total_mensual)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Anual</span>
+                <span className="font-bold text-green-600">{formatCurrency(datos.total_anual)}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -300,7 +291,7 @@ export default function LejaniasLogistica() {
           onClick={() => setVistaActiva('distribucion')}
           className={`px-4 py-2 text-sm font-medium rounded-t transition-colors ${
             vistaActiva === 'distribucion'
-              ? 'bg-green-700 text-white'
+              ? 'bg-gray-700 text-white'
               : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
           }`}
         >
@@ -371,44 +362,24 @@ export default function LejaniasLogistica() {
                           <span className={`px-2 py-0.5 rounded text-xs font-medium ${getEsquemaColor(recorrido.esquema)}`}>
                             {getEsquemaLabel(recorrido.esquema)}
                           </span>
-                          {recorrido.tipo_vehiculo && (
-                            <span className="px-2 py-0.5 bg-slate-100 rounded text-xs text-gray-600">
-                              {recorrido.tipo_vehiculo}
-                            </span>
-                          )}
                           {recorrido.requiere_pernocta && (
                             <span className="px-2 py-0.5 text-xs bg-purple-100 text-purple-700 rounded-full">
                               {recorrido.noches_pernocta} noche(s)
                             </span>
                           )}
-                          {(recorrido.detalle?.distancia_circuito_km || 0) > 100 && (
-                            <span className="px-2 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
-                              Ruta larga
-                            </span>
-                          )}
                         </div>
-                        <div className="flex gap-4 mt-1 text-xs text-gray-600">
-                          <span className="flex items-center gap-1">
-                            <Truck size={12} />
-                            {recorrido.vehiculo || 'Sin vehículo'}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Route size={12} />
-                            {recorrido.frecuencia} ({recorrido.detalle?.recorridos_por_periodo || 1}x)
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <MapPin size={12} />
-                            {recorrido.detalle?.municipios?.length || 0} municipios
-                          </span>
-                          {recorrido.detalle?.distancia_circuito_km != null && (
-                            <span className="text-blue-600 font-medium">
-                              {formatNumber(recorrido.detalle.distancia_circuito_km, 1)} km total
-                            </span>
+                        <div className="flex gap-3 mt-1 text-xs text-gray-500">
+                          <span>{recorrido.vehiculo || 'Sin vehículo'}</span>
+                          {recorrido.tipo_vehiculo && (
+                            <span className="text-gray-400">({recorrido.tipo_vehiculo})</span>
                           )}
-                          {(recorrido.detalle?.distancia_efectiva_km || 0) > 0 && (
-                            <span className="text-orange-600 font-medium">
-                              {formatNumber(recorrido.detalle?.distancia_efectiva_km || 0, 1)} km lejanía
-                            </span>
+                          <span>{recorrido.frecuencia}</span>
+                          <span>{recorrido.detalle?.municipios?.length || 0} municipios</span>
+                          <span className="text-gray-700 font-medium">
+                            {formatNumber(recorrido.detalle?.distancia_circuito_km || 0, 0)} km
+                          </span>
+                          {(recorrido.detalle?.distancia_circuito_km || 0) > 100 && (
+                            <span className="text-orange-600">ruta larga</span>
                           )}
                         </div>
                       </div>
@@ -543,7 +514,7 @@ export default function LejaniasLogistica() {
                           {formatCurrency(vehiculo.total_parqueadero)}
                         </div>
                       </div>
-                      <div className="bg-green-50 rounded p-2 -m-1">
+                      <div className="border-l-2 border-green-500 pl-2">
                         <div className="text-xs text-gray-500">Total Anual</div>
                         <div className="text-sm font-bold text-green-600">
                           {formatCurrency(vehiculo.total_mensual * 12)}
@@ -597,7 +568,7 @@ export default function LejaniasLogistica() {
       {/* Vista Distribución por Zona */}
       {vistaActiva === 'distribucion' && distribucion && (
         <div className="bg-white border border-gray-200 rounded">
-          <div className="bg-green-700 text-white px-4 py-2">
+          <div className="bg-gray-700 text-white px-4 py-2">
             <span className="text-xs font-semibold uppercase tracking-wide">
               Distribución de Costos Logísticos por Zona Comercial
             </span>
@@ -711,14 +682,24 @@ export default function LejaniasLogistica() {
               </div>
             </div>
 
-            {/* Explicación */}
-            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded text-xs text-green-800">
-              <strong>¿Cómo se distribuyen los costos?</strong>
-              <ul className="mt-1 ml-4 list-disc space-y-0.5">
-                <li><strong>Flete Fijo:</strong> Se asigna a cada zona según los municipios que atiende cada ruta y la participación de venta de la zona en ese municipio.</li>
-                <li><strong>Lejanías:</strong> Combustible + Peajes + Pernoctas, distribuidos de la misma forma.</li>
-                <li><strong>Gastos Fijos Vehículos:</strong> Canon renting, seguros, mantenimiento, etc. Se distribuyen según las rutas que atiende cada vehículo.</li>
-              </ul>
+            {/* Explicación (colapsable) */}
+            <div className="mb-4">
+              <button
+                onClick={() => setMostrarExplicacion(!mostrarExplicacion)}
+                className="flex items-center gap-2 text-xs text-gray-500 hover:text-gray-700"
+              >
+                {mostrarExplicacion ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                <span>¿Cómo se distribuyen los costos?</span>
+              </button>
+              {mostrarExplicacion && (
+                <div className="mt-2 p-3 bg-gray-50 border border-gray-200 rounded text-xs text-gray-600">
+                  <ul className="ml-4 list-disc space-y-1">
+                    <li><strong>Flete Fijo:</strong> Se asigna según los municipios que atiende cada ruta.</li>
+                    <li><strong>Lejanías:</strong> Combustible + Peajes + Pernoctas.</li>
+                    <li><strong>Gastos Fijos:</strong> Canon, seguros, mantenimiento, según las rutas del vehículo.</li>
+                  </ul>
+                </div>
+              )}
             </div>
 
             {/* Tabla de distribución por zona */}
@@ -782,39 +763,52 @@ export default function LejaniasLogistica() {
               </table>
             </div>
 
-            {/* Comparación con totales del simulador */}
-            <div className="mt-4 p-3 bg-slate-50 border border-slate-200 rounded">
-              <h4 className="text-xs font-semibold text-slate-700 mb-2">Comparación con Simulador</h4>
-              <div className="grid grid-cols-3 gap-4 text-xs">
-                <div>
-                  <span className="text-gray-500">Lejanías (Simulador):</span>
-                  <span className="ml-2 font-medium">{formatCurrency(distribucion.resumen.total_lejanias_simulador)}</span>
+            {/* Comparación con Simulador (colapsable) */}
+            <div className="mt-4">
+              <button
+                onClick={() => setMostrarComparacion(!mostrarComparacion)}
+                className="flex items-center gap-2 text-xs text-gray-500 hover:text-gray-700"
+              >
+                {mostrarComparacion ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                <span>Comparación con Simulador</span>
+                {(Math.abs(distribucion.resumen.diferencia_lejanias) < 1 && Math.abs(distribucion.resumen.diferencia_flota) < 1) && (
+                  <span className="text-green-600 text-[10px]">✓ OK</span>
+                )}
+              </button>
+              {mostrarComparacion && (
+                <div className="mt-2 p-3 bg-gray-50 border border-gray-200 rounded text-xs">
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <span className="text-gray-500">Lejanías (Sim):</span>
+                      <span className="ml-1 font-medium">{formatCurrency(distribucion.resumen.total_lejanias_simulador)}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Distribuidas:</span>
+                      <span className="ml-1 font-medium">{formatCurrency(distribucion.resumen.total_costo_por_municipios)}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Δ:</span>
+                      <span className={`ml-1 font-medium ${Math.abs(distribucion.resumen.diferencia_lejanias) < 1 ? 'text-green-600' : 'text-amber-600'}`}>
+                        {formatCurrency(distribucion.resumen.diferencia_lejanias)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Flota (Sim):</span>
+                      <span className="ml-1 font-medium">{formatCurrency(distribucion.resumen.total_flota_simulador)}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Distribuida:</span>
+                      <span className="ml-1 font-medium">{formatCurrency(distribucion.resumen.total_flota_distribuida)}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Δ:</span>
+                      <span className={`ml-1 font-medium ${Math.abs(distribucion.resumen.diferencia_flota) < 1 ? 'text-green-600' : 'text-amber-600'}`}>
+                        {formatCurrency(distribucion.resumen.diferencia_flota)}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-gray-500">Lejanías (Distribuidas):</span>
-                  <span className="ml-2 font-medium">{formatCurrency(distribucion.resumen.total_costo_por_municipios)}</span>
-                </div>
-                <div>
-                  <span className="text-gray-500">Diferencia:</span>
-                  <span className={`ml-2 font-medium ${Math.abs(distribucion.resumen.diferencia_lejanias) < 1 ? 'text-green-600' : 'text-amber-600'}`}>
-                    {formatCurrency(distribucion.resumen.diferencia_lejanias)}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-gray-500">Flota (Simulador):</span>
-                  <span className="ml-2 font-medium">{formatCurrency(distribucion.resumen.total_flota_simulador)}</span>
-                </div>
-                <div>
-                  <span className="text-gray-500">Flota (Distribuida):</span>
-                  <span className="ml-2 font-medium">{formatCurrency(distribucion.resumen.total_flota_distribuida)}</span>
-                </div>
-                <div>
-                  <span className="text-gray-500">Diferencia:</span>
-                  <span className={`ml-2 font-medium ${Math.abs(distribucion.resumen.diferencia_flota) < 1 ? 'text-green-600' : 'text-amber-600'}`}>
-                    {formatCurrency(distribucion.resumen.diferencia_flota)}
-                  </span>
-                </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
@@ -913,25 +907,18 @@ function DetalleRecorrido({
 
       {/* Tramos del circuito */}
       {recorrido.detalle?.tramos && recorrido.detalle.tramos.length > 0 && (
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded">
-          <div className="text-xs font-semibold text-blue-800 mb-2">
-            Circuito ({recorrido.detalle.distancia_circuito_km != null ? Number(recorrido.detalle.distancia_circuito_km).toFixed(1) : '0'} km total)
+        <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded">
+          <div className="text-xs font-medium text-gray-600 mb-2">
+            Circuito: {Math.round(recorrido.detalle.distancia_circuito_km || 0)} km
           </div>
-          <div className="flex flex-wrap items-center gap-1 text-xs">
+          <div className="text-xs text-gray-500">
             {recorrido.detalle.tramos.map((tramo: any, idx: number) => (
-              <React.Fragment key={idx}>
-                {idx === 0 && (
-                  <span className="font-medium text-gray-700">{tramo.origen}</span>
-                )}
-                <span className="flex items-center gap-1 text-blue-600">
-                  <ArrowRight size={12} />
-                  <span className="text-gray-500">{tramo.distancia_km || 0} km</span>
-                  {tramo.peaje > 0 && (
-                    <span className="text-yellow-600">({formatCurrency(tramo.peaje)})</span>
-                  )}
-                </span>
-                <span className="font-medium text-gray-700">{tramo.destino}</span>
-              </React.Fragment>
+              <span key={idx}>
+                {idx === 0 && tramo.origen}
+                {' → '}
+                {tramo.destino}
+                <span className="text-gray-400 ml-1">({tramo.distancia_km || 0}km{tramo.peaje > 0 && `, peaje ${formatCurrency(tramo.peaje)}`})</span>
+              </span>
             ))}
           </div>
         </div>
