@@ -636,9 +636,13 @@ export default function LejaniasLogistica() {
                                     Sin zona
                                   </span>
                                 ) : (
-                                  <span className="text-gray-600">
-                                    {mun.zonas_que_lo_atienden.map(z => z.zona_nombre).join(', ')}
-                                  </span>
+                                  <div className="flex flex-wrap gap-1">
+                                    {mun.zonas_que_lo_atienden.map((z) => (
+                                      <span key={z.zona_id} className="px-1.5 py-0.5 bg-gray-200 text-gray-700 rounded text-[10px]">
+                                        {z.zona_nombre}
+                                      </span>
+                                    ))}
+                                  </div>
                                 )}
                               </div>
                             ))}
