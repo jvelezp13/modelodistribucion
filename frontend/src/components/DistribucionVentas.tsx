@@ -18,6 +18,7 @@ import {
   VentasMensualesDesglose
 } from '@/lib/api';
 import { useFilters } from '@/hooks/useFilters';
+import ProyeccionMensualChart from './ProyeccionMensualChart';
 
 const formatCurrency = (value: number): string => {
   return new Intl.NumberFormat('es-CO', {
@@ -212,6 +213,18 @@ export default function DistribucionVentas() {
           />
         </div>
       </div>
+
+      {/* Gráfico y tabla de proyección mensual */}
+      {data.proyeccion && data.marca.ventas_mensuales && (
+        <div className="mb-4">
+          <ProyeccionMensualChart
+            ventasMensuales={data.marca.ventas_mensuales}
+            ventaAnual={data.marca.venta_anual || 0}
+            proyeccion={data.proyeccion}
+            anio={data.escenario.anio}
+          />
+        </div>
+      )}
 
       {/* Lista de operaciones */}
       <div className="space-y-3">

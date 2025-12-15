@@ -900,6 +900,23 @@ export interface DiagnosticoLogisticoResponse {
 }
 
 // Interfaces para Distribución de Ventas (Cascada)
+export interface TipologiaProyeccionDetalle {
+  nombre: string;
+  clientes: number;
+  visitas: number;
+  efectividad: number;
+  ticket: number;
+  crec_clientes: number;
+  crec_ticket: number;
+  venta_mes1: number;
+  venta_anual: number;
+}
+
+export interface ProyeccionInfo {
+  fuente: 'manual' | 'tipologias' | null;
+  tipologias: TipologiaProyeccionDetalle[];
+}
+
 export interface MunicipioDistribucion {
   id: number;
   municipio_id: number;
@@ -943,6 +960,7 @@ export interface DistribucionCascadaResponse {
     marca_id: string;
     nombre: string;
     venta_total_mensual: number;
+    venta_anual: number;
     ventas_mensuales: VentasMensualesDesglose;
   };
   escenario: {
@@ -955,6 +973,7 @@ export interface DistribucionCascadaResponse {
     suma_participaciones_operaciones: number;
     operaciones_valido: boolean;
   };
+  proyeccion: ProyeccionInfo;
 }
 
 export const apiClient = new APIClient();

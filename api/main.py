@@ -3146,7 +3146,8 @@ def obtener_distribucion_cascada(
         from decimal import Decimal
         from core.models import (
             Escenario, Marca, ProyeccionVentasConfig,
-            MarcaOperacion, Zona, ZonaMunicipio
+            MarcaOperacion, Zona, ZonaMunicipio,
+            ProyeccionManual, TipologiaProyeccion
         )
 
         escenario = Escenario.objects.get(pk=escenario_id)
@@ -3154,7 +3155,11 @@ def obtener_distribucion_cascada(
 
         # Obtener venta total mensual de ProyeccionVentasConfig
         venta_total_mensual = Decimal('0')
+        venta_anual = Decimal('0')
         ventas_mensuales = {}
+        fuente_proyeccion = None
+        tipologias_detalle = []
+
         try:
             config = ProyeccionVentasConfig.objects.get(
                 marca=marca,
@@ -3164,6 +3169,34 @@ def obtener_distribucion_cascada(
             ventas_mensuales = config.calcular_ventas_mensuales()
             if ventas_mensuales:
                 venta_total_mensual = sum(ventas_mensuales.values()) / len(ventas_mensuales)
+                venta_anual = sum(ventas_mensuales.values())
+
+            # Determinar fuente de la proyección
+            try:
+                manual = config.proyeccion_manual
+                ventas_manual = manual.get_ventas_mensuales()
+                if sum(ventas_manual.values()) > 0:
+                    fuente_proyeccion = 'manual'
+                else:
+                    fuente_proyeccion = 'tipologias'
+            except ProyeccionManual.DoesNotExist:
+                fuente_proyeccion = 'tipologias'
+
+            # Si es desde tipologías, obtener el detalle
+            if fuente_proyeccion == 'tipologias':
+                for tip in config.tipologias.all():
+                    tipologias_detalle.append({
+                        'nombre': tip.nombre,
+                        'clientes': tip.numero_clientes,
+                        'visitas': tip.visitas_mes,
+                        'efectividad': float(tip.efectividad),
+                        'ticket': float(tip.ticket_promedio),
+                        'crec_clientes': float(tip.crecimiento_clientes),
+                        'crec_ticket': float(tip.crecimiento_ticket),
+                        'venta_mes1': float(tip.get_venta_mensual_inicial()),
+                        'venta_anual': float(tip.get_venta_anual()),
+                    })
+
         except ProyeccionVentasConfig.DoesNotExist:
             pass
 
@@ -3257,6 +3290,7 @@ def obtener_distribucion_cascada(
                 'marca_id': marca.marca_id,
                 'nombre': marca.nombre,
                 'venta_total_mensual': float(venta_total_mensual),
+                'venta_anual': float(venta_anual),
                 'ventas_mensuales': {k: float(v) for k, v in ventas_mensuales.items()}
             },
             'escenario': {
@@ -3268,6 +3302,10 @@ def obtener_distribucion_cascada(
             'validacion': {
                 'suma_participaciones_operaciones': float(total_participacion_operaciones),
                 'operaciones_valido': abs(total_participacion_operaciones - Decimal('100')) < Decimal('0.01')
+            },
+            'proyeccion': {
+                'fuente': fuente_proyeccion,
+                'tipologias': tipologias_detalle
             }
         }
 
