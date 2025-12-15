@@ -2199,20 +2199,24 @@ class ProyeccionVentasConfigAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelA
                     config, archivo, actualizar, crear_productos
                 )
 
-            # Mostrar resultados
-            if resultado.exitoso:
-                msg = f"Importación completada: {resultado.productos_creados} productos creados, {resultado.productos_actualizados} actualizados"
+            # Mostrar resultados detallados
+            msg = f"CSV procesado: {resultado.total_procesados} filas leídas"
+            if resultado.productos_creados > 0 or resultado.productos_actualizados > 0:
+                msg += f" | {resultado.productos_creados} productos creados, {resultado.productos_actualizados} actualizados"
                 if resultado.demandas_creadas:
-                    msg += f", {resultado.demandas_creadas} demandas creadas"
+                    msg += f", {resultado.demandas_creadas} demandas"
                 messages.success(request, msg)
+            elif resultado.total_procesados == 0:
+                messages.warning(request, "El archivo CSV está vacío o no tiene el formato correcto")
             else:
-                messages.warning(request, f"Importación con errores: {len(resultado.errores)} errores")
+                messages.warning(request, f"{msg} | 0 productos importados")
 
-            for error in resultado.errores[:10]:  # Mostrar solo primeros 10 errores
-                messages.error(request, error)
-
-            if len(resultado.errores) > 10:
-                messages.info(request, f"... y {len(resultado.errores) - 10} errores más")
+            if resultado.errores:
+                messages.info(request, f"Errores encontrados: {len(resultado.errores)}")
+                for error in resultado.errores[:5]:
+                    messages.error(request, error)
+                if len(resultado.errores) > 5:
+                    messages.info(request, f"... y {len(resultado.errores) - 5} errores más")
 
             return redirect('dxv_admin:core_proyeccionventasconfig_change', pk)
 

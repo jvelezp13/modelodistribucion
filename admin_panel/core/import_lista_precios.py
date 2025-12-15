@@ -50,22 +50,13 @@ def validar_fila_csv(fila: Dict[str, str], num_fila: int) -> Tuple[bool, Optiona
     if not fila.get('sku', '').strip():
         return False, f"Fila {num_fila}: SKU es obligatorio"
 
-    # Validar método de captura
-    metodo = fila.get('metodo_captura', 'directo').strip().lower()
-    if metodo not in ('directo', 'descuento_sobre_venta', 'margen_sobre_compra'):
+    # Validar método de captura (si se especifica)
+    metodo = fila.get('metodo_captura', '').strip().lower()
+    if metodo and metodo not in ('directo', 'descuento_sobre_venta', 'margen_sobre_compra'):
         return False, f"Fila {num_fila}: metodo_captura inválido '{metodo}'"
 
-    # Validar precios según método
-    if metodo == 'directo':
-        if not fila.get('precio_compra') or not fila.get('precio_venta'):
-            return False, f"Fila {num_fila}: Para método 'directo' se requiere precio_compra y precio_venta"
-    elif metodo == 'descuento_sobre_venta':
-        if not fila.get('precio_venta') or not fila.get('porcentaje_descuento'):
-            return False, f"Fila {num_fila}: Para método 'descuento_sobre_venta' se requiere precio_venta y porcentaje_descuento"
-    elif metodo == 'margen_sobre_compra':
-        if not fila.get('precio_compra') or not fila.get('porcentaje_margen'):
-            return False, f"Fila {num_fila}: Para método 'margen_sobre_compra' se requiere precio_compra y porcentaje_margen"
-
+    # Validación flexible: solo advertir si no hay precios, pero permitir continuar
+    # Los precios se pueden completar después manualmente
     return True, None
 
 
@@ -141,6 +132,11 @@ def importar_lista_precios_csv(
             sku = fila['sku'].strip()
             nombre = fila.get('nombre', '').strip() or sku
 
+            # Preparar precio para el producto (se necesita para crear Producto)
+            precio_venta_valor = parse_decimal(fila.get('precio_venta'))
+            precio_compra_valor = parse_decimal(fila.get('precio_compra'))
+            precio_unitario = precio_venta_valor or precio_compra_valor or Decimal('0')
+
             # Buscar o crear Producto
             try:
                 producto = Producto.objects.get(sku=sku, marca=config.marca)
@@ -150,6 +146,7 @@ def importar_lista_precios_csv(
                         sku=sku,
                         nombre=nombre,
                         marca=config.marca,
+                        precio_unitario=precio_unitario,
                         activo=True
                     )
                     logger.info(f"Producto creado: {sku}")
@@ -157,10 +154,8 @@ def importar_lista_precios_csv(
                     resultado.errores.append(f"Fila {num_fila}: Producto con SKU '{sku}' no existe")
                     continue
 
-            # Preparar datos de precio
-            metodo = fila.get('metodo_captura', 'directo').strip().lower()
-            precio_compra = parse_decimal(fila.get('precio_compra'))
-            precio_venta = parse_decimal(fila.get('precio_venta'))
+            # Preparar datos de precio para ListaPreciosProducto
+            metodo = fila.get('metodo_captura', '').strip().lower() or 'directo'
             porcentaje_descuento = parse_decimal(fila.get('porcentaje_descuento'))
             porcentaje_margen = parse_decimal(fila.get('porcentaje_margen'))
 
@@ -170,8 +165,8 @@ def importar_lista_precios_csv(
                 producto=producto,
                 defaults={
                     'metodo_captura': metodo,
-                    'precio_compra': precio_compra,
-                    'precio_venta': precio_venta,
+                    'precio_compra': precio_compra_valor,
+                    'precio_venta': precio_venta_valor,
                     'porcentaje_descuento': porcentaje_descuento,
                     'porcentaje_margen': porcentaje_margen,
                     'activo': True
@@ -182,8 +177,8 @@ def importar_lista_precios_csv(
                 resultado.productos_creados += 1
             elif actualizar_existentes:
                 lista_precio.metodo_captura = metodo
-                lista_precio.precio_compra = precio_compra
-                lista_precio.precio_venta = precio_venta
+                lista_precio.precio_compra = precio_compra_valor
+                lista_precio.precio_venta = precio_venta_valor
                 lista_precio.porcentaje_descuento = porcentaje_descuento
                 lista_precio.porcentaje_margen = porcentaje_margen
                 lista_precio.activo = True
