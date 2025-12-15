@@ -1979,14 +1979,87 @@ class ListaPreciosProductoInline(admin.TabularInline):
     model = ListaPreciosProducto
     extra = 1
     verbose_name = "Producto en Lista de Precios"
-    verbose_name_plural = "Lista de Precios (Tipo Lista de Precios)"
+    verbose_name_plural = "Lista de Precios"
     fields = (
-        'producto', 'metodo_captura',
-        'precio_compra', 'precio_venta',
-        'porcentaje_descuento', 'porcentaje_margen',
-        'activo'
+        'producto', 'precio_compra', 'precio_venta',
+        'venta_mensual_fmt', 'editar_demanda_link', 'activo'
     )
+    readonly_fields = ('venta_mensual_fmt', 'editar_demanda_link')
     autocomplete_fields = ['producto']
+    show_change_link = True
+
+    def venta_mensual_fmt(self, obj):
+        if not obj.pk:
+            return "-"
+        try:
+            demanda = obj.proyeccion_demanda
+            total = demanda.get_total_ventas_anual()
+            return f"${total:,.0f}"
+        except:
+            return "Sin demanda"
+    venta_mensual_fmt.short_description = 'Venta Anual'
+
+    def editar_demanda_link(self, obj):
+        if not obj.pk:
+            return "-"
+        from django.utils.html import format_html
+        from django.urls import reverse
+        url = reverse('dxv_admin:core_listapreciosproducto_change', args=[obj.pk])
+        return format_html('<a href="{}">Editar demanda</a>', url)
+    editar_demanda_link.short_description = 'Demanda'
+
+
+@admin.register(ListaPreciosProducto, site=dxv_admin_site)
+class ListaPreciosProductoAdmin(GlobalFilterMixin, admin.ModelAdmin):
+    """Admin para editar producto y su demanda"""
+    list_display = ('producto', 'config', 'precio_compra', 'precio_venta', 'venta_anual_fmt', 'activo')
+    list_filter = ('config__marca', 'config__escenario', 'activo')
+    search_fields = ('producto__nombre', 'producto__sku')
+    autocomplete_fields = ['producto', 'config']
+    readonly_fields = ('margen_calculado', 'venta_anual_calculada')
+
+    fieldsets = (
+        ('Producto', {
+            'fields': ('config', 'producto', 'activo')
+        }),
+        ('Precios', {
+            'fields': ('metodo_captura', 'precio_compra', 'precio_venta', 'porcentaje_descuento', 'porcentaje_margen'),
+            'description': 'Configure los precios seg\u00fan el m\u00e9todo de captura seleccionado'
+        }),
+        ('Resultados', {
+            'fields': ('margen_calculado', 'venta_anual_calculada'),
+        }),
+    )
+
+    inlines = [ProyeccionDemandaInline]
+
+    def venta_anual_fmt(self, obj):
+        try:
+            demanda = obj.proyeccion_demanda
+            total = demanda.get_total_ventas_anual()
+            return f"${total:,.0f}"
+        except:
+            return "-"
+    venta_anual_fmt.short_description = 'Venta Anual'
+
+    def margen_calculado(self, obj):
+        try:
+            if obj.precio_venta and obj.precio_compra and obj.precio_venta > 0:
+                margen = ((obj.precio_venta - obj.precio_compra) / obj.precio_venta) * 100
+                return f"{margen:.1f}%"
+        except:
+            pass
+        return "-"
+    margen_calculado.short_description = 'Margen %'
+
+    def venta_anual_calculada(self, obj):
+        try:
+            demanda = obj.proyeccion_demanda
+            total = demanda.get_total_ventas_anual()
+            return f"${total:,.0f}"
+        except:
+            return "Configure la demanda abajo"
+    venta_anual_calculada.short_description = 'Venta Anual Calculada'
 
 
 @admin.register(ProyeccionVentasConfig, site=dxv_admin_site)
@@ -2002,20 +2075,15 @@ class ProyeccionVentasConfigAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelA
         ('Configuraci\u00f3n B\u00e1sica', {
             'fields': ('marca', 'escenario', 'anio', 'tipo'),
             'description': '''
-                <strong>Tipo Simple:</strong> Ingrese valores de venta directos por mes (abajo en "Proyecci\u00f3n Manual")<br>
-                <strong>Tipo Lista de Precios:</strong> Defina productos con precio compra/venta y proyecci\u00f3n de demanda (abajo en "Lista de Precios")
+                <strong>Tipo Simple:</strong> Ingrese valores de venta directos por mes<br>
+                <strong>Tipo Lista de Precios:</strong> Defina productos con precios y demanda
             '''
         }),
         ('Resultados Calculados', {
             'fields': ('venta_anual_calculada', 'cmv_anual_calculado', 'margen_lista_calculado'),
-            'description': 'Estos valores se calculan autom\u00e1ticamente seg\u00fan el tipo y los datos ingresados'
         }),
-        ('Notas', {
-            'fields': ('notas',),
-            'classes': ('collapse',)
-        }),
-        ('Metadata', {
-            'fields': ('fecha_creacion', 'fecha_modificacion'),
+        ('Notas y Metadata', {
+            'fields': ('notas', 'fecha_creacion', 'fecha_modificacion'),
             'classes': ('collapse',)
         }),
     )
