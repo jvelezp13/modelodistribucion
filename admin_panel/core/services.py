@@ -12,8 +12,8 @@ from .models import (
     Escenario, ParametrosMacro, PersonalComercial, PersonalLogistico,
     PersonalAdministrativo, Vehiculo, GastoComercial, GastoLogistico,
     GastoAdministrativo, Zona, ZonaMunicipio, RutaLogistica, RutaMunicipio,
-    ProyeccionVentasConfig, ProyeccionManual, ListaPreciosProducto,
-    ProyeccionDemandaProducto, Marca, FactorPrestacional
+    ProyeccionVentasConfig, ProyeccionManual, TipologiaProyeccion,
+    Marca, FactorPrestacional
 )
 from .utils import copiar_instancia, get_campos_monetarios
 
@@ -275,37 +275,25 @@ class EscenarioService:
                 sufijo_nombre=""
             )
 
-            # Copiar datos según el tipo
-            if config.tipo == 'simple':
-                try:
-                    manual = ProyeccionManual.objects.get(config=config)
-                    copiar_instancia(
-                        manual,
-                        override={'config': nueva_config},
-                        campos_monetarios=get_campos_monetarios(manual),
-                        factor_incremento=incremento_ventas,
-                        sufijo_nombre=""
-                    )
-                except ProyeccionManual.DoesNotExist:
-                    pass
+            # Copiar tipologías de cliente
+            for tipologia in TipologiaProyeccion.objects.filter(config=config):
+                copiar_instancia(
+                    tipologia,
+                    override={'config': nueva_config},
+                    sufijo_nombre=""
+                )
 
-            elif config.tipo == 'lista_precios':
-                # Copiar productos de lista de precios y sus demandas
-                for prod in ListaPreciosProducto.objects.filter(config=config):
-                    nuevo_prod = copiar_instancia(
-                        prod,
-                        override={'config': nueva_config},
-                        sufijo_nombre=""
-                    )
-                    # Copiar la demanda asociada
-                    try:
-                        demanda = prod.proyeccion_demanda
-                        copiar_instancia(
-                            demanda,
-                            override={'producto': nuevo_prod},
-                            sufijo_nombre=""
-                        )
-                    except ProyeccionDemandaProducto.DoesNotExist:
-                        pass
+            # Copiar proyección manual (ajuste estacional)
+            try:
+                manual = ProyeccionManual.objects.get(config=config)
+                copiar_instancia(
+                    manual,
+                    override={'config': nueva_config},
+                    campos_monetarios=get_campos_monetarios(manual),
+                    factor_incremento=incremento_ventas,
+                    sufijo_nombre=""
+                )
+            except ProyeccionManual.DoesNotExist:
+                pass
 
 

@@ -24,7 +24,7 @@ from .models import (
     # Módulo de Proyección de Ventas
     CanalVenta, CategoriaProducto, Producto,
     ProyeccionVentasConfig, ProyeccionManual,
-    ListaPreciosProducto, ProyeccionDemandaProducto
+    TipologiaProyeccion
 )
 from .admin_site import dxv_admin_site
 
@@ -1925,12 +1925,12 @@ class ProductoAdmin(admin.ModelAdmin):
 
 # Inlines para ProyeccionVentasConfig
 class ProyeccionManualInline(admin.StackedInline):
-    """Inline para ingresar valores de venta directos por mes (Tipo Simple)"""
+    """Inline para ingresar valores de venta directos por mes (ajuste estacional)"""
     model = ProyeccionManual
-    extra = 0
+    extra = 1
     max_num = 1
-    verbose_name = "Ventas Mensuales (Tipo Simple)"
-    verbose_name_plural = "Ventas Mensuales (Tipo Simple)"
+    verbose_name = "Ajuste Mensual (Estacionalidad)"
+    verbose_name_plural = "Ajuste Mensual (Estacionalidad)"
     fieldsets = (
         (None, {
             'fields': (
@@ -1945,142 +1945,56 @@ class ProyeccionManualInline(admin.StackedInline):
 
 
 # =============================================================================
-# INLINES PARA LISTA DE PRECIOS
+# INLINE PARA TIPOLOGÍAS DE CLIENTE
 # =============================================================================
 
-class ProyeccionDemandaInline(admin.StackedInline):
-    """Inline para proyección de demanda de un producto en lista de precios"""
-    model = ProyeccionDemandaProducto
-    extra = 0
-    max_num = 1
-    fieldsets = (
-        ('Método de Cálculo', {
-            'fields': ('metodo_demanda',)
-        }),
-        ('Ticket × Visitas × Efectividad (Método A)', {
-            'fields': (('ticket_promedio', 'visitas_mensuales', 'tasa_efectividad'),),
-            'classes': ('collapse',),
-            'description': 'Use este método para calcular la demanda basado en ticket promedio, visitas y tasa de efectividad'
-        }),
-        ('Unidades Mensuales (Método B)', {
-            'fields': (
-                ('unidades_enero', 'unidades_febrero', 'unidades_marzo'),
-                ('unidades_abril', 'unidades_mayo', 'unidades_junio'),
-                ('unidades_julio', 'unidades_agosto', 'unidades_septiembre'),
-                ('unidades_octubre', 'unidades_noviembre', 'unidades_diciembre'),
-            ),
-            'description': 'Ingrese las unidades estimadas para cada mes directamente'
-        }),
-    )
-
-
-class ListaPreciosProductoInline(admin.TabularInline):
-    """Inline para productos en lista de precios (Tipo Lista de Precios)"""
-    model = ListaPreciosProducto
+class TipologiaProyeccionInline(admin.TabularInline):
+    """Inline para tipologías de cliente (Tiendas, Minimercados, etc.)"""
+    model = TipologiaProyeccion
     extra = 1
-    verbose_name = "Producto en Lista de Precios"
-    verbose_name_plural = "Lista de Precios"
+    verbose_name = "Tipología de Cliente"
+    verbose_name_plural = "Tipologías de Cliente"
     fields = (
-        'producto', 'precio_compra', 'precio_venta',
-        'venta_mensual_fmt', 'editar_demanda_link', 'activo'
+        'nombre', 'numero_clientes', 'visitas_mes', 'efectividad',
+        'ticket_promedio', 'venta_mensual_fmt', 'venta_anual_fmt'
     )
-    readonly_fields = ('venta_mensual_fmt', 'editar_demanda_link')
-    autocomplete_fields = ['producto']
-    show_change_link = True
+    readonly_fields = ('venta_mensual_fmt', 'venta_anual_fmt')
 
     def venta_mensual_fmt(self, obj):
         if not obj.pk:
             return "-"
         try:
-            demanda = obj.proyeccion_demanda
-            total = demanda.get_total_ventas_anual()
+            total = obj.get_venta_mensual()
             return f"${total:,.0f}"
         except:
-            return "Sin demanda"
-    venta_mensual_fmt.short_description = 'Venta Anual'
-
-    def editar_demanda_link(self, obj):
-        if not obj.pk:
             return "-"
-        from django.utils.html import format_html
-        from django.urls import reverse
-        url = reverse('dxv_admin:core_listapreciosproducto_change', args=[obj.pk])
-        return format_html('<a href="{}">Editar demanda</a>', url)
-    editar_demanda_link.short_description = 'Demanda'
-
-
-@admin.register(ListaPreciosProducto, site=dxv_admin_site)
-class ListaPreciosProductoAdmin(GlobalFilterMixin, admin.ModelAdmin):
-    """Admin para editar producto y su demanda"""
-    list_display = ('producto', 'config', 'precio_compra', 'precio_venta', 'venta_anual_fmt', 'activo')
-    list_filter = ('config__marca', 'config__escenario', 'activo')
-    search_fields = ('producto__nombre', 'producto__sku')
-    autocomplete_fields = ['producto', 'config']
-    readonly_fields = ('margen_calculado', 'venta_anual_calculada')
-
-    fieldsets = (
-        ('Producto', {
-            'fields': ('config', 'producto', 'activo')
-        }),
-        ('Precios', {
-            'fields': ('metodo_captura', 'precio_compra', 'precio_venta', 'porcentaje_descuento', 'porcentaje_margen'),
-            'description': 'Configure los precios seg\u00fan el m\u00e9todo de captura seleccionado'
-        }),
-        ('Resultados', {
-            'fields': ('margen_calculado', 'venta_anual_calculada'),
-        }),
-    )
-
-    inlines = [ProyeccionDemandaInline]
+    venta_mensual_fmt.short_description = 'Venta Mensual'
 
     def venta_anual_fmt(self, obj):
+        if not obj.pk:
+            return "-"
         try:
-            demanda = obj.proyeccion_demanda
-            total = demanda.get_total_ventas_anual()
+            total = obj.get_venta_anual()
             return f"${total:,.0f}"
         except:
             return "-"
     venta_anual_fmt.short_description = 'Venta Anual'
 
-    def margen_calculado(self, obj):
-        try:
-            if obj.precio_venta and obj.precio_compra and obj.precio_venta > 0:
-                margen = ((obj.precio_venta - obj.precio_compra) / obj.precio_venta) * 100
-                return f"{margen:.1f}%"
-        except:
-            pass
-        return "-"
-    margen_calculado.short_description = 'Margen %'
-
-    def venta_anual_calculada(self, obj):
-        try:
-            demanda = obj.proyeccion_demanda
-            total = demanda.get_total_ventas_anual()
-            return f"${total:,.0f}"
-        except:
-            return "Configure la demanda abajo"
-    venta_anual_calculada.short_description = 'Venta Anual Calculada'
-
 
 @admin.register(ProyeccionVentasConfig, site=dxv_admin_site)
 class ProyeccionVentasConfigAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin):
-    list_display = ('marca', 'escenario', 'anio', 'tipo', 'venta_anual_fmt', 'cmv_anual_fmt', 'margen_lista_fmt', 'fecha_modificacion')
-    list_filter = ('marca', 'escenario', 'anio', 'tipo')
+    list_display = ('marca', 'escenario', 'anio', 'venta_anual_fmt', 'base_tipologias_fmt', 'fecha_modificacion')
+    list_filter = ('marca', 'escenario', 'anio')
     search_fields = ('marca__nombre', 'escenario__nombre', 'notas')
-    readonly_fields = ('fecha_creacion', 'fecha_modificacion', 'venta_anual_calculada', 'cmv_anual_calculado', 'margen_lista_calculado')
-    actions = ['duplicar_registros', 'importar_lista_precios_action']
-    change_form_template = 'admin/core/proyeccionventasconfig/change_form.html'
+    readonly_fields = ('fecha_creacion', 'fecha_modificacion', 'venta_anual_calculada', 'base_tipologias_calculada')
+    actions = ['duplicar_registros']
 
     fieldsets = (
-        ('Configuraci\u00f3n B\u00e1sica', {
-            'fields': ('marca', 'escenario', 'anio', 'tipo'),
-            'description': '''
-                <strong>Tipo Simple:</strong> Ingrese valores de venta directos por mes<br>
-                <strong>Tipo Lista de Precios:</strong> Defina productos con precios y demanda
-            '''
+        ('Configuración Básica', {
+            'fields': ('marca', 'escenario', 'anio'),
         }),
         ('Resultados Calculados', {
-            'fields': ('venta_anual_calculada', 'cmv_anual_calculado', 'margen_lista_calculado'),
+            'fields': ('venta_anual_calculada', 'base_tipologias_calculada'),
         }),
         ('Notas y Metadata', {
             'fields': ('notas', 'fecha_creacion', 'fecha_modificacion'),
@@ -2089,12 +2003,9 @@ class ProyeccionVentasConfigAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelA
     )
 
     inlines = [
-        ProyeccionManualInline,      # Para tipo 'simple'
-        ListaPreciosProductoInline,  # Para tipo 'lista_precios'
+        TipologiaProyeccionInline,
+        ProyeccionManualInline,
     ]
-
-    class Media:
-        js = ('admin/js/proyeccion_ventas_tipo.js',)
 
     def venta_anual_fmt(self, obj):
         try:
@@ -2104,159 +2015,29 @@ class ProyeccionVentasConfigAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelA
             return "-"
     venta_anual_fmt.short_description = 'Venta Anual'
 
-    def cmv_anual_fmt(self, obj):
-        if obj.tipo != 'lista_precios':
-            return "N/A"
+    def base_tipologias_fmt(self, obj):
         try:
-            cmv = obj.get_cmv_anual()
-            return f"${cmv:,.0f}"
+            base = obj.get_base_tipologias_mensual()
+            return f"${base:,.0f}/mes"
         except Exception:
             return "-"
-    cmv_anual_fmt.short_description = 'CMV Anual'
-
-    def margen_lista_fmt(self, obj):
-        if obj.tipo != 'lista_precios':
-            return "N/A"
-        try:
-            ventas = obj.get_venta_anual()
-            cmv = obj.get_cmv_anual()
-            if ventas > 0:
-                margen = ((ventas - cmv) / ventas) * 100
-                return f"{margen:.1f}%"
-        except Exception:
-            pass
-        return "-"
-    margen_lista_fmt.short_description = 'Margen Lista'
+    base_tipologias_fmt.short_description = 'Base Tipologías'
 
     def venta_anual_calculada(self, obj):
         try:
             venta = obj.get_venta_anual()
             return f"${venta:,.0f}"
         except Exception:
-            return "No calculable - complete los datos del tipo seleccionado"
+            return "Complete las tipologías o valores manuales"
     venta_anual_calculada.short_description = 'Venta Anual Calculada'
 
-    def cmv_anual_calculado(self, obj):
-        if obj.tipo != 'lista_precios':
-            return "N/A - Solo aplica para tipo Lista de Precios"
+    def base_tipologias_calculada(self, obj):
         try:
-            cmv = obj.get_cmv_anual()
-            return f"${cmv:,.0f}"
+            base = obj.get_base_tipologias_mensual()
+            anual = base * 12
+            return f"${base:,.0f}/mes (${anual:,.0f}/año)"
         except Exception:
-            return "No calculable"
-    cmv_anual_calculado.short_description = 'CMV Anual Calculado'
-
-    def margen_lista_calculado(self, obj):
-        if obj.tipo != 'lista_precios':
-            return "N/A - Solo aplica para tipo Lista de Precios"
-        try:
-            ventas = obj.get_venta_anual()
-            cmv = obj.get_cmv_anual()
-            if ventas > 0:
-                margen = ((ventas - cmv) / ventas) * 100
-                margen_abs = ventas - cmv
-                return f"{margen:.1f}% (${margen_abs:,.0f})"
-        except Exception:
-            pass
-        return "No calculable"
-    margen_lista_calculado.short_description = 'Margen Lista Calculado'
-
-    def get_urls(self):
-        from django.urls import path
-        urls = super().get_urls()
-        custom_urls = [
-            path(
-                '<int:pk>/importar-lista-precios/',
-                self.admin_site.admin_view(self.importar_lista_precios_view),
-                name='core_proyeccionventasconfig_importar_lista_precios'
-            ),
-            path(
-                'descargar-plantilla-csv/',
-                self.admin_site.admin_view(self.descargar_plantilla_csv_view),
-                name='core_proyeccionventasconfig_descargar_plantilla'
-            ),
-        ]
-        return custom_urls + urls
-
-    def importar_lista_precios_view(self, request, pk):
-        """Vista para importar lista de precios desde CSV/JSON."""
-        from django.shortcuts import get_object_or_404, redirect
-        from django.contrib import messages
-        from django.http import HttpResponse
-        from .import_lista_precios import importar_lista_precios_csv, importar_lista_precios_json
-
-        config = get_object_or_404(ProyeccionVentasConfig, pk=pk)
-
-        if request.method == 'POST':
-            archivo = request.FILES.get('archivo')
-            if not archivo:
-                messages.error(request, "No se seleccionó ningún archivo")
-                return redirect('dxv_admin:core_proyeccionventasconfig_change', pk)
-
-            actualizar = request.POST.get('actualizar_existentes') == 'on'
-            crear_productos = request.POST.get('crear_productos') == 'on'
-
-            # Determinar tipo de archivo
-            nombre = archivo.name.lower()
-            if nombre.endswith('.json'):
-                resultado = importar_lista_precios_json(
-                    config, archivo, actualizar, crear_productos
-                )
-            else:
-                resultado = importar_lista_precios_csv(
-                    config, archivo, actualizar, crear_productos
-                )
-
-            # Mostrar resultados detallados
-            msg = f"CSV procesado: {resultado.total_procesados} filas leídas"
-            if resultado.productos_creados > 0 or resultado.productos_actualizados > 0:
-                msg += f" | {resultado.productos_creados} productos creados, {resultado.productos_actualizados} actualizados"
-                if resultado.demandas_creadas:
-                    msg += f", {resultado.demandas_creadas} demandas"
-                messages.success(request, msg)
-            elif resultado.total_procesados == 0:
-                messages.warning(request, "El archivo CSV está vacío o no tiene el formato correcto")
-            else:
-                messages.warning(request, f"{msg} | 0 productos importados")
-
-            if resultado.errores:
-                messages.info(request, f"Errores encontrados: {len(resultado.errores)}")
-                for error in resultado.errores[:5]:
-                    messages.error(request, error)
-                if len(resultado.errores) > 5:
-                    messages.info(request, f"... y {len(resultado.errores) - 5} errores más")
-
-            return redirect('dxv_admin:core_proyeccionventasconfig_change', pk)
-
-        # GET: Mostrar formulario (handled by template)
-        return redirect('dxv_admin:core_proyeccionventasconfig_change', pk)
-
-    def descargar_plantilla_csv_view(self, request):
-        """Descarga plantilla CSV de ejemplo."""
-        from django.http import HttpResponse
-        from .import_lista_precios import generar_plantilla_csv
-
-        contenido = generar_plantilla_csv()
-        response = HttpResponse(contenido, content_type='text/csv')
-        response['Content-Disposition'] = 'attachment; filename="plantilla_lista_precios.csv"'
-        return response
-
-    @admin.action(description="Importar lista de precios (seleccione 1 configuración)")
-    def importar_lista_precios_action(self, request, queryset):
-        """Action para redirigir a la vista de importación."""
-        from django.contrib import messages
-        from django.shortcuts import redirect
-
-        if queryset.count() != 1:
-            messages.error(request, "Seleccione exactamente 1 configuración para importar")
-            return
-
-        config = queryset.first()
-        if config.tipo != 'lista_precios':
-            messages.error(request, "Solo se puede importar para configuraciones de tipo 'Lista de Precios'")
-            return
-
-        return redirect('dxv_admin:core_proyeccionventasconfig_change', config.pk)
-
+            return "Agregue tipologías de cliente"
+    base_tipologias_calculada.short_description = 'Base desde Tipologías'
 
 

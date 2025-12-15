@@ -2950,11 +2950,6 @@ class Producto(models.Model):
 class ProyeccionVentasConfig(models.Model):
     """Configuración principal de proyección de ventas por marca/escenario"""
 
-    TIPO_CHOICES = [
-        ('simple', 'Valores Directos Mensuales'),
-        ('lista_precios', 'Lista de Precios'),
-    ]
-
     marca = models.ForeignKey(
         Marca,
         on_delete=models.CASCADE,
@@ -2968,12 +2963,6 @@ class ProyeccionVentasConfig(models.Model):
         verbose_name="Escenario"
     )
     anio = models.IntegerField(verbose_name="Año de Proyección")
-    tipo = models.CharField(
-        max_length=20,
-        choices=TIPO_CHOICES,
-        default='simple',
-        verbose_name="Tipo de Proyección"
-    )
 
     notas = models.TextField(blank=True, verbose_name="Notas")
     fecha_creacion = models.DateTimeField(auto_now_add=True)
@@ -2981,100 +2970,46 @@ class ProyeccionVentasConfig(models.Model):
 
     class Meta:
         db_table = 'dxv_proyeccion_ventas_config'
-        verbose_name = "Configuración de Proyección"
-        verbose_name_plural = "Configuraciones de Proyección"
+        verbose_name = "Proyección de Ventas"
+        verbose_name_plural = "Proyecciones de Ventas"
         unique_together = ['marca', 'escenario', 'anio']
         ordering = ['marca', 'escenario', 'anio']
 
     def __str__(self):
-        return f"{self.marca.nombre} - {self.escenario.nombre} - {self.anio} ({self.get_tipo_display()})"
+        return f"{self.marca.nombre} - {self.escenario.nombre} - {self.anio}"
+
+    def get_base_tipologias_mensual(self):
+        """Suma de ventas mensuales de todas las tipologías"""
+        from decimal import Decimal
+        total = Decimal('0')
+        for tipologia in self.tipologias.all():
+            total += tipologia.get_venta_mensual()
+        return total
 
     def calcular_ventas_mensuales(self):
-        """Calcula las ventas mensuales según el tipo configurado"""
-        if self.tipo == 'simple':
-            return self._calcular_simple()
-        elif self.tipo == 'lista_precios':
-            return self._calcular_lista_precios()
-        return {}
+        """
+        Calcula ventas mensuales:
+        - Si hay ProyeccionManual, usa esos valores (para estacionalidad)
+        - Si no, usa base de tipologías (uniforme por mes)
+        """
+        meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
 
-    def _calcular_simple(self):
-        """Obtiene ventas de ProyeccionManual (tipo simple)"""
+        # Si hay valores manuales, usarlos
         try:
             manual = self.proyeccion_manual
             return manual.get_ventas_mensuales()
         except ProyeccionManual.DoesNotExist:
-            return {}
+            pass
 
-    def _calcular_lista_precios(self):
-        """Suma ventas de todos los productos en lista de precios"""
-        from decimal import Decimal
-        productos = self.lista_precios.filter(activo=True)
-        meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-                 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
-
-        ventas = {mes: Decimal('0') for mes in meses}
-
-        for prod in productos:
-            try:
-                demanda = prod.proyeccion_demanda
-                ventas_prod = demanda.get_ventas_mensuales()
-                for mes in meses:
-                    ventas[mes] += Decimal(str(ventas_prod.get(mes, 0)))
-            except:
-                continue
-
-        return {mes: float(v) for mes, v in ventas.items()}
-
-    def calcular_cmv_mensuales(self):
-        """Calcula el CMV mensual (solo para tipo lista_precios)"""
-        from decimal import Decimal
-        if self.tipo != 'lista_precios':
-            return {}
-
-        productos = self.lista_precios.filter(activo=True)
-        meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-                 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
-
-        cmv = {mes: Decimal('0') for mes in meses}
-
-        for prod in productos:
-            try:
-                demanda = prod.proyeccion_demanda
-                cmv_prod = demanda.get_cmv_mensual()
-                for mes in meses:
-                    cmv[mes] += Decimal(str(cmv_prod.get(mes, 0)))
-            except:
-                continue
-
-        return {mes: float(v) for mes, v in cmv.items()}
-
-    def get_margen_lista_mensual(self):
-        """Calcula margen de lista mensual = (Ventas - CMV) / Ventas"""
-        if self.tipo != 'lista_precios':
-            return {}
-
-        ventas = self.calcular_ventas_mensuales()
-        cmv = self.calcular_cmv_mensuales()
-
-        margen = {}
-        for mes in ventas:
-            venta_mes = ventas.get(mes, 0)
-            cmv_mes = cmv.get(mes, 0)
-            if venta_mes > 0:
-                margen[mes] = (venta_mes - cmv_mes) / venta_mes
-            else:
-                margen[mes] = 0
-        return margen
+        # Si no, usar base de tipologías uniforme
+        base_mensual = float(self.get_base_tipologias_mensual())
+        return {mes: base_mensual for mes in meses}
 
     def get_venta_anual(self):
         """Retorna el total anual proyectado"""
         ventas = self.calcular_ventas_mensuales()
         return sum(ventas.values())
-
-    def get_cmv_anual(self):
-        """Retorna el CMV anual (solo para tipo lista_precios)"""
-        cmv = self.calcular_cmv_mensuales()
-        return sum(cmv.values()) if cmv else 0
 
 
 class ProyeccionManual(models.Model):
@@ -3134,260 +3069,68 @@ class ProyeccionManual(models.Model):
         return sum(self.get_ventas_mensuales().values())
 
 
-class ListaPreciosProducto(models.Model):
+class TipologiaProyeccion(models.Model):
     """
-    Lista de precios por producto/SKU para proyección Tipo Lista de Precios.
-    Permite capturar precios como valores directos o derivados (descuento/margen).
+    Proyección por tipología de cliente (Tiendas, Minimercados, etc.)
+    Calcula: clientes × visitas × efectividad × ticket
     """
-
-    METODO_CAPTURA_CHOICES = [
-        ('directo', 'Precios Directos'),
-        ('descuento_sobre_venta', '% Descuento sobre Precio Venta'),
-        ('margen_sobre_compra', '% Margen sobre Precio Compra'),
-    ]
 
     config = models.ForeignKey(
         ProyeccionVentasConfig,
         on_delete=models.CASCADE,
-        related_name='lista_precios',
+        related_name='tipologias',
         verbose_name="Configuración"
     )
-    producto = models.ForeignKey(
-        Producto,
-        on_delete=models.CASCADE,
-        related_name='lista_precios_proyecciones',
-        verbose_name="Producto/SKU"
+    nombre = models.CharField(
+        max_length=100,
+        verbose_name="Tipología",
+        help_text="Ej: Tiendas, Minimercados, Consumo Local"
     )
-
-    # Método de captura de precios
-    metodo_captura = models.CharField(
-        max_length=25,
-        choices=METODO_CAPTURA_CHOICES,
-        default='directo',
-        verbose_name="Método de Captura"
+    numero_clientes = models.PositiveIntegerField(
+        default=0,
+        verbose_name="# Clientes"
     )
-
-    # Precios (dependiendo del método, algunos son capturados y otros derivados)
-    precio_compra = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        null=True,
-        blank=True,
-        verbose_name="Precio Compra",
-        help_text="Precio que paga el distribuidor a la marca"
+    visitas_mes = models.PositiveIntegerField(
+        default=1,
+        verbose_name="Visitas/Mes",
+        help_text="Visitas por cliente al mes"
     )
-    precio_venta = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        null=True,
-        blank=True,
-        verbose_name="Precio Venta",
-        help_text="Precio de venta sugerido al cliente final"
-    )
-
-    # Para método descuento_sobre_venta
-    porcentaje_descuento = models.DecimalField(
+    efectividad = models.DecimalField(
         max_digits=5,
         decimal_places=2,
-        null=True,
-        blank=True,
+        default=100,
         validators=[MinValueValidator(0), MaxValueValidator(100)],
-        verbose_name="% Descuento",
-        help_text="% que se descuenta del precio de venta para obtener precio compra"
+        verbose_name="Efectividad %",
+        help_text="% de visitas que convierten en venta"
     )
-
-    # Para método margen_sobre_compra
-    porcentaje_margen = models.DecimalField(
-        max_digits=5,
-        decimal_places=2,
-        null=True,
-        blank=True,
-        validators=[MinValueValidator(0), MaxValueValidator(500)],
-        verbose_name="% Margen",
-        help_text="% que se agrega al precio de compra para obtener precio venta"
-    )
-
-    activo = models.BooleanField(default=True, verbose_name="Activo")
-    fecha_creacion = models.DateTimeField(auto_now_add=True)
-    fecha_modificacion = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        db_table = 'dxv_lista_precios_producto'
-        verbose_name = "Producto en Lista de Precios"
-        verbose_name_plural = "Productos en Lista de Precios"
-        unique_together = ['config', 'producto']
-
-    def __str__(self):
-        return f"{self.producto.nombre} - {self.config}"
-
-    def get_precio_compra_calculado(self):
-        """Retorna precio de compra (capturado o derivado según método)"""
-        from decimal import Decimal
-        if self.metodo_captura == 'directo':
-            return self.precio_compra or Decimal('0')
-        elif self.metodo_captura == 'descuento_sobre_venta':
-            # precio_compra = precio_venta * (1 - descuento%)
-            if self.precio_venta and self.porcentaje_descuento is not None:
-                return self.precio_venta * (1 - Decimal(str(self.porcentaje_descuento)) / 100)
-            return Decimal('0')
-        elif self.metodo_captura == 'margen_sobre_compra':
-            return self.precio_compra or Decimal('0')
-        return Decimal('0')
-
-    def get_precio_venta_calculado(self):
-        """Retorna precio de venta (capturado o derivado según método)"""
-        from decimal import Decimal
-        if self.metodo_captura == 'directo':
-            return self.precio_venta or Decimal('0')
-        elif self.metodo_captura == 'descuento_sobre_venta':
-            return self.precio_venta or Decimal('0')
-        elif self.metodo_captura == 'margen_sobre_compra':
-            # precio_venta = precio_compra * (1 + margen%)
-            if self.precio_compra and self.porcentaje_margen is not None:
-                return self.precio_compra * (1 + Decimal(str(self.porcentaje_margen)) / 100)
-            return Decimal('0')
-        return Decimal('0')
-
-    def get_margen_lista(self):
-        """Margen de lista = (PVenta - PCompra) / PVenta"""
-        from decimal import Decimal
-        pventa = self.get_precio_venta_calculado()
-        pcompra = self.get_precio_compra_calculado()
-        if pventa and pventa > 0:
-            return (pventa - pcompra) / pventa
-        return Decimal('0')
-
-
-class ProyeccionDemandaProducto(models.Model):
-    """
-    Proyección de demanda/unidades para cada producto en lista de precios.
-    Soporta dos métodos de cálculo:
-    - Ticket Promedio × Visitas × Efectividad
-    - Precio × Unidades Estimadas (mensual)
-    """
-
-    METODO_DEMANDA_CHOICES = [
-        ('ticket_visitas', 'Ticket × Visitas × Efectividad'),
-        ('precio_unidades', 'Precio × Unidades Estimadas'),
-    ]
-
-    lista_precio = models.OneToOneField(
-        ListaPreciosProducto,
-        on_delete=models.CASCADE,
-        related_name='proyeccion_demanda',
-        verbose_name="Producto"
-    )
-
-    metodo_demanda = models.CharField(
-        max_length=20,
-        choices=METODO_DEMANDA_CHOICES,
-        default='precio_unidades',
-        verbose_name="Método de Cálculo"
-    )
-
-    # MÉTODO A: Ticket × Visitas × Efectividad
     ticket_promedio = models.DecimalField(
         max_digits=12,
         decimal_places=2,
-        null=True,
-        blank=True,
-        verbose_name="Ticket Promedio ($)",
-        help_text="Valor promedio de compra por visita"
+        default=0,
+        verbose_name="Ticket Promedio",
+        help_text="$ promedio por venta"
     )
-    visitas_mensuales = models.IntegerField(
-        null=True,
-        blank=True,
-        verbose_name="Visitas por Mes",
-        help_text="Número de visitas comerciales por mes"
-    )
-    tasa_efectividad = models.DecimalField(
-        max_digits=5,
-        decimal_places=2,
-        null=True,
-        blank=True,
-        validators=[MinValueValidator(0), MaxValueValidator(100)],
-        verbose_name="Tasa Efectividad (%)",
-        help_text="Porcentaje de visitas que resultan en venta"
-    )
-
-    # MÉTODO B: Unidades mensuales directas
-    unidades_enero = models.IntegerField(default=0, verbose_name="Unid. Enero")
-    unidades_febrero = models.IntegerField(default=0, verbose_name="Unid. Febrero")
-    unidades_marzo = models.IntegerField(default=0, verbose_name="Unid. Marzo")
-    unidades_abril = models.IntegerField(default=0, verbose_name="Unid. Abril")
-    unidades_mayo = models.IntegerField(default=0, verbose_name="Unid. Mayo")
-    unidades_junio = models.IntegerField(default=0, verbose_name="Unid. Junio")
-    unidades_julio = models.IntegerField(default=0, verbose_name="Unid. Julio")
-    unidades_agosto = models.IntegerField(default=0, verbose_name="Unid. Agosto")
-    unidades_septiembre = models.IntegerField(default=0, verbose_name="Unid. Septiembre")
-    unidades_octubre = models.IntegerField(default=0, verbose_name="Unid. Octubre")
-    unidades_noviembre = models.IntegerField(default=0, verbose_name="Unid. Noviembre")
-    unidades_diciembre = models.IntegerField(default=0, verbose_name="Unid. Diciembre")
 
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_modificacion = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'dxv_proyeccion_demanda_producto'
-        verbose_name = "Proyección de Demanda"
-        verbose_name_plural = "Proyecciones de Demanda"
+        db_table = 'dxv_tipologia_proyeccion'
+        verbose_name = "Tipología de Cliente"
+        verbose_name_plural = "Tipologías de Cliente"
+        ordering = ['config', 'nombre']
 
     def __str__(self):
-        return f"Demanda: {self.lista_precio.producto.nombre}"
+        return f"{self.nombre} ({self.config})"
 
-    def get_unidades_mensuales(self):
-        """Retorna dict con unidades por mes según método"""
-        meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-                 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+    def get_venta_mensual(self):
+        """Calcula venta mensual = clientes × visitas × efectividad × ticket"""
+        from decimal import Decimal
+        return (Decimal(self.numero_clientes) *
+                Decimal(self.visitas_mes) *
+                (Decimal(str(self.efectividad)) / 100) *
+                self.ticket_promedio)
 
-        if self.metodo_demanda == 'ticket_visitas':
-            # Calcular unidades desde ticket, visitas y efectividad
-            precio = float(self.lista_precio.get_precio_venta_calculado() or 0)
-            if (precio > 0 and self.ticket_promedio and
-                self.visitas_mensuales and self.tasa_efectividad):
-                venta_mes = (float(self.ticket_promedio) *
-                            self.visitas_mensuales *
-                            (float(self.tasa_efectividad) / 100))
-                unidades_mes = int(venta_mes / precio)
-                return {mes: unidades_mes for mes in meses}
-            return {mes: 0 for mes in meses}
-
-        # MÉTODO B: Unidades directas
-        return {
-            'enero': self.unidades_enero,
-            'febrero': self.unidades_febrero,
-            'marzo': self.unidades_marzo,
-            'abril': self.unidades_abril,
-            'mayo': self.unidades_mayo,
-            'junio': self.unidades_junio,
-            'julio': self.unidades_julio,
-            'agosto': self.unidades_agosto,
-            'septiembre': self.unidades_septiembre,
-            'octubre': self.unidades_octubre,
-            'noviembre': self.unidades_noviembre,
-            'diciembre': self.unidades_diciembre,
-        }
-
-    def get_ventas_mensuales(self):
-        """Calcula ventas = precio_venta × unidades por mes"""
-        unidades = self.get_unidades_mensuales()
-        precio = float(self.lista_precio.get_precio_venta_calculado() or 0)
-        return {mes: unid * precio for mes, unid in unidades.items()}
-
-    def get_cmv_mensual(self):
-        """Calcula CMV = precio_compra × unidades por mes"""
-        unidades = self.get_unidades_mensuales()
-        precio_compra = float(self.lista_precio.get_precio_compra_calculado() or 0)
-        return {mes: unid * precio_compra for mes, unid in unidades.items()}
-
-    def get_total_unidades_anual(self):
-        """Total de unidades en el año"""
-        return sum(self.get_unidades_mensuales().values())
-
-    def get_total_ventas_anual(self):
-        """Total de ventas en el año"""
-        return sum(self.get_ventas_mensuales().values())
-
-    def get_total_cmv_anual(self):
-        """Total de CMV en el año"""
-        return sum(self.get_cmv_mensual().values())
+    def get_venta_anual(self):
+        """Venta anual = mensual × 12"""
+        return self.get_venta_mensual() * 12
