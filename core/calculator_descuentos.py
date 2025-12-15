@@ -61,6 +61,49 @@ class ResultadoDescuentos:
         }
 
 
+@dataclass
+class ResultadoDescuentosConCMV:
+    """
+    Resultado del cálculo de descuentos incluyendo CMV.
+
+    Para proyecciones tipo Lista de Precios:
+    - CMV = Costo Mercancía Vendida (precio_compra × unidades)
+    - Margen Lista = Ventas - CMV
+    - Los descuentos (rebate, financiero, pie factura) son INGRESOS adicionales
+    - Margen Bruto = Margen Lista + Ingresos por Descuentos
+    """
+    # Ventas y CMV
+    ventas_brutas: float
+    cmv: float  # Costo Mercancía Vendida (solo lista de precios)
+    margen_lista: float  # Ventas - CMV
+
+    # Descuentos (ingresos adicionales)
+    descuento_pie_factura: float
+    rebate: float
+    descuento_financiero: float
+    total_ingresos_descuentos: float
+
+    # Margen final
+    margen_bruto: float  # margen_lista + total_ingresos_descuentos
+    porcentaje_margen_lista: float
+    porcentaje_margen_bruto: float
+
+    def to_dict(self) -> Dict[str, float]:
+        """Convierte a diccionario."""
+        return {
+            'ventas_brutas': self.ventas_brutas,
+            'cmv': self.cmv,
+            'margen_lista': self.margen_lista,
+            'descuento_pie_factura': self.descuento_pie_factura,
+            'rebate': self.rebate,
+            'descuento_financiero': self.descuento_financiero,
+            'total_ingresos_descuentos': self.total_ingresos_descuentos,
+            'margen_bruto': self.margen_bruto,
+            'porcentaje_margen_lista': self.porcentaje_margen_lista,
+            'porcentaje_margen_bruto': self.porcentaje_margen_bruto,
+        }
+
+
 class CalculadoraDescuentos:
     """
     Calculadora de descuentos e incentivos por marca.
@@ -246,3 +289,94 @@ class CalculadoraDescuentos:
     def get_configuracion(self, marca_id: str) -> Optional[ConfigDescuentos]:
         """Obtiene la configuración de descuentos de una marca."""
         return self._configuraciones.get(marca_id)
+
+    def calcular_descuentos_con_cmv(
+        self,
+        marca_id: str,
+        ventas_brutas: float,
+        cmv: float
+    ) -> ResultadoDescuentosConCMV:
+        """
+        Calcula descuentos incluyendo CMV para proyecciones tipo Lista de Precios.
+
+        En este modelo:
+        - CMV = Costo Mercancía Vendida (precio_compra × unidades)
+        - Margen Lista = Ventas - CMV
+        - Los descuentos (rebate, financiero, pie factura) son INGRESOS adicionales
+        - Margen Bruto = Margen Lista + Ingresos por Descuentos
+
+        Args:
+            marca_id: ID de la marca
+            ventas_brutas: Ventas brutas (precio_venta × unidades)
+            cmv: Costo mercancía vendida (precio_compra × unidades)
+
+        Returns:
+            ResultadoDescuentosConCMV con todos los cálculos
+        """
+        # Calcular margen lista (antes de descuentos)
+        margen_lista = ventas_brutas - cmv
+
+        # Si no hay configuración de descuentos, retornar solo margen lista
+        if marca_id not in self._configuraciones:
+            porcentaje_margen_lista = (
+                (margen_lista / ventas_brutas * 100.0) if ventas_brutas > 0 else 0.0
+            )
+            return ResultadoDescuentosConCMV(
+                ventas_brutas=ventas_brutas,
+                cmv=cmv,
+                margen_lista=margen_lista,
+                descuento_pie_factura=0.0,
+                rebate=0.0,
+                descuento_financiero=0.0,
+                total_ingresos_descuentos=0.0,
+                margen_bruto=margen_lista,
+                porcentaje_margen_lista=porcentaje_margen_lista,
+                porcentaje_margen_bruto=porcentaje_margen_lista
+            )
+
+        config = self._configuraciones[marca_id]
+
+        # 1. Calcular descuento a pie de factura (sobre Ventas Brutas)
+        descuento_pie_factura = self._calcular_descuento_pie_factura(
+            ventas_brutas, config.tramos
+        )
+
+        # 2. Base para financiero: Lo que se paga en factura
+        monto_factura = ventas_brutas - descuento_pie_factura
+
+        # 3. Calcular descuento financiero (sobre monto factura)
+        descuento_financiero = 0.0
+        if config.aplica_descuento_financiero:
+            descuento_financiero = monto_factura * (
+                float(config.porcentaje_descuento_financiero) / 100.0
+            )
+
+        # 4. Calcular rebate / RxP (sobre Sell Out / Ventas Brutas)
+        rebate = ventas_brutas * (float(config.porcentaje_rebate) / 100.0)
+
+        # Total de ingresos por descuentos
+        total_ingresos_descuentos = descuento_pie_factura + rebate + descuento_financiero
+
+        # Margen Bruto = Margen Lista + Ingresos por Descuentos
+        margen_bruto = margen_lista + total_ingresos_descuentos
+
+        # Calcular porcentajes
+        porcentaje_margen_lista = (
+            (margen_lista / ventas_brutas * 100.0) if ventas_brutas > 0 else 0.0
+        )
+        porcentaje_margen_bruto = (
+            (margen_bruto / ventas_brutas * 100.0) if ventas_brutas > 0 else 0.0
+        )
+
+        return ResultadoDescuentosConCMV(
+            ventas_brutas=ventas_brutas,
+            cmv=cmv,
+            margen_lista=margen_lista,
+            descuento_pie_factura=descuento_pie_factura,
+            rebate=rebate,
+            descuento_financiero=descuento_financiero,
+            total_ingresos_descuentos=total_ingresos_descuentos,
+            margen_bruto=margen_bruto,
+            porcentaje_margen_lista=porcentaje_margen_lista,
+            porcentaje_margen_bruto=porcentaje_margen_bruto
+        )

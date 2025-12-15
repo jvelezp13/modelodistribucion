@@ -25,7 +25,9 @@ from .models import (
     CanalVenta, CategoriaProducto, Producto, PlantillaEstacional,
     DefinicionMercado, ProyeccionVentasConfig, ProyeccionManual,
     ProyeccionCrecimiento, ProyeccionProducto, ProyeccionCanal,
-    ProyeccionPenetracion
+    ProyeccionPenetracion,
+    # Nuevos modelos de Lista de Precios
+    ListaPreciosProducto, ProyeccionDemandaProducto
 )
 from .admin_site import dxv_admin_site
 
@@ -2102,25 +2104,70 @@ class ProyeccionPenetracionInline(admin.StackedInline):
     )
 
 
+# =============================================================================
+# NUEVOS INLINES PARA LISTA DE PRECIOS
+# =============================================================================
+
+class ProyeccionDemandaInline(admin.StackedInline):
+    """Inline para proyección de demanda de un producto en lista de precios"""
+    model = ProyeccionDemandaProducto
+    extra = 0
+    max_num = 1
+    fieldsets = (
+        ('Método de Cálculo', {
+            'fields': ('metodo_demanda',)
+        }),
+        ('Ticket × Visitas × Efectividad (Método A)', {
+            'fields': (('ticket_promedio', 'visitas_mensuales', 'tasa_efectividad'),),
+            'classes': ('collapse',),
+            'description': 'Use este método para calcular la demanda basado en ticket promedio, visitas y tasa de efectividad'
+        }),
+        ('Unidades Mensuales (Método B)', {
+            'fields': (
+                ('unidades_enero', 'unidades_febrero', 'unidades_marzo'),
+                ('unidades_abril', 'unidades_mayo', 'unidades_junio'),
+                ('unidades_julio', 'unidades_agosto', 'unidades_septiembre'),
+                ('unidades_octubre', 'unidades_noviembre', 'unidades_diciembre'),
+            ),
+            'description': 'Ingrese las unidades estimadas para cada mes directamente'
+        }),
+    )
+
+
+class ListaPreciosProductoInline(admin.TabularInline):
+    """Inline para productos en lista de precios"""
+    model = ListaPreciosProducto
+    extra = 1
+    fields = (
+        'producto', 'metodo_captura',
+        'precio_compra', 'precio_venta',
+        'porcentaje_descuento', 'porcentaje_margen',
+        'activo'
+    )
+    autocomplete_fields = ['producto']
+
+
 @admin.register(ProyeccionVentasConfig, site=dxv_admin_site)
 class ProyeccionVentasConfigAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin):
-    list_display = ('marca', 'escenario', 'anio', 'metodo', 'venta_anual_fmt', 'fecha_modificacion')
-    list_filter = ('marca', 'escenario', 'anio', 'metodo')
+    list_display = ('marca', 'escenario', 'anio', 'tipo', 'venta_anual_fmt', 'cmv_anual_fmt', 'margen_lista_fmt', 'fecha_modificacion')
+    list_filter = ('marca', 'escenario', 'anio', 'tipo')
     search_fields = ('marca__nombre', 'escenario__nombre', 'notas')
-    readonly_fields = ('fecha_creacion', 'fecha_modificacion', 'venta_anual_calculada')
-    actions = ['duplicar_registros']
+    readonly_fields = ('fecha_creacion', 'fecha_modificacion', 'venta_anual_calculada', 'cmv_anual_calculado', 'margen_lista_calculado')
+    actions = ['duplicar_registros', 'importar_lista_precios_action']
+    change_form_template = 'admin/core/proyeccionventasconfig/change_form.html'
 
     fieldsets = (
         ('Configuración', {
-            'fields': ('marca', 'escenario', 'anio', 'metodo')
+            'fields': ('marca', 'escenario', 'anio', 'tipo')
         }),
-        ('Estacionalidad', {
+        ('Estacionalidad (Solo Tipo Simple)', {
             'fields': ('plantilla_estacional',),
-            'description': 'Selecciona una plantilla para distribuir las ventas mensualmente (aplica para métodos Crecimiento y Penetración)'
+            'classes': ('collapse',),
+            'description': 'Selecciona una plantilla para distribuir las ventas mensualmente (solo aplica para tipo Simple)'
         }),
-        ('Resultado', {
-            'fields': ('venta_anual_calculada',),
-            'description': 'Venta anual calculada según el método seleccionado'
+        ('Resultados Calculados', {
+            'fields': ('venta_anual_calculada', 'cmv_anual_calculado', 'margen_lista_calculado'),
+            'description': 'Valores calculados según el tipo y datos ingresados'
         }),
         ('Notas', {
             'fields': ('notas',),
@@ -2133,7 +2180,9 @@ class ProyeccionVentasConfigAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelA
     )
 
     inlines = [
-        ProyeccionManualInline,
+        ProyeccionManualInline,      # Para tipo 'simple'
+        ListaPreciosProductoInline,  # Para tipo 'lista_precios'
+        # Inlines obsoletos (se mantienen temporalmente para compatibilidad)
         ProyeccionCrecimientoInline,
         ProyeccionProductoInline,
         ProyeccionCanalInline,
@@ -2148,13 +2197,155 @@ class ProyeccionVentasConfigAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelA
             return "-"
     venta_anual_fmt.short_description = 'Venta Anual'
 
+    def cmv_anual_fmt(self, obj):
+        if obj.tipo != 'lista_precios':
+            return "N/A"
+        try:
+            cmv = obj.get_cmv_anual()
+            return f"${cmv:,.0f}"
+        except Exception:
+            return "-"
+    cmv_anual_fmt.short_description = 'CMV Anual'
+
+    def margen_lista_fmt(self, obj):
+        if obj.tipo != 'lista_precios':
+            return "N/A"
+        try:
+            ventas = obj.get_venta_anual()
+            cmv = obj.get_cmv_anual()
+            if ventas > 0:
+                margen = ((ventas - cmv) / ventas) * 100
+                return f"{margen:.1f}%"
+        except Exception:
+            pass
+        return "-"
+    margen_lista_fmt.short_description = 'Margen Lista'
+
     def venta_anual_calculada(self, obj):
         try:
             venta = obj.get_venta_anual()
             return f"${venta:,.0f}"
         except Exception:
-            return "No calculable - complete los datos del método seleccionado"
+            return "No calculable - complete los datos del tipo seleccionado"
     venta_anual_calculada.short_description = 'Venta Anual Calculada'
+
+    def cmv_anual_calculado(self, obj):
+        if obj.tipo != 'lista_precios':
+            return "N/A - Solo aplica para tipo Lista de Precios"
+        try:
+            cmv = obj.get_cmv_anual()
+            return f"${cmv:,.0f}"
+        except Exception:
+            return "No calculable"
+    cmv_anual_calculado.short_description = 'CMV Anual Calculado'
+
+    def margen_lista_calculado(self, obj):
+        if obj.tipo != 'lista_precios':
+            return "N/A - Solo aplica para tipo Lista de Precios"
+        try:
+            ventas = obj.get_venta_anual()
+            cmv = obj.get_cmv_anual()
+            if ventas > 0:
+                margen = ((ventas - cmv) / ventas) * 100
+                margen_abs = ventas - cmv
+                return f"{margen:.1f}% (${margen_abs:,.0f})"
+        except Exception:
+            pass
+        return "No calculable"
+    margen_lista_calculado.short_description = 'Margen Lista Calculado'
+
+    def get_urls(self):
+        from django.urls import path
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                '<int:pk>/importar-lista-precios/',
+                self.admin_site.admin_view(self.importar_lista_precios_view),
+                name='core_proyeccionventasconfig_importar_lista_precios'
+            ),
+            path(
+                'descargar-plantilla-csv/',
+                self.admin_site.admin_view(self.descargar_plantilla_csv_view),
+                name='core_proyeccionventasconfig_descargar_plantilla'
+            ),
+        ]
+        return custom_urls + urls
+
+    def importar_lista_precios_view(self, request, pk):
+        """Vista para importar lista de precios desde CSV/JSON."""
+        from django.shortcuts import get_object_or_404, redirect
+        from django.contrib import messages
+        from django.http import HttpResponse
+        from .import_lista_precios import importar_lista_precios_csv, importar_lista_precios_json
+
+        config = get_object_or_404(ProyeccionVentasConfig, pk=pk)
+
+        if request.method == 'POST':
+            archivo = request.FILES.get('archivo')
+            if not archivo:
+                messages.error(request, "No se seleccionó ningún archivo")
+                return redirect('dxv_admin:core_proyeccionventasconfig_change', pk)
+
+            actualizar = request.POST.get('actualizar_existentes') == 'on'
+            crear_productos = request.POST.get('crear_productos') == 'on'
+
+            # Determinar tipo de archivo
+            nombre = archivo.name.lower()
+            if nombre.endswith('.json'):
+                resultado = importar_lista_precios_json(
+                    config, archivo, actualizar, crear_productos
+                )
+            else:
+                resultado = importar_lista_precios_csv(
+                    config, archivo, actualizar, crear_productos
+                )
+
+            # Mostrar resultados
+            if resultado.exitoso:
+                msg = f"Importación completada: {resultado.productos_creados} productos creados, {resultado.productos_actualizados} actualizados"
+                if resultado.demandas_creadas:
+                    msg += f", {resultado.demandas_creadas} demandas creadas"
+                messages.success(request, msg)
+            else:
+                messages.warning(request, f"Importación con errores: {len(resultado.errores)} errores")
+
+            for error in resultado.errores[:10]:  # Mostrar solo primeros 10 errores
+                messages.error(request, error)
+
+            if len(resultado.errores) > 10:
+                messages.info(request, f"... y {len(resultado.errores) - 10} errores más")
+
+            return redirect('dxv_admin:core_proyeccionventasconfig_change', pk)
+
+        # GET: Mostrar formulario (handled by template)
+        return redirect('dxv_admin:core_proyeccionventasconfig_change', pk)
+
+    def descargar_plantilla_csv_view(self, request):
+        """Descarga plantilla CSV de ejemplo."""
+        from django.http import HttpResponse
+        from .import_lista_precios import generar_plantilla_csv
+
+        contenido = generar_plantilla_csv()
+        response = HttpResponse(contenido, content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="plantilla_lista_precios.csv"'
+        return response
+
+    @admin.action(description="Importar lista de precios (seleccione 1 configuración)")
+    def importar_lista_precios_action(self, request, queryset):
+        """Action para redirigir a la vista de importación."""
+        from django.contrib import messages
+        from django.shortcuts import redirect
+
+        if queryset.count() != 1:
+            messages.error(request, "Seleccione exactamente 1 configuración para importar")
+            return
+
+        config = queryset.first()
+        if config.tipo != 'lista_precios':
+            messages.error(request, "Solo se puede importar para configuraciones de tipo 'Lista de Precios'")
+            return
+
+        return redirect('dxv_admin:core_proyeccionventasconfig_change', config.pk)
 
 
 # Admin independientes para los modelos de detalle (por si se quieren ver/editar directamente)
@@ -2307,4 +2498,128 @@ class ProyeccionPenetracionAdmin(admin.ModelAdmin):
     def venta_proyectada_fmt(self, obj):
         return f"${obj.get_venta_anual_proyectada():,.0f}"
     venta_proyectada_fmt.short_description = 'Venta Proyectada'
+
+
+# =============================================================================
+# NUEVOS ADMINS PARA LISTA DE PRECIOS
+# =============================================================================
+
+@admin.register(ListaPreciosProducto, site=dxv_admin_site)
+class ListaPreciosProductoAdmin(admin.ModelAdmin):
+    """Admin para gestionar productos en lista de precios"""
+    list_display = (
+        'producto', 'config', 'metodo_captura',
+        'precio_compra_calc', 'precio_venta_calc', 'margen_lista_fmt', 'activo'
+    )
+    list_filter = ('config__marca', 'metodo_captura', 'activo')
+    search_fields = ('producto__nombre', 'producto__sku', 'config__marca__nombre')
+    readonly_fields = ('fecha_creacion', 'fecha_modificacion', 'precio_compra_calc', 'precio_venta_calc', 'margen_lista_fmt')
+    autocomplete_fields = ['config', 'producto']
+    inlines = [ProyeccionDemandaInline]
+
+    fieldsets = (
+        ('Configuración', {
+            'fields': ('config', 'producto', 'activo')
+        }),
+        ('Método de Captura de Precios', {
+            'fields': ('metodo_captura',),
+            'description': 'Seleccione cómo desea ingresar los precios'
+        }),
+        ('Precios Directos', {
+            'fields': ('precio_compra', 'precio_venta'),
+            'description': 'Use estos campos si seleccionó "Precios Directos"'
+        }),
+        ('Porcentajes', {
+            'fields': ('porcentaje_descuento', 'porcentaje_margen'),
+            'description': 'Use estos campos según el método de captura seleccionado'
+        }),
+        ('Precios Calculados', {
+            'fields': ('precio_compra_calc', 'precio_venta_calc', 'margen_lista_fmt'),
+            'description': 'Valores calculados según el método seleccionado'
+        }),
+        ('Metadata', {
+            'fields': ('fecha_creacion', 'fecha_modificacion'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def precio_compra_calc(self, obj):
+        try:
+            return f"${obj.get_precio_compra_calculado():,.0f}"
+        except Exception:
+            return "-"
+    precio_compra_calc.short_description = 'P. Compra (Calc)'
+
+    def precio_venta_calc(self, obj):
+        try:
+            return f"${obj.get_precio_venta_calculado():,.0f}"
+        except Exception:
+            return "-"
+    precio_venta_calc.short_description = 'P. Venta (Calc)'
+
+    def margen_lista_fmt(self, obj):
+        try:
+            margen = obj.get_margen_lista()
+            return f"{float(margen)*100:.1f}%"
+        except Exception:
+            return "-"
+    margen_lista_fmt.short_description = 'Margen Lista'
+
+
+@admin.register(ProyeccionDemandaProducto, site=dxv_admin_site)
+class ProyeccionDemandaProductoAdmin(admin.ModelAdmin):
+    """Admin para gestionar proyecciones de demanda"""
+    list_display = (
+        'lista_precio', 'metodo_demanda',
+        'total_unidades_fmt', 'total_ventas_fmt', 'total_cmv_fmt'
+    )
+    list_filter = ('metodo_demanda', 'lista_precio__config__marca')
+    search_fields = ('lista_precio__producto__nombre', 'lista_precio__producto__sku')
+    readonly_fields = ('fecha_creacion', 'fecha_modificacion')
+
+    fieldsets = (
+        ('Producto', {
+            'fields': ('lista_precio',)
+        }),
+        ('Método de Cálculo', {
+            'fields': ('metodo_demanda',)
+        }),
+        ('Ticket × Visitas × Efectividad (Método A)', {
+            'fields': (('ticket_promedio', 'visitas_mensuales', 'tasa_efectividad'),),
+            'classes': ('collapse',),
+        }),
+        ('Unidades Mensuales (Método B)', {
+            'fields': (
+                ('unidades_enero', 'unidades_febrero', 'unidades_marzo'),
+                ('unidades_abril', 'unidades_mayo', 'unidades_junio'),
+                ('unidades_julio', 'unidades_agosto', 'unidades_septiembre'),
+                ('unidades_octubre', 'unidades_noviembre', 'unidades_diciembre'),
+            ),
+        }),
+        ('Metadata', {
+            'fields': ('fecha_creacion', 'fecha_modificacion'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def total_unidades_fmt(self, obj):
+        try:
+            return f"{obj.get_total_unidades_anual():,}"
+        except Exception:
+            return "-"
+    total_unidades_fmt.short_description = 'Total Unid.'
+
+    def total_ventas_fmt(self, obj):
+        try:
+            return f"${obj.get_total_ventas_anual():,.0f}"
+        except Exception:
+            return "-"
+    total_ventas_fmt.short_description = 'Total Ventas'
+
+    def total_cmv_fmt(self, obj):
+        try:
+            return f"${obj.get_total_cmv_anual():,.0f}"
+        except Exception:
+            return "-"
+    total_cmv_fmt.short_description = 'Total CMV'
 

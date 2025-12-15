@@ -101,6 +101,11 @@ class Simulator:
         nombre = comercial.get('nombre', marca_id)
         ventas_mensuales = comercial.get('proyeccion_ventas_mensual', 0)
 
+        # Datos de CMV (para tipo lista_precios)
+        tipo_proyeccion = comercial.get('tipo_proyeccion', 'simple')
+        cmv_mensual = comercial.get('cmv_mensual', 0)
+        margen_lista_mensual = comercial.get('margen_lista_mensual', 0)
+
         # Datos logísticos
         logistica = datos_marca.get('logistica', {})
         volumen_m3 = logistica.get('proyeccion_volumen', {}).get('metros_cubicos_mensuales', 0)
@@ -122,7 +127,17 @@ class Simulator:
             pallets_mensuales=pallets
         )
 
-        logger.info(f"Marca creada: {marca.nombre} (ventas: ${ventas_mensuales:,.0f})")
+        # Aplicar datos de CMV si es tipo lista_precios
+        marca.aplicar_cmv(
+            tipo_proyeccion=tipo_proyeccion,
+            cmv_mensual=cmv_mensual,
+            margen_lista_mensual=margen_lista_mensual
+        )
+
+        if tipo_proyeccion == 'lista_precios':
+            logger.info(f"Marca creada: {marca.nombre} (ventas: ${ventas_mensuales:,.0f}, CMV: ${cmv_mensual:,.0f}, Margen Lista: ${margen_lista_mensual:,.0f})")
+        else:
+            logger.info(f"Marca creada: {marca.nombre} (ventas: ${ventas_mensuales:,.0f})")
 
         return marca
 

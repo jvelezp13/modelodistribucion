@@ -37,6 +37,11 @@ class Marca:
     ventas_netas_mensuales: float = 0.0  # Ventas después de todos los descuentos
     porcentaje_descuento_total: float = 0.0
 
+    # CMV y Margen Lista (para tipo lista_precios)
+    tipo_proyeccion: str = 'simple'  # 'simple' o 'lista_precios'
+    cmv_mensual: float = 0.0  # Costo Mercancía Vendida (precio_compra × unidades)
+    margen_lista_mensual: float = 0.0  # Ventas - CMV
+
     # Volumen (para prorrateos)
     volumen_m3_mensual: float = 0.0
     volumen_ton_mensual: float = 0.0
@@ -76,7 +81,15 @@ class Marca:
     @property
     def margen(self) -> float:
         """
-        Calcula el margen de la marca usando ventas netas.
+        Calcula el margen de la marca.
+
+        Para tipo 'simple':
+            Ingresos = Descuentos (pie factura + rebate + financiero)
+            Margen = (Ingresos - Costos) / Ventas
+
+        Para tipo 'lista_precios':
+            Ingresos = Margen Lista + Descuentos
+            Margen = (Ingresos - Costos) / Ventas
 
         Returns:
             Margen como decimal (0.0 - 1.0)
@@ -84,18 +97,23 @@ class Marca:
         ventas_base = self.ventas_mensuales
         if ventas_base == 0:
             return 0.0
-            
-        # Ingresos del distribuidor = Descuentos totales
-        # (Pie de factura + Rebate + Financiero)
-        ingresos_distribuidor = (
-            self.descuento_pie_factura + 
-            self.rebate + 
+
+        # Ingresos por descuentos (aplica a ambos tipos)
+        ingresos_descuentos = (
+            self.descuento_pie_factura +
+            self.rebate +
             self.descuento_financiero
         )
-        
-        # Utilidad = Ingresos - Costos Operativos
-        utilidad = ingresos_distribuidor - self.costo_total
-        
+
+        if self.tipo_proyeccion == 'lista_precios':
+            # Margen Bruto = Margen Lista + Ingresos por Descuentos
+            margen_bruto = self.margen_lista_mensual + ingresos_descuentos
+            # Utilidad = Margen Bruto - Costos Operativos
+            utilidad = margen_bruto - self.costo_total
+        else:
+            # Tipo simple: solo descuentos como ingresos
+            utilidad = ingresos_descuentos - self.costo_total
+
         # Margen = Utilidad / Ventas (Sell Out)
         return utilidad / ventas_base
 
@@ -192,6 +210,24 @@ class Marca:
         self.ventas_netas_mensuales = ventas_netas
         self.porcentaje_descuento_total = porcentaje_descuento_total
 
+    def aplicar_cmv(
+        self,
+        tipo_proyeccion: str,
+        cmv_mensual: float = 0.0,
+        margen_lista_mensual: float = 0.0
+    ):
+        """
+        Aplica datos de CMV para proyecciones tipo lista_precios.
+
+        Args:
+            tipo_proyeccion: 'simple' o 'lista_precios'
+            cmv_mensual: Costo Mercancía Vendida mensual
+            margen_lista_mensual: Margen Lista (Ventas - CMV)
+        """
+        self.tipo_proyeccion = tipo_proyeccion
+        self.cmv_mensual = cmv_mensual
+        self.margen_lista_mensual = margen_lista_mensual
+
     def get_rubros_por_categoria(self, categoria: str) -> List[Rubro]:
         """
         Obtiene todos los rubros de una categoría específica.
@@ -247,6 +283,9 @@ class Marca:
             'descuento_financiero': self.descuento_financiero,
             'ventas_netas_mensuales': self.ventas_netas_mensuales,
             'porcentaje_descuento_total': self.porcentaje_descuento_total,
+            'tipo_proyeccion': self.tipo_proyeccion,
+            'cmv_mensual': self.cmv_mensual,
+            'margen_lista_mensual': self.margen_lista_mensual,
             'volumen_m3_mensual': self.volumen_m3_mensual,
             'volumen_ton_mensual': self.volumen_ton_mensual,
             'pallets_mensuales': self.pallets_mensuales,

@@ -190,6 +190,9 @@ class DataLoaderDB:
 
             # Cargar proyección de ventas desde ProyeccionVentasConfig
             total_ventas_anuales = 0
+            tipo_proyeccion = 'simple'
+            cmv_anual = 0
+            margen_lista_anual = 0
             escenario = self._get_escenario()
             if escenario:
                 try:
@@ -199,6 +202,14 @@ class DataLoaderDB:
                         anio=escenario.anio
                     )
                     total_ventas_anuales = config.get_venta_anual()
+                    tipo_proyeccion = config.tipo
+
+                    # Si es tipo lista_precios, cargar CMV
+                    if tipo_proyeccion == 'lista_precios':
+                        cmv_anual = float(config.get_cmv_anual())
+                        margen_lista_anual = float(total_ventas_anuales) - cmv_anual
+                        logger.info(f"[DEBUG] {marca_id} tipo lista_precios - CMV anual: {cmv_anual:,.0f}, Margen Lista: {margen_lista_anual:,.0f}")
+
                 except ProyeccionVentasConfig.DoesNotExist:
                     logger.warning(f"No hay ProyeccionVentasConfig para {marca_id} en escenario {escenario.nombre}")
 
@@ -262,14 +273,21 @@ class DataLoaderDB:
 
             # Calcular ventas mensuales promedio
             ventas_mensuales = float(total_ventas_anuales) / 12 if total_ventas_anuales else 0
+            cmv_mensual = cmv_anual / 12 if cmv_anual else 0
+            margen_lista_mensual = margen_lista_anual / 12 if margen_lista_anual else 0
 
             return {
                 'marca_id': marca.marca_id,
                 'nombre': marca.nombre,
                 'proyeccion_ventas_mensual': ventas_mensuales,  # Campo requerido por Simulator
+                'tipo_proyeccion': tipo_proyeccion,  # 'simple' o 'lista_precios'
+                'cmv_mensual': cmv_mensual,  # CMV mensual (solo lista_precios)
+                'margen_lista_mensual': margen_lista_mensual,  # Margen Lista mensual (solo lista_precios)
                 'proyeccion_ventas': {
                     'resumen_anual': {
-                        'total_ventas_anuales': float(total_ventas_anuales)
+                        'total_ventas_anuales': float(total_ventas_anuales),
+                        'cmv_anual': cmv_anual,
+                        'margen_lista_anual': margen_lista_anual,
                     },
                     'proyeccion_mensual': {
                         # Esto podría detallarse más si se necesita

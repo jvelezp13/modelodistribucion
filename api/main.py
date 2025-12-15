@@ -173,9 +173,9 @@ def obtener_ventas_mensuales_por_marca(
     escenario_id: int,
     marcas_ids: List[str],
     operacion_ids: Optional[List[int]] = None
-) -> Dict[str, Dict[str, float]]:
+) -> Dict[str, Dict[str, Any]]:
     """
-    Obtiene el desglose mensual de ventas para cada marca.
+    Obtiene el desglose mensual de ventas, CMV y margen para cada marca.
 
     Si se especifican operacion_ids, aplica las participaciones de esas operaciones
     para obtener las ventas filtradas. Si no, devuelve las ventas totales de la marca.
@@ -186,7 +186,7 @@ def obtener_ventas_mensuales_por_marca(
         operacion_ids: Lista opcional de IDs de operaciones para filtrar
 
     Returns:
-        Dict con marca_id como key y dict de ventas mensuales como value
+        Dict con marca_id como key y dict con ventas, cmv, margen_lista y tipo como value
     """
     try:
         from core.models import Escenario, Marca, ProyeccionVentasConfig, MarcaOperacion
@@ -204,10 +204,17 @@ def obtener_ventas_mensuales_por_marca(
                     anio=escenario.anio
                 )
                 ventas_totales = config.calcular_ventas_mensuales()
+                cmv_totales = config.calcular_cmv_mensuales() if config.tipo == 'lista_precios' else {}
+
+                # Calcular margen bruto de lista (antes de descuentos)
+                margen_lista = {}
+                for mes in ventas_totales:
+                    v = float(ventas_totales.get(mes, 0))
+                    c = float(cmv_totales.get(mes, 0)) if cmv_totales else 0
+                    margen_lista[mes] = v - c
 
                 if operacion_ids:
                     # Calcular ventas aplicando participación de las operaciones seleccionadas
-                    # Sumar participaciones de las operaciones filtradas
                     marcas_op = MarcaOperacion.objects.filter(
                         marca=marca,
                         operacion__escenario=escenario,
@@ -222,16 +229,38 @@ def obtener_ventas_mensuales_por_marca(
 
                     # Aplicar participación a cada mes
                     ventas_filtradas = {}
+                    cmv_filtrado = {}
+                    margen_filtrado = {}
+
                     for mes, venta in ventas_totales.items():
                         ventas_filtradas[mes] = float(Decimal(str(venta)) * participacion_total)
+                    for mes, cmv in cmv_totales.items():
+                        cmv_filtrado[mes] = float(Decimal(str(cmv)) * participacion_total)
+                    for mes, margen in margen_lista.items():
+                        margen_filtrado[mes] = float(Decimal(str(margen)) * participacion_total)
 
-                    resultado[marca_id] = ventas_filtradas
+                    resultado[marca_id] = {
+                        'ventas': ventas_filtradas,
+                        'cmv': cmv_filtrado if cmv_totales else {},
+                        'margen_lista': margen_filtrado,
+                        'tipo_proyeccion': config.tipo,
+                    }
                 else:
                     # Sin filtro de operaciones, devolver ventas totales
-                    resultado[marca_id] = {k: float(v) for k, v in ventas_totales.items()}
+                    resultado[marca_id] = {
+                        'ventas': {k: float(v) for k, v in ventas_totales.items()},
+                        'cmv': {k: float(v) for k, v in cmv_totales.items()} if cmv_totales else {},
+                        'margen_lista': {k: float(v) for k, v in margen_lista.items()},
+                        'tipo_proyeccion': config.tipo,
+                    }
 
             except (Marca.DoesNotExist, ProyeccionVentasConfig.DoesNotExist):
-                resultado[marca_id] = {}
+                resultado[marca_id] = {
+                    'ventas': {},
+                    'cmv': {},
+                    'margen_lista': {},
+                    'tipo_proyeccion': None,
+                }
 
         return resultado
 
@@ -1139,6 +1168,103 @@ def obtener_datos_ventas(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/marcas/{marca_id}/lista-precios")
+def obtener_lista_precios(
+    marca_id: str,
+    escenario_id: Optional[int] = None
+) -> Dict[str, Any]:
+    """
+    Obtiene la lista de precios de una marca con sus proyecciones de demanda.
+
+    Args:
+        marca_id: ID de la marca
+        escenario_id: ID del escenario (opcional)
+
+    Returns:
+        Lista de productos con precios, demanda y resumen
+    """
+    try:
+        from core.models import Marca, Escenario, ProyeccionVentasConfig
+
+        marca = Marca.objects.get(marca_id=marca_id)
+
+        filter_kwargs = {'marca': marca}
+        if escenario_id:
+            escenario = Escenario.objects.get(pk=escenario_id)
+            filter_kwargs['escenario'] = escenario
+            filter_kwargs['anio'] = escenario.anio
+
+        config = ProyeccionVentasConfig.objects.filter(
+            tipo='lista_precios',
+            **filter_kwargs
+        ).first()
+
+        if not config:
+            return {
+                'tipo': None,
+                'mensaje': 'No hay configuración de lista de precios para esta marca',
+                'productos': [],
+                'resumen': None
+            }
+
+        productos = []
+        for lp in config.lista_precios.filter(activo=True).select_related('producto'):
+            prod_data = {
+                'id': lp.id,
+                'producto_id': lp.producto.id,
+                'sku': lp.producto.sku,
+                'nombre': lp.producto.nombre,
+                'metodo_captura': lp.metodo_captura,
+                'precio_compra': float(lp.get_precio_compra_calculado() or 0),
+                'precio_venta': float(lp.get_precio_venta_calculado() or 0),
+                'margen_lista': float(lp.get_margen_lista() or 0),
+            }
+
+            # Agregar demanda si existe
+            try:
+                demanda = lp.proyeccion_demanda
+                prod_data['demanda'] = {
+                    'metodo': demanda.metodo_demanda,
+                    'unidades_mensuales': demanda.get_unidades_mensuales(),
+                    'ventas_mensuales': demanda.get_ventas_mensuales(),
+                    'cmv_mensual': demanda.get_cmv_mensual(),
+                    'total_unidades': demanda.get_total_unidades_anual(),
+                    'total_ventas': demanda.get_total_ventas_anual(),
+                    'total_cmv': demanda.get_total_cmv_anual(),
+                }
+            except:
+                prod_data['demanda'] = None
+
+            productos.append(prod_data)
+
+        # Calcular resumen
+        venta_anual = config.get_venta_anual()
+        cmv_anual = config.get_cmv_anual()
+        margen_prom = ((venta_anual - cmv_anual) / venta_anual * 100) if venta_anual > 0 else 0
+
+        return {
+            'tipo': 'lista_precios',
+            'config_id': config.id,
+            'marca_id': marca.marca_id,
+            'marca_nombre': marca.nombre,
+            'productos': productos,
+            'resumen': {
+                'total_productos': len(productos),
+                'venta_anual': venta_anual,
+                'cmv_anual': cmv_anual,
+                'margen_lista_promedio': margen_prom,
+            }
+        }
+
+    except Marca.DoesNotExist:
+        raise HTTPException(status_code=404, detail=f"Marca no encontrada: {marca_id}")
+    except Escenario.DoesNotExist:
+        raise HTTPException(status_code=404, detail=f"Escenario no encontrado: {escenario_id}")
+    except Exception as e:
+        logger.error(f"Error obteniendo lista de precios: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/ventas/proyectadas")
 def obtener_ventas_proyectadas(
     escenario_id: int,
@@ -1182,23 +1308,33 @@ def obtener_ventas_proyectadas(
                 ventas_mensuales = config.calcular_ventas_mensuales()
                 total_anual = sum(ventas_mensuales.values())
 
+                # Obtener CMV si es tipo lista_precios
+                cmv_mensuales = config.calcular_cmv_mensuales() if config.tipo == 'lista_precios' else {}
+                cmv_anual = sum(cmv_mensuales.values()) if cmv_mensuales else 0
+
                 resultado['marcas'].append({
                     'marca_id': marca.marca_id,
                     'marca_nombre': marca.nombre,
-                    'metodo': config.metodo,
-                    'metodo_display': config.get_metodo_display(),
+                    'tipo': config.tipo,
+                    'tipo_display': config.get_tipo_display(),
                     'ventas_mensuales': {k: float(v) for k, v in ventas_mensuales.items()},
+                    'cmv_mensuales': {k: float(v) for k, v in cmv_mensuales.items()} if cmv_mensuales else {},
                     'total_anual': float(total_anual),
+                    'cmv_anual': float(cmv_anual),
+                    'margen_lista': float(total_anual - cmv_anual),
                     'promedio_mensual': float(total_anual / 12) if total_anual > 0 else 0
                 })
             except ProyeccionVentasConfig.DoesNotExist:
                 resultado['marcas'].append({
                     'marca_id': marca.marca_id,
                     'marca_nombre': marca.nombre,
-                    'metodo': None,
-                    'metodo_display': 'Sin configurar',
+                    'tipo': None,
+                    'tipo_display': 'Sin configurar',
                     'ventas_mensuales': {},
+                    'cmv_mensuales': {},
                     'total_anual': 0,
+                    'cmv_anual': 0,
+                    'margen_lista': 0,
                     'promedio_mensual': 0
                 })
 
