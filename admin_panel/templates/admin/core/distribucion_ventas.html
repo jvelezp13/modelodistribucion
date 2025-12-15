@@ -1,5 +1,5 @@
 {% extends "admin/base_site.html" %}
-{% load humanize l10n %}
+{% load humanize l10n currency_filters %}
 
 {% block title %}Distribución de Ventas{% endblock %}
 
@@ -321,7 +321,7 @@
     <div class="info-box">
         <div class="info-item">
             <span class="label">Venta Mensual Total (Marca)</span>
-            <span class="value">${{ venta_total_marca|floatformat:0|intcomma }}</span>
+            <span class="value">{{ venta_total_marca|peso_colombiano }}</span>
         </div>
         {% if marcas_operacion %}
         <div class="info-item">
@@ -386,7 +386,7 @@
                         %
                     </td>
                     <td class="venta-calculada">
-                        $<span class="venta-valor">{{ mo.venta_proyectada|floatformat:0|intcomma }}</span>
+                        <span class="venta-valor">{{ mo.venta_proyectada|peso_colombiano }}</span>
                     </td>
                 </tr>
                 {% endfor %}
@@ -459,7 +459,7 @@
                         %
                     </td>
                     <td class="venta-calculada">
-                        $<span class="venta-valor">{{ zona.venta_proyectada|floatformat:0|intcomma }}</span>
+                        <span class="venta-valor">{{ zona.venta_proyectada|peso_colombiano }}</span>
                     </td>
                 </tr>
                 {% endfor %}
@@ -473,7 +473,7 @@
                         </span>
                     </td>
                     <td class="venta-calculada">
-                        $<span id="total-venta-zonas">{{ total_venta_zonas|floatformat:0|intcomma }}</span>
+                        <span id="total-venta-zonas">{{ total_venta_zonas|peso_colombiano }}</span>
                     </td>
                 </tr>
             </tfoot>
@@ -518,7 +518,7 @@
                     </span>
                 </div>
                 <div style="font-size: 13px;">
-                    Venta Zona: <strong>${{ zona_data.zona.venta_proyectada|floatformat:0|intcomma }}</strong>
+                    Venta Zona: <strong>{{ zona_data.zona.venta_proyectada|peso_colombiano }}</strong>
                 </div>
             </div>
 
@@ -548,7 +548,7 @@
                             %
                         </td>
                         <td class="venta-calculada">
-                            $<span class="venta-valor">{{ zm.venta_proyectada|floatformat:0|intcomma }}</span>
+                            <span class="venta-valor">{{ zm.venta_proyectada|peso_colombiano }}</span>
                         </td>
                     </tr>
                     {% endfor %}
@@ -562,7 +562,7 @@
                             </span>
                         </td>
                         <td class="venta-calculada">
-                            $<span id="total-venta-zona-{{ zona_data.zona.id }}">{{ zona_data.total_venta|floatformat:0|intcomma }}</span>
+                            <span id="total-venta-zona-{{ zona_data.zona.id }}">{{ zona_data.total_venta|peso_colombiano }}</span>
                         </td>
                     </tr>
                 </tfoot>
@@ -583,7 +583,7 @@
 
         <div style="margin-top: 20px; padding: 15px; background: #e8f4f8; border-radius: 8px;">
             <strong>Total General Zonas-Municipios:</strong>
-            $<span id="total-general-zonas-municipios">{{ total_venta_zonas_municipios|floatformat:0|intcomma }}</span>
+            <span id="total-general-zonas-municipios">{{ total_venta_zonas_municipios|peso_colombiano }}</span>
         </div>
 
         {% else %}
@@ -652,9 +652,12 @@
             })(tabs[i]);
         }
 
-        // Formatear numero con separadores de miles
+        // Formatear numero como peso colombiano: $1.234.567
         function formatNumber(num) {
-            return Math.round(num).toLocaleString('es-CO');
+            var rounded = Math.round(num);
+            // Formatear con puntos como separador de miles (formato colombiano)
+            var formatted = rounded.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+            return "$" + formatted;
         }
 
         // Actualizar clase del total-box segun el porcentaje
