@@ -9,26 +9,29 @@
     function formatCurrency(value) {
         if (!value || value === '0' || value === '0.00') return '';
 
-        // Remover cualquier formato existente
-        var num = parseFloat(value.toString().replace(/\./g, '').replace(',', '.'));
+        var strValue = value.toString().trim();
+        var num;
+
+        // Detectar formato de entrada
+        // Si tiene punto decimal (ej: 50000000.00), es formato con punto decimal
+        // Si tiene coma (ej: 50.000.000,00), es formato colombiano
+        if (strValue.indexOf(',') > -1) {
+            // Formato colombiano: remover puntos de miles, cambiar coma por punto
+            num = parseFloat(strValue.replace(/\./g, '').replace(',', '.'));
+        } else {
+            // Formato con punto decimal (viene de Django): usar directamente
+            num = parseFloat(strValue);
+        }
+
         if (isNaN(num)) return value;
 
-        // Redondear a 2 decimales
-        num = Math.round(num * 100) / 100;
+        // Redondear a entero (sin decimales para moneda)
+        num = Math.round(num);
 
-        // Separar parte entera y decimal
-        var parts = num.toFixed(2).split('.');
-        var intPart = parts[0];
-        var decPart = parts[1];
+        // Formatear con puntos como separador de miles
+        var formatted = num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 
-        // Agregar puntos como separador de miles
-        intPart = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-
-        // Si los decimales son 00, no mostrarlos
-        if (decPart === '00') {
-            return intPart;
-        }
-        return intPart + ',' + decPart;
+        return formatted;
     }
 
     // Convertir valor formateado a número para el input
