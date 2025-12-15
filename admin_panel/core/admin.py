@@ -2042,7 +2042,6 @@ class ListaPreciosProductoInline(admin.TabularInline):
         'activo'
     )
     autocomplete_fields = ['producto']
-    classes = ['collapse']  # Colapsado por defecto si no es el tipo correcto
 
 
 @admin.register(ProyeccionVentasConfig, site=dxv_admin_site)
