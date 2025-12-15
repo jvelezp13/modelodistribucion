@@ -1904,24 +1904,6 @@ class RecorridoMunicipioAdmin(admin.ModelAdmin):
 # MÓDULO DE PROYECCIÓN DE VENTAS
 # =============================================================================
 
-@admin.register(CanalVenta, site=dxv_admin_site)
-class CanalVentaAdmin(admin.ModelAdmin):
-    list_display = ('nombre', 'activo', 'fecha_modificacion')
-    list_filter = ('activo',)
-    search_fields = ('nombre', 'descripcion')
-    readonly_fields = ('fecha_creacion', 'fecha_modificacion')
-
-    fieldsets = (
-        (None, {
-            'fields': ('nombre', 'descripcion', 'activo')
-        }),
-        ('Metadata', {
-            'fields': ('fecha_creacion', 'fecha_modificacion'),
-            'classes': ('collapse',)
-        }),
-    )
-
-
 @admin.register(CategoriaProducto, site=dxv_admin_site)
 class CategoriaProductoAdmin(admin.ModelAdmin):
     list_display = ('nombre', 'marca', 'precio_promedio_fmt', 'activo')
@@ -2016,36 +1998,6 @@ class PlantillaEstacionalAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmi
         total = obj.total_porcentaje()
         return f"{total:.2f}%"
     total_porcentaje_fmt.short_description = 'Total %'
-
-
-@admin.register(DefinicionMercado, site=dxv_admin_site)
-class DefinicionMercadoAdmin(admin.ModelAdmin):
-    list_display = ('nombre', 'tipo', 'tamano_mercado_fmt', 'crecimiento_anual', 'activo')
-    list_filter = ('tipo', 'activo')
-    search_fields = ('nombre', 'descripcion')
-    readonly_fields = ('fecha_creacion', 'fecha_modificacion')
-
-    fieldsets = (
-        ('Información General', {
-            'fields': ('nombre', 'tipo', 'descripcion', 'activo')
-        }),
-        ('Tamaño del Mercado', {
-            'fields': ('tamano_mercado', 'crecimiento_anual')
-        }),
-        ('Para Tipo "Clientes"', {
-            'fields': ('numero_clientes_potenciales', 'ticket_promedio'),
-            'classes': ('collapse',),
-            'description': 'Solo aplica si el tipo de mercado es "Base de Clientes"'
-        }),
-        ('Metadata', {
-            'fields': ('fecha_creacion', 'fecha_modificacion'),
-            'classes': ('collapse',)
-        }),
-    )
-
-    def tamano_mercado_fmt(self, obj):
-        return f"${obj.tamano_mercado:,.0f}"
-    tamano_mercado_fmt.short_description = 'Tamaño Mercado'
 
 
 # Inlines para ProyeccionVentasConfig

@@ -56,13 +56,13 @@ class DxVAdminSite(admin.AdminSite):
         'Ventas y Proyecciones': [
             '_distribucion_ventas',  # Link personalizado
             'ProyeccionVentasConfig',
+            'ListaPreciosProducto',  # Para tipo Lista de Precios
+            'ProyeccionDemandaProducto',  # Demanda por producto
             'PlantillaEstacional',
         ],
-        'Catálogos de Ventas': [
-            'CanalVenta',
-            'CategoriaProducto',
+        'Catálogo de Productos': [
             'Producto',
-            'DefinicionMercado',
+            'CategoriaProducto',
         ],
         'Comercial': [
             'PersonalComercial',
