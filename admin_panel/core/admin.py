@@ -22,11 +22,8 @@ from .models import (
     # Módulo de Rutas Logísticas
     RutaLogistica, RutaMunicipio,
     # Módulo de Proyección de Ventas
-    CanalVenta, CategoriaProducto, Producto, PlantillaEstacional,
-    DefinicionMercado, ProyeccionVentasConfig, ProyeccionManual,
-    ProyeccionCrecimiento, ProyeccionProducto, ProyeccionCanal,
-    ProyeccionPenetracion,
-    # Nuevos modelos de Lista de Precios
+    CanalVenta, CategoriaProducto, Producto,
+    ProyeccionVentasConfig, ProyeccionManual,
     ListaPreciosProducto, ProyeccionDemandaProducto
 )
 from .admin_site import dxv_admin_site
@@ -1926,58 +1923,6 @@ class ProductoAdmin(admin.ModelAdmin):
     precio_unitario_fmt.short_description = 'Precio Unitario'
 
 
-class PlantillaEstacionalForm(forms.ModelForm):
-    """Form que valida que los porcentajes sumen 100%"""
-    class Meta:
-        model = PlantillaEstacional
-        fields = '__all__'
-
-    def clean(self):
-        cleaned_data = super().clean()
-        meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-                 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
-        total = sum(cleaned_data.get(mes, 0) or 0 for mes in meses)
-        if abs(float(total) - 100) > 0.5:
-            raise forms.ValidationError(
-                f"Los porcentajes deben sumar 100%. Suma actual: {total:.2f}%"
-            )
-        return cleaned_data
-
-
-@admin.register(PlantillaEstacional, site=dxv_admin_site)
-class PlantillaEstacionalAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin):
-    form = PlantillaEstacionalForm
-    list_display = ('nombre', 'marca', 'total_porcentaje_fmt')
-    list_filter = ('marca',)
-    search_fields = ('nombre', 'descripcion')
-    readonly_fields = ('fecha_creacion', 'fecha_modificacion')
-    actions = ['duplicar_registros']
-
-    fieldsets = (
-        ('Información General', {
-            'fields': ('nombre', 'descripcion', 'marca')
-        }),
-        ('Distribución Mensual (%)', {
-            'fields': (
-                ('enero', 'febrero', 'marzo'),
-                ('abril', 'mayo', 'junio'),
-                ('julio', 'agosto', 'septiembre'),
-                ('octubre', 'noviembre', 'diciembre'),
-            ),
-            'description': 'Los porcentajes deben sumar 100%'
-        }),
-        ('Metadata', {
-            'fields': ('fecha_creacion', 'fecha_modificacion'),
-            'classes': ('collapse',)
-        }),
-    )
-
-    def total_porcentaje_fmt(self, obj):
-        total = obj.total_porcentaje()
-        return f"{total:.2f}%"
-    total_porcentaje_fmt.short_description = 'Total %'
-
-
 # Inlines para ProyeccionVentasConfig
 class ProyeccionManualInline(admin.StackedInline):
     """Inline para ingresar valores de venta directos por mes (Tipo Simple)"""
@@ -2060,11 +2005,6 @@ class ProyeccionVentasConfigAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelA
                 <strong>Tipo Simple:</strong> Ingrese valores de venta directos por mes (abajo en "Proyecci\u00f3n Manual")<br>
                 <strong>Tipo Lista de Precios:</strong> Defina productos con precio compra/venta y proyecci\u00f3n de demanda (abajo en "Lista de Precios")
             '''
-        }),
-        ('Estacionalidad (Solo Tipo Simple)', {
-            'fields': ('plantilla_estacional',),
-            'classes': ('collapse',),
-            'description': 'Opcional: Seleccione una plantilla para distribuir las ventas mensualmente'
         }),
         ('Resultados Calculados', {
             'fields': ('venta_anual_calculada', 'cmv_anual_calculado', 'margen_lista_calculado'),

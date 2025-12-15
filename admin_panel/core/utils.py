@@ -203,12 +203,6 @@ CAMPOS_MONETARIOS_POR_MODELO = {
         'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
         'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
     },
-    'ProyeccionCrecimiento': {'ventas_base_anual'},
-    'ProyeccionProducto': {'precio_unitario'},
-    'ProyeccionCanal': {
-        'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-        'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
-    },
 }
 
 

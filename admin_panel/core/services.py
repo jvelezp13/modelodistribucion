@@ -12,9 +12,8 @@ from .models import (
     Escenario, ParametrosMacro, PersonalComercial, PersonalLogistico,
     PersonalAdministrativo, Vehiculo, GastoComercial, GastoLogistico,
     GastoAdministrativo, Zona, ZonaMunicipio, RutaLogistica, RutaMunicipio,
-    ProyeccionVentasConfig, ProyeccionManual, ProyeccionCrecimiento,
-    ProyeccionProducto, ProyeccionCanal, ProyeccionPenetracion,
-    Marca, FactorPrestacional
+    ProyeccionVentasConfig, ProyeccionManual, ListaPreciosProducto,
+    ProyeccionDemandaProducto, Marca, FactorPrestacional
 )
 from .utils import copiar_instancia, get_campos_monetarios
 
@@ -276,8 +275,8 @@ class EscenarioService:
                 sufijo_nombre=""
             )
 
-            # Copiar datos según el método
-            if config.metodo == 'manual':
+            # Copiar datos según el tipo
+            if config.tipo == 'simple':
                 try:
                     manual = ProyeccionManual.objects.get(config=config)
                     copiar_instancia(
@@ -290,48 +289,23 @@ class EscenarioService:
                 except ProyeccionManual.DoesNotExist:
                     pass
 
-            elif config.metodo == 'crecimiento':
-                try:
-                    crec = ProyeccionCrecimiento.objects.get(config=config)
-                    copiar_instancia(
-                        crec,
-                        override={'config': nueva_config},
-                        campos_monetarios=get_campos_monetarios(crec),
-                        factor_incremento=incremento_ventas,
-                        sufijo_nombre=""
-                    )
-                except ProyeccionCrecimiento.DoesNotExist:
-                    pass
-
-            elif config.metodo == 'precio_unidades':
-                for prod in ProyeccionProducto.objects.filter(config=config):
-                    copiar_instancia(
+            elif config.tipo == 'lista_precios':
+                # Copiar productos de lista de precios y sus demandas
+                for prod in ListaPreciosProducto.objects.filter(config=config):
+                    nuevo_prod = copiar_instancia(
                         prod,
                         override={'config': nueva_config},
-                        campos_monetarios=get_campos_monetarios(prod),
-                        factor_incremento=incremento_ventas,
                         sufijo_nombre=""
                     )
-
-            elif config.metodo == 'canal':
-                for canal in ProyeccionCanal.objects.filter(config=config):
-                    copiar_instancia(
-                        canal,
-                        override={'config': nueva_config},
-                        campos_monetarios=get_campos_monetarios(canal),
-                        factor_incremento=incremento_ventas,
-                        sufijo_nombre=""
-                    )
-
-            elif config.metodo == 'penetracion':
-                try:
-                    pen = ProyeccionPenetracion.objects.get(config=config)
-                    copiar_instancia(
-                        pen,
-                        override={'config': nueva_config},
-                        sufijo_nombre=""
-                    )
-                except ProyeccionPenetracion.DoesNotExist:
-                    pass
+                    # Copiar la demanda asociada
+                    try:
+                        demanda = prod.proyeccion_demanda
+                        copiar_instancia(
+                            demanda,
+                            override={'producto': nuevo_prod},
+                            sufijo_nombre=""
+                        )
+                    except ProyeccionDemandaProducto.DoesNotExist:
+                        pass
 
 
