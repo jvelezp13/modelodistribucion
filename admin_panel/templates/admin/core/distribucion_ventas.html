@@ -320,12 +320,28 @@
     <!-- Info Box con contexto de ventas -->
     <div class="info-box">
         <div class="info-item">
-            <span class="label">Venta Mensual Total (Marca)</span>
+            <span class="label">Venta Mensual Promedio</span>
             <span class="value">{{ venta_total_marca|peso_colombiano }}</span>
+        </div>
+        <div class="info-item">
+            <span class="label">Venta Anual Total</span>
+            <span class="value">{{ venta_anual|peso_colombiano }}</span>
+        </div>
+        <div class="info-item">
+            <span class="label">Fuente</span>
+            <span class="value" style="font-size: 14px;">
+                {% if fuente_proyeccion == 'manual' %}
+                    <span style="color: #1976d2;">Valores Manuales</span>
+                {% elif fuente_proyeccion == 'tipologias' %}
+                    <span style="color: #388e3c;">Tipologías ({{ tipologias_detalle|length }})</span>
+                {% else %}
+                    <span style="color: #999;">Sin configurar</span>
+                {% endif %}
+            </span>
         </div>
         {% if marcas_operacion %}
         <div class="info-item">
-            <span class="label">Operaciones Configuradas</span>
+            <span class="label">Operaciones</span>
             <span class="value">{{ marcas_operacion|length }}</span>
         </div>
         {% endif %}
@@ -334,6 +350,101 @@
             <span class="value">{{ zonas|length }}</span>
         </div>
     </div>
+
+    <!-- Detalle de Proyección Mensual -->
+    {% if ventas_mensuales %}
+    <div style="background: #fff; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 20px; overflow: hidden;">
+        <div style="background: #f5f5f5; padding: 12px 15px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center;">
+            <strong style="color: #333;">Proyección Mensual {{ escenario_seleccionado.anio }}</strong>
+            <span style="font-size: 12px; color: {% if fuente_proyeccion == 'manual' %}#1976d2{% else %}#388e3c{% endif %};">
+                {% if fuente_proyeccion == 'manual' %}
+                    Valores ingresados manualmente
+                {% elif fuente_proyeccion == 'tipologias' %}
+                    Calculado desde {{ tipologias_detalle|length }} tipología(s)
+                {% endif %}
+            </span>
+        </div>
+
+        <!-- Tabla de meses -->
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead>
+                    <tr style="background: #fafafa;">
+                        <th style="padding: 10px; text-align: center; border-bottom: 1px solid #ddd;">Ene</th>
+                        <th style="padding: 10px; text-align: center; border-bottom: 1px solid #ddd;">Feb</th>
+                        <th style="padding: 10px; text-align: center; border-bottom: 1px solid #ddd;">Mar</th>
+                        <th style="padding: 10px; text-align: center; border-bottom: 1px solid #ddd;">Abr</th>
+                        <th style="padding: 10px; text-align: center; border-bottom: 1px solid #ddd;">May</th>
+                        <th style="padding: 10px; text-align: center; border-bottom: 1px solid #ddd;">Jun</th>
+                        <th style="padding: 10px; text-align: center; border-bottom: 1px solid #ddd;">Jul</th>
+                        <th style="padding: 10px; text-align: center; border-bottom: 1px solid #ddd;">Ago</th>
+                        <th style="padding: 10px; text-align: center; border-bottom: 1px solid #ddd;">Sep</th>
+                        <th style="padding: 10px; text-align: center; border-bottom: 1px solid #ddd;">Oct</th>
+                        <th style="padding: 10px; text-align: center; border-bottom: 1px solid #ddd;">Nov</th>
+                        <th style="padding: 10px; text-align: center; border-bottom: 1px solid #ddd;">Dic</th>
+                        <th style="padding: 10px; text-align: center; border-bottom: 1px solid #ddd; background: #e3f2fd; font-weight: bold;">TOTAL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="padding: 10px; text-align: right; border-bottom: 1px solid #eee;">{{ ventas_mensuales.enero|peso_colombiano }}</td>
+                        <td style="padding: 10px; text-align: right; border-bottom: 1px solid #eee;">{{ ventas_mensuales.febrero|peso_colombiano }}</td>
+                        <td style="padding: 10px; text-align: right; border-bottom: 1px solid #eee;">{{ ventas_mensuales.marzo|peso_colombiano }}</td>
+                        <td style="padding: 10px; text-align: right; border-bottom: 1px solid #eee;">{{ ventas_mensuales.abril|peso_colombiano }}</td>
+                        <td style="padding: 10px; text-align: right; border-bottom: 1px solid #eee;">{{ ventas_mensuales.mayo|peso_colombiano }}</td>
+                        <td style="padding: 10px; text-align: right; border-bottom: 1px solid #eee;">{{ ventas_mensuales.junio|peso_colombiano }}</td>
+                        <td style="padding: 10px; text-align: right; border-bottom: 1px solid #eee;">{{ ventas_mensuales.julio|peso_colombiano }}</td>
+                        <td style="padding: 10px; text-align: right; border-bottom: 1px solid #eee;">{{ ventas_mensuales.agosto|peso_colombiano }}</td>
+                        <td style="padding: 10px; text-align: right; border-bottom: 1px solid #eee;">{{ ventas_mensuales.septiembre|peso_colombiano }}</td>
+                        <td style="padding: 10px; text-align: right; border-bottom: 1px solid #eee;">{{ ventas_mensuales.octubre|peso_colombiano }}</td>
+                        <td style="padding: 10px; text-align: right; border-bottom: 1px solid #eee;">{{ ventas_mensuales.noviembre|peso_colombiano }}</td>
+                        <td style="padding: 10px; text-align: right; border-bottom: 1px solid #eee;">{{ ventas_mensuales.diciembre|peso_colombiano }}</td>
+                        <td style="padding: 10px; text-align: right; border-bottom: 1px solid #eee; background: #e3f2fd; font-weight: bold;">{{ venta_anual|peso_colombiano }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Detalle por Tipología (si aplica) -->
+        {% if fuente_proyeccion == 'tipologias' and tipologias_detalle %}
+        <div style="padding: 15px; border-top: 1px solid #ddd; background: #fafafa;">
+            <div style="font-size: 12px; color: #666; margin-bottom: 10px; font-weight: bold;">
+                Composición por Tipología:
+            </div>
+            <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                <thead>
+                    <tr style="background: #f0f0f0;">
+                        <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Tipología</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd;">Clientes</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd;">Visitas</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd;">Efectiv.</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd;">Ticket</th>
+                        <th style="padding: 8px; text-align: center; border: 1px solid #ddd;">Crec. Clientes</th>
+                        <th style="padding: 8px; text-align: center; border: 1px solid #ddd;">Crec. Ticket</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd;">Venta Mes 1</th>
+                        <th style="padding: 8px; text-align: right; border: 1px solid #ddd; background: #e8f5e9; font-weight: bold;">Venta Anual</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tip in tipologias_detalle %}
+                    <tr>
+                        <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">{{ tip.nombre }}</td>
+                        <td style="padding: 8px; text-align: right; border: 1px solid #ddd;">{{ tip.clientes|intcomma }}</td>
+                        <td style="padding: 8px; text-align: right; border: 1px solid #ddd;">{{ tip.visitas }}</td>
+                        <td style="padding: 8px; text-align: right; border: 1px solid #ddd;">{{ tip.efectividad }}%</td>
+                        <td style="padding: 8px; text-align: right; border: 1px solid #ddd;">{{ tip.ticket|peso_colombiano }}</td>
+                        <td style="padding: 8px; text-align: center; border: 1px solid #ddd;">{% if tip.crec_clientes %}{{ tip.crec_clientes }}%{% else %}-{% endif %}</td>
+                        <td style="padding: 8px; text-align: center; border: 1px solid #ddd;">{% if tip.crec_ticket %}{{ tip.crec_ticket }}%{% else %}-{% endif %}</td>
+                        <td style="padding: 8px; text-align: right; border: 1px solid #ddd;">{{ tip.venta_mes1|peso_colombiano }}</td>
+                        <td style="padding: 8px; text-align: right; border: 1px solid #ddd; background: #e8f5e9; font-weight: bold;">{{ tip.venta_anual|peso_colombiano }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
 
     <!-- Tabs -->
     <div class="tabs">

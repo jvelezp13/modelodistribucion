@@ -11,7 +11,8 @@ import json
 
 from .models import (
     Marca, Escenario, Zona, ZonaMunicipio, Municipio,
-    Operacion, MarcaOperacion, ProyeccionVentasConfig
+    Operacion, MarcaOperacion, ProyeccionVentasConfig,
+    TipologiaProyeccion, ProyeccionManual
 )
 
 
@@ -53,6 +54,12 @@ def distribucion_ventas(request):
     total_venta_zonas = Decimal('0')
     total_venta_zonas_municipios = Decimal('0')
 
+    # Datos de proyección mensual
+    ventas_mensuales = {}
+    fuente_proyeccion = None
+    tipologias_detalle = []
+    venta_anual = Decimal('0')
+
     if marca_id and escenario_id:
         try:
             marca_seleccionada = Marca.objects.get(pk=marca_id)
@@ -74,6 +81,36 @@ def distribucion_ventas(request):
                 ventas_mensuales = config.calcular_ventas_mensuales()
                 if ventas_mensuales:
                     venta_total_marca = sum(ventas_mensuales.values()) / len(ventas_mensuales)
+                    venta_anual = sum(ventas_mensuales.values())
+
+                # Determinar fuente de la proyección
+                try:
+                    manual = config.proyeccion_manual
+                    ventas_manual = manual.get_ventas_mensuales()
+                    if sum(ventas_manual.values()) > 0:
+                        fuente_proyeccion = 'manual'
+                    else:
+                        fuente_proyeccion = 'tipologias'
+                except ProyeccionManual.DoesNotExist:
+                    fuente_proyeccion = 'tipologias'
+
+                # Si es desde tipologías, obtener el detalle
+                if fuente_proyeccion == 'tipologias':
+                    for tip in config.tipologias.all():
+                        tipologias_detalle.append({
+                            'nombre': tip.nombre,
+                            'clientes': tip.numero_clientes,
+                            'visitas': tip.visitas_mes,
+                            'efectividad': tip.efectividad,
+                            'ticket': tip.ticket_promedio,
+                            'crec_clientes': tip.crecimiento_clientes,
+                            'crec_efectividad': tip.crecimiento_efectividad,
+                            'crec_ticket': tip.crecimiento_ticket,
+                            'venta_mes1': tip.get_venta_mensual_inicial(),
+                            'venta_anual': tip.get_venta_anual(),
+                            'ventas_mensuales': tip.get_ventas_mensuales(),
+                        })
+
             except ProyeccionVentasConfig.DoesNotExist:
                 pass
 
@@ -145,6 +182,11 @@ def distribucion_ventas(request):
         'total_participacion_zonas': total_participacion_zonas,
         'total_venta_zonas': total_venta_zonas,
         'total_venta_zonas_municipios': total_venta_zonas_municipios,
+        # Nuevos datos de proyección mensual
+        'ventas_mensuales': ventas_mensuales,
+        'fuente_proyeccion': fuente_proyeccion,
+        'tipologias_detalle': tipologias_detalle,
+        'venta_anual': venta_anual,
     })
 
     return render(request, 'admin/core/distribucion_ventas.html', context)
