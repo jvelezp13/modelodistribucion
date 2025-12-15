@@ -2979,32 +2979,37 @@ class ProyeccionVentasConfig(models.Model):
         return f"{self.marca.nombre} - {self.escenario.nombre} - {self.anio}"
 
     def get_base_tipologias_mensual(self):
-        """Suma de ventas mensuales de todas las tipologías"""
+        """Suma de ventas mensuales iniciales (mes 1) de todas las tipologías"""
         from decimal import Decimal
         total = Decimal('0')
         for tipologia in self.tipologias.all():
-            total += tipologia.get_venta_mensual()
+            total += tipologia.get_venta_mensual_inicial()
         return total
 
     def calcular_ventas_mensuales(self):
         """
         Calcula ventas mensuales:
-        - Si hay ProyeccionManual, usa esos valores (para estacionalidad)
-        - Si no, usa base de tipologías (uniforme por mes)
+        - Si hay ProyeccionManual, usa esos valores (override total)
+        - Si no, suma las ventas mensuales de todas las tipologías (con crecimiento)
         """
         meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
                  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
 
-        # Si hay valores manuales, usarlos
+        # Si hay valores manuales, usarlos (override)
         try:
             manual = self.proyeccion_manual
             return manual.get_ventas_mensuales()
         except ProyeccionManual.DoesNotExist:
             pass
 
-        # Si no, usar base de tipologías uniforme
-        base_mensual = float(self.get_base_tipologias_mensual())
-        return {mes: base_mensual for mes in meses}
+        # Sumar ventas mensuales de todas las tipologías (con crecimiento)
+        resultado = {mes: 0.0 for mes in meses}
+        for tipologia in self.tipologias.all():
+            ventas_tip = tipologia.get_ventas_mensuales()
+            for mes in meses:
+                resultado[mes] += ventas_tip[mes]
+
+        return resultado
 
     def get_venta_anual(self):
         """Retorna el total anual proyectado"""
@@ -3111,6 +3116,29 @@ class TipologiaProyeccion(models.Model):
         help_text="$ promedio por venta"
     )
 
+    # Factores de crecimiento mensual (%)
+    crecimiento_clientes = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        verbose_name="Crec. Clientes %",
+        help_text="% crecimiento mensual en clientes"
+    )
+    crecimiento_efectividad = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        verbose_name="Crec. Efectividad %",
+        help_text="% crecimiento mensual en efectividad"
+    )
+    crecimiento_ticket = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        verbose_name="Crec. Ticket %",
+        help_text="% crecimiento mensual en ticket"
+    )
+
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_modificacion = models.DateTimeField(auto_now=True)
 
@@ -3123,14 +3151,40 @@ class TipologiaProyeccion(models.Model):
     def __str__(self):
         return f"{self.nombre} ({self.config})"
 
-    def get_venta_mensual(self):
-        """Calcula venta mensual = clientes × visitas × efectividad × ticket"""
+    def get_venta_mensual_inicial(self):
+        """Calcula venta del mes 1 (valores base sin crecimiento)"""
         from decimal import Decimal
         return (Decimal(self.numero_clientes) *
                 Decimal(self.visitas_mes) *
                 (Decimal(str(self.efectividad)) / 100) *
                 self.ticket_promedio)
 
+    def get_ventas_mensuales(self):
+        """Calcula ventas para cada mes con crecimiento compuesto"""
+        from decimal import Decimal
+
+        meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+
+        resultado = {}
+        for i, mes in enumerate(meses):
+            # Crecimiento compuesto: factor = (1 + %)^mes
+            factor_clientes = Decimal(str((1 + float(self.crecimiento_clientes)/100) ** i))
+            factor_efectividad = Decimal(str((1 + float(self.crecimiento_efectividad)/100) ** i))
+            factor_ticket = Decimal(str((1 + float(self.crecimiento_ticket)/100) ** i))
+
+            clientes_mes = Decimal(self.numero_clientes) * factor_clientes
+            efectividad_mes = self.efectividad * factor_efectividad
+            ticket_mes = self.ticket_promedio * factor_ticket
+
+            venta_mes = (clientes_mes *
+                        Decimal(self.visitas_mes) *
+                        (efectividad_mes / 100) *
+                        ticket_mes)
+            resultado[mes] = float(venta_mes)
+
+        return resultado
+
     def get_venta_anual(self):
-        """Venta anual = mensual × 12"""
-        return self.get_venta_mensual() * 12
+        """Suma de los 12 meses con crecimiento"""
+        return sum(self.get_ventas_mensuales().values())

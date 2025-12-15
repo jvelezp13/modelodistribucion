@@ -1951,12 +1951,17 @@ class ProyeccionManualInline(admin.StackedInline):
 class TipologiaProyeccionInline(admin.TabularInline):
     """Inline para tipologías de cliente (Tiendas, Minimercados, etc.)"""
     model = TipologiaProyeccion
-    extra = 0
+    extra = 1
     verbose_name = "Tipología de Cliente"
     verbose_name_plural = "Tipologías de Cliente"
     fields = (
-        'nombre', 'numero_clientes', 'visitas_mes', 'efectividad',
-        'ticket_promedio', 'venta_mensual_fmt', 'venta_anual_fmt'
+        'nombre',
+        # Valores iniciales (mes 1)
+        'numero_clientes', 'visitas_mes', 'efectividad', 'ticket_promedio',
+        # Crecimiento mensual
+        'crecimiento_clientes', 'crecimiento_efectividad', 'crecimiento_ticket',
+        # Calculados
+        'venta_mensual_fmt', 'venta_anual_fmt'
     )
     readonly_fields = ('venta_mensual_fmt', 'venta_anual_fmt')
 
@@ -1964,11 +1969,11 @@ class TipologiaProyeccionInline(admin.TabularInline):
         if not obj.pk:
             return "-"
         try:
-            total = obj.get_venta_mensual()
+            total = obj.get_venta_mensual_inicial()
             return f"${total:,.0f}"
         except:
             return "-"
-    venta_mensual_fmt.short_description = 'Venta Mensual'
+    venta_mensual_fmt.short_description = 'Mes 1'
 
     def venta_anual_fmt(self, obj):
         if not obj.pk:
@@ -1978,7 +1983,7 @@ class TipologiaProyeccionInline(admin.TabularInline):
             return f"${total:,.0f}"
         except:
             return "-"
-    venta_anual_fmt.short_description = 'Venta Anual'
+    venta_anual_fmt.short_description = 'Total Anual'
 
 
 @admin.register(ProyeccionVentasConfig, site=dxv_admin_site)
@@ -1986,15 +1991,16 @@ class ProyeccionVentasConfigAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelA
     list_display = ('marca', 'escenario', 'anio', 'venta_anual_fmt', 'base_tipologias_fmt', 'fecha_modificacion')
     list_filter = ('marca', 'escenario', 'anio')
     search_fields = ('marca__nombre', 'escenario__nombre', 'notas')
-    readonly_fields = ('fecha_creacion', 'fecha_modificacion', 'venta_anual_calculada', 'base_tipologias_calculada')
+    readonly_fields = ('fecha_creacion', 'fecha_modificacion', 'venta_anual_calculada', 'base_tipologias_calculada', 'resumen_mensual_calculado')
     actions = ['duplicar_registros']
 
     fieldsets = (
         ('Configuración Básica', {
             'fields': ('marca', 'escenario', 'anio'),
         }),
-        ('Resultados Calculados', {
-            'fields': ('venta_anual_calculada', 'base_tipologias_calculada'),
+        ('Proyección Mensual Calculada', {
+            'fields': ('resumen_mensual_calculado',),
+            'description': 'Calculado automáticamente desde Tipologías (o valores manuales si existen)',
         }),
         ('Notas y Metadata', {
             'fields': ('notas', 'fecha_creacion', 'fecha_modificacion'),
@@ -2039,5 +2045,55 @@ class ProyeccionVentasConfigAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelA
         except Exception:
             return "Agregue tipologías de cliente"
     base_tipologias_calculada.short_description = 'Base desde Tipologías'
+
+    def resumen_mensual_calculado(self, obj):
+        """Muestra tabla con los 12 meses calculados"""
+        from django.utils.html import format_html
+
+        try:
+            ventas = obj.calcular_ventas_mensuales()
+            total = sum(ventas.values())
+
+            # Verificar si hay datos
+            if total == 0:
+                return format_html(
+                    '<p style="color: #666; font-style: italic;">Agregue tipologías o valores manuales para ver la proyección</p>'
+                )
+
+            # Detectar fuente de datos
+            try:
+                obj.proyeccion_manual
+                fuente = "Valores Manuales"
+                fuente_color = "#1976d2"
+            except:
+                fuente = "Calculado desde Tipologías"
+                fuente_color = "#388e3c"
+
+            # Nombres de meses abreviados
+            meses_labels = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+                           'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+            meses_keys = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                         'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+
+            # Construir tabla HTML
+            header_cells = ''.join([f'<th style="padding: 8px; text-align: center; background: #f5f5f5; border: 1px solid #ddd;">{m}</th>' for m in meses_labels])
+            value_cells = ''.join([f'<td style="padding: 8px; text-align: right; border: 1px solid #ddd;">${ventas[k]:,.0f}</td>' for k in meses_keys])
+
+            html = f'''
+            <div style="margin: 10px 0;">
+                <p style="margin-bottom: 8px; color: {fuente_color}; font-weight: bold;">
+                    📊 Fuente: {fuente}
+                </p>
+                <table style="border-collapse: collapse; width: 100%; font-size: 12px;">
+                    <tr>{header_cells}<th style="padding: 8px; text-align: center; background: #e3f2fd; border: 1px solid #ddd; font-weight: bold;">TOTAL</th></tr>
+                    <tr>{value_cells}<td style="padding: 8px; text-align: right; border: 1px solid #ddd; background: #e3f2fd; font-weight: bold;">${total:,.0f}</td></tr>
+                </table>
+            </div>
+            '''
+            return format_html(html)
+
+        except Exception as e:
+            return format_html(f'<p style="color: #d32f2f;">Error: {e}</p>')
+    resumen_mensual_calculado.short_description = 'Proyección Mensual'
 
 
