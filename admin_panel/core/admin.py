@@ -209,7 +209,7 @@ class EscenarioAdmin(admin.ModelAdmin):
 class MarcaOperacionInline(admin.TabularInline):
     """Inline para ver/editar marcas asociadas a una operación"""
     model = MarcaOperacion
-    extra = 1
+    extra = 0
     autocomplete_fields = ['marca']
     fields = ['marca', 'participacion_ventas', 'venta_proyectada_fmt', 'activo']
     readonly_fields = ['venta_proyectada_fmt']
@@ -1340,7 +1340,7 @@ class ImpuestoAdmin(admin.ModelAdmin):
 class TramoDescuentoFacturaInline(admin.TabularInline):
     """Inline para tramos de descuento"""
     model = TramoDescuentoFactura
-    extra = 1
+    extra = 0
     fields = ('orden', 'porcentaje_ventas', 'porcentaje_descuento')
     ordering = ('orden',)
 
@@ -1695,7 +1695,7 @@ class ConfiguracionLejaniaAdmin(GlobalFilterMixin, admin.ModelAdmin):
 class ZonaMunicipioInline(admin.TabularInline):
     """Inline para municipios de una zona comercial"""
     model = ZonaMunicipio
-    extra = 1
+    extra = 0
     autocomplete_fields = ['municipio']
     fields = ('municipio', 'visitas_por_periodo', 'participacion_ventas', 'venta_proyectada')
     readonly_fields = ('participacion_ventas', 'venta_proyectada')
@@ -1803,7 +1803,7 @@ class ZonaMunicipioAdmin(admin.ModelAdmin):
 class RecorridoMunicipioInline(admin.TabularInline):
     """Inline para municipios de un recorrido logístico"""
     model = RutaMunicipio
-    extra = 1
+    extra = 0
     autocomplete_fields = ['municipio']
     fields = ('orden_visita', 'municipio', 'flete_base')
     ordering = ['orden_visita']
@@ -1927,10 +1927,10 @@ class ProductoAdmin(admin.ModelAdmin):
 class ProyeccionManualInline(admin.StackedInline):
     """Inline para ingresar valores de venta directos por mes (ajuste estacional)"""
     model = ProyeccionManual
-    extra = 1
+    extra = 0
     max_num = 1
-    verbose_name = "Ajuste Mensual (Estacionalidad)"
-    verbose_name_plural = "Ajuste Mensual (Estacionalidad)"
+    verbose_name = "Valores Mensuales (Opcional)"
+    verbose_name_plural = "Valores Mensuales (Opcional)"
     fieldsets = (
         (None, {
             'fields': (
@@ -1939,7 +1939,7 @@ class ProyeccionManualInline(admin.StackedInline):
                 ('julio', 'agosto', 'septiembre'),
                 ('octubre', 'noviembre', 'diciembre'),
             ),
-            'description': 'Ingrese los valores de venta proyectados para cada mes del a\u00f1o'
+            'description': '<b>Si agrega valores aquí, REEMPLAZAN el cálculo de Tipologías.</b><br>Use para estacionalidad. Deje vacío para usar el cálculo automático de Tipologías.'
         }),
     )
 
@@ -1951,7 +1951,7 @@ class ProyeccionManualInline(admin.StackedInline):
 class TipologiaProyeccionInline(admin.TabularInline):
     """Inline para tipologías de cliente (Tiendas, Minimercados, etc.)"""
     model = TipologiaProyeccion
-    extra = 1
+    extra = 0
     verbose_name = "Tipología de Cliente"
     verbose_name_plural = "Tipologías de Cliente"
     fields = (

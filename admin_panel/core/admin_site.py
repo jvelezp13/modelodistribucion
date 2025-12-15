@@ -56,7 +56,6 @@ class DxVAdminSite(admin.AdminSite):
         'Ventas y Proyecciones': [
             '_distribucion_ventas',  # Link personalizado
             'ProyeccionVentasConfig',
-            'Producto',  # Catálogo de SKUs (solo para Lista de Precios)
         ],
         'Comercial': [
             'PersonalComercial',
