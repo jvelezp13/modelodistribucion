@@ -2078,11 +2078,16 @@ class ProyeccionVentasConfigAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelA
                     '<p style="color: #666; font-style: italic;">Agregue tipologías o valores manuales para ver la proyección</p>'
                 )
 
-            # Detectar fuente de datos
+            # Detectar fuente de datos (manual solo si tiene valores > 0)
             try:
-                obj.proyeccion_manual
-                fuente = "Valores Manuales"
-                fuente_color = "#1976d2"
+                manual = obj.proyeccion_manual
+                ventas_manual = manual.get_ventas_mensuales()
+                if sum(ventas_manual.values()) > 0:
+                    fuente = "Valores Manuales"
+                    fuente_color = "#1976d2"
+                else:
+                    fuente = "Calculado desde Tipologías"
+                    fuente_color = "#388e3c"
             except:
                 fuente = "Calculado desde Tipologías"
                 fuente_color = "#388e3c"

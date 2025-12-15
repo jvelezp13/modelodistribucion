@@ -2989,16 +2989,19 @@ class ProyeccionVentasConfig(models.Model):
     def calcular_ventas_mensuales(self):
         """
         Calcula ventas mensuales:
-        - Si hay ProyeccionManual, usa esos valores (override total)
+        - Si hay ProyeccionManual CON VALORES, usa esos (override total)
         - Si no, suma las ventas mensuales de todas las tipologías (con crecimiento)
         """
         meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
                  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
 
-        # Si hay valores manuales, usarlos (override)
+        # Si hay valores manuales con datos reales, usarlos (override)
         try:
             manual = self.proyeccion_manual
-            return manual.get_ventas_mensuales()
+            ventas_manual = manual.get_ventas_mensuales()
+            # Solo usar si tiene al menos un valor > 0
+            if sum(ventas_manual.values()) > 0:
+                return ventas_manual
         except ProyeccionManual.DoesNotExist:
             pass
 
