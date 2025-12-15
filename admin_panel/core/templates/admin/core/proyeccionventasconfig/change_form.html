@@ -19,31 +19,36 @@
     </div>
 </fieldset>
 {% endif %}
+{% endblock %}
+
+{% block content %}
+{{ block.super }}
 
 {% if original and original.tipo == 'lista_precios' %}
-<fieldset class="module aligned" id="importar-lista-fieldset" style="background: #e8f4f8; border: 2px solid #417690;">
-    <h2 style="background: #417690; color: white; padding: 10px; margin: -10px -10px 15px -10px;">
-        Importar Lista de Precios desde CSV/JSON
-    </h2>
-    <div id="importar-lista-content">
-        <div class="description" style="padding: 10px; background: #f5f5f5; margin-bottom: 15px; border-radius: 4px;">
-            <p style="margin: 0 0 10px 0;">
-                <strong>Instrucciones:</strong> Suba un archivo CSV o JSON con la lista de productos y precios.
-            </p>
-            <p style="margin: 0;">
-                <a href="{% url 'dxv_admin:core_proyeccionventasconfig_descargar_plantilla' %}"
-                   class="button"
-                   style="background: #417690; color: white; padding: 5px 15px; text-decoration: none; border-radius: 4px;">
-                    Descargar Plantilla CSV
-                </a>
-            </p>
-        </div>
+{# Formulario de importación FUERA del form principal de Django admin #}
+<form method="post"
+      action="{% url 'dxv_admin:core_proyeccionventasconfig_importar_lista_precios' original.pk %}"
+      enctype="multipart/form-data"
+      id="import-form">
+    {% csrf_token %}
 
-        <form method="post"
-              action="{% url 'dxv_admin:core_proyeccionventasconfig_importar_lista_precios' original.pk %}"
-              enctype="multipart/form-data"
-              style="padding: 15px;">
-            {% csrf_token %}
+    <fieldset class="module aligned" style="background: #e8f4f8; border: 2px solid #417690; margin-top: 20px;">
+        <h2 style="background: #417690; color: white; padding: 10px; margin: -10px -10px 15px -10px;">
+            Importar Lista de Precios desde CSV/JSON
+        </h2>
+        <div style="padding: 15px;">
+            <div class="description" style="background: #f5f5f5; padding: 10px; margin-bottom: 15px; border-radius: 4px;">
+                <p style="margin: 0 0 10px 0;">
+                    <strong>Instrucciones:</strong> Suba un archivo CSV o JSON con la lista de productos y precios.
+                </p>
+                <p style="margin: 0;">
+                    <a href="{% url 'dxv_admin:core_proyeccionventasconfig_descargar_plantilla' %}"
+                       class="button"
+                       style="background: #417690; color: white; padding: 5px 15px; text-decoration: none; border-radius: 4px;">
+                        Descargar Plantilla CSV
+                    </a>
+                </p>
+            </div>
 
             <div class="form-row" style="margin-bottom: 15px;">
                 <label for="archivo" style="display: block; margin-bottom: 5px; font-weight: bold;">
@@ -62,37 +67,29 @@
 
             <div class="form-row" style="margin-bottom: 15px;">
                 <label style="display: flex; align-items: center; gap: 8px;">
-                    <input type="checkbox" name="crear_productos">
+                    <input type="checkbox" name="crear_productos" checked>
                     <span>Crear productos (SKU) que no existan en el catálogo</span>
                 </label>
             </div>
 
             <div class="form-row">
                 <button type="submit" class="default"
-                        style="background: #79aec8; border: none; padding: 10px 20px; color: #fff; cursor: pointer; border-radius: 4px; font-weight: bold;">
+                        style="background: #417690; border: none; padding: 10px 20px; color: #fff; cursor: pointer; border-radius: 4px; font-weight: bold;">
                     Importar Lista de Precios
                 </button>
             </div>
-        </form>
 
-        <div style="padding: 15px; background: #fffbe5; margin-top: 15px; border-radius: 4px; border-left: 4px solid #ffc107;">
-            <h4 style="margin: 0 0 10px 0;">Formato del archivo CSV:</h4>
-            <code style="display: block; background: #fff; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 12px;">
-sku,nombre,metodo_captura,precio_compra,precio_venta,porcentaje_descuento,porcentaje_margen,unidades_enero,...,unidades_diciembre
-            </code>
-            <ul style="margin: 10px 0 0 0; padding-left: 20px; font-size: 13px;">
-                <li><strong>sku</strong>: Código único del producto (obligatorio)</li>
-                <li><strong>nombre</strong>: Nombre del producto</li>
-                <li><strong>metodo_captura</strong>: directo | descuento_sobre_venta | margen_sobre_compra</li>
-                <li><strong>precio_compra</strong>: Precio de compra (según método)</li>
-                <li><strong>precio_venta</strong>: Precio de venta (según método)</li>
-                <li><strong>porcentaje_descuento</strong>: % descuento sobre venta (0-100)</li>
-                <li><strong>porcentaje_margen</strong>: % margen sobre compra (0-500)</li>
-                <li><strong>unidades_*</strong>: Unidades proyectadas por mes (opcional)</li>
-            </ul>
+            <div style="background: #fffbe5; margin-top: 15px; padding: 15px; border-radius: 4px; border-left: 4px solid #ffc107;">
+                <h4 style="margin: 0 0 10px 0;">Formato del archivo CSV:</h4>
+                <code style="display: block; background: #fff; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 12px;">
+sku,nombre,precio_venta,precio_compra
+                </code>
+                <p style="margin: 10px 0 0 0; font-size: 13px;">
+                    Solo <strong>sku</strong> es obligatorio. Los demás campos son opcionales.
+                </p>
+            </div>
         </div>
-    </div>
-</fieldset>
+    </fieldset>
+</form>
 {% endif %}
-
 {% endblock %}
