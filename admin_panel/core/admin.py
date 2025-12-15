@@ -2012,9 +2012,6 @@ class ProyeccionVentasConfigAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelA
     readonly_fields = ('fecha_creacion', 'fecha_modificacion', 'venta_anual_calculada', 'base_tipologias_calculada', 'resumen_mensual_calculado')
     actions = ['duplicar_registros']
 
-    class Media:
-        js = ('admin/js/currency_format.js',)
-
     fieldsets = (
         ('Configuración Básica', {
             'fields': ('marca', 'escenario', 'anio'),
