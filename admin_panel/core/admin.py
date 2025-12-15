@@ -2050,62 +2050,27 @@ class DefinicionMercadoAdmin(admin.ModelAdmin):
 
 # Inlines para ProyeccionVentasConfig
 class ProyeccionManualInline(admin.StackedInline):
+    """Inline para ingresar valores de venta directos por mes (Tipo Simple)"""
     model = ProyeccionManual
     extra = 0
     max_num = 1
+    verbose_name = "Ventas Mensuales (Tipo Simple)"
+    verbose_name_plural = "Ventas Mensuales (Tipo Simple)"
     fieldsets = (
-        ('Ventas Mensuales', {
+        (None, {
             'fields': (
                 ('enero', 'febrero', 'marzo'),
                 ('abril', 'mayo', 'junio'),
                 ('julio', 'agosto', 'septiembre'),
                 ('octubre', 'noviembre', 'diciembre'),
-            )
-        }),
-    )
-
-
-class ProyeccionCrecimientoInline(admin.StackedInline):
-    model = ProyeccionCrecimiento
-    extra = 0
-    max_num = 1
-    fieldsets = (
-        ('Configuración de Crecimiento', {
-            'fields': ('anio_base', 'ventas_base_anual', 'factor_crecimiento')
-        }),
-    )
-
-
-class ProyeccionProductoInline(admin.TabularInline):
-    model = ProyeccionProducto
-    extra = 1
-    fields = ('tipo', 'producto', 'categoria', 'precio_unitario',
-              'unidades_enero', 'unidades_febrero', 'unidades_marzo',
-              'unidades_abril', 'unidades_mayo', 'unidades_junio',
-              'unidades_julio', 'unidades_agosto', 'unidades_septiembre',
-              'unidades_octubre', 'unidades_noviembre', 'unidades_diciembre')
-
-
-class ProyeccionCanalInline(admin.TabularInline):
-    model = ProyeccionCanal
-    extra = 1
-    fields = ('canal', 'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-              'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre')
-
-
-class ProyeccionPenetracionInline(admin.StackedInline):
-    model = ProyeccionPenetracion
-    extra = 0
-    max_num = 1
-    fieldsets = (
-        ('Configuración de Penetración', {
-            'fields': ('mercado', 'penetracion_inicial', 'penetracion_final')
+            ),
+            'description': 'Ingrese los valores de venta proyectados para cada mes del a\u00f1o'
         }),
     )
 
 
 # =============================================================================
-# NUEVOS INLINES PARA LISTA DE PRECIOS
+# INLINES PARA LISTA DE PRECIOS
 # =============================================================================
 
 class ProyeccionDemandaInline(admin.StackedInline):
@@ -2135,9 +2100,11 @@ class ProyeccionDemandaInline(admin.StackedInline):
 
 
 class ListaPreciosProductoInline(admin.TabularInline):
-    """Inline para productos en lista de precios"""
+    """Inline para productos en lista de precios (Tipo Lista de Precios)"""
     model = ListaPreciosProducto
     extra = 1
+    verbose_name = "Producto en Lista de Precios"
+    verbose_name_plural = "Lista de Precios (Tipo Lista de Precios)"
     fields = (
         'producto', 'metodo_captura',
         'precio_compra', 'precio_venta',
@@ -2145,6 +2112,7 @@ class ListaPreciosProductoInline(admin.TabularInline):
         'activo'
     )
     autocomplete_fields = ['producto']
+    classes = ['collapse']  # Colapsado por defecto si no es el tipo correcto
 
 
 @admin.register(ProyeccionVentasConfig, site=dxv_admin_site)
@@ -2157,17 +2125,21 @@ class ProyeccionVentasConfigAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelA
     change_form_template = 'admin/core/proyeccionventasconfig/change_form.html'
 
     fieldsets = (
-        ('Configuración', {
-            'fields': ('marca', 'escenario', 'anio', 'tipo')
+        ('Configuraci\u00f3n B\u00e1sica', {
+            'fields': ('marca', 'escenario', 'anio', 'tipo'),
+            'description': '''
+                <strong>Tipo Simple:</strong> Ingrese valores de venta directos por mes (abajo en "Proyecci\u00f3n Manual")<br>
+                <strong>Tipo Lista de Precios:</strong> Defina productos con precio compra/venta y proyecci\u00f3n de demanda (abajo en "Lista de Precios")
+            '''
         }),
         ('Estacionalidad (Solo Tipo Simple)', {
             'fields': ('plantilla_estacional',),
             'classes': ('collapse',),
-            'description': 'Selecciona una plantilla para distribuir las ventas mensualmente (solo aplica para tipo Simple)'
+            'description': 'Opcional: Seleccione una plantilla para distribuir las ventas mensualmente'
         }),
         ('Resultados Calculados', {
             'fields': ('venta_anual_calculada', 'cmv_anual_calculado', 'margen_lista_calculado'),
-            'description': 'Valores calculados según el tipo y datos ingresados'
+            'description': 'Estos valores se calculan autom\u00e1ticamente seg\u00fan el tipo y los datos ingresados'
         }),
         ('Notas', {
             'fields': ('notas',),
@@ -2182,12 +2154,10 @@ class ProyeccionVentasConfigAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelA
     inlines = [
         ProyeccionManualInline,      # Para tipo 'simple'
         ListaPreciosProductoInline,  # Para tipo 'lista_precios'
-        # Inlines obsoletos (se mantienen temporalmente para compatibilidad)
-        ProyeccionCrecimientoInline,
-        ProyeccionProductoInline,
-        ProyeccionCanalInline,
-        ProyeccionPenetracionInline,
     ]
+
+    class Media:
+        js = ('admin/js/proyeccion_ventas_tipo.js',)
 
     def venta_anual_fmt(self, obj):
         try:
@@ -2348,160 +2318,8 @@ class ProyeccionVentasConfigAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelA
         return redirect('dxv_admin:core_proyeccionventasconfig_change', config.pk)
 
 
-# Admin independientes para los modelos de detalle (por si se quieren ver/editar directamente)
-@admin.register(ProyeccionManual, site=dxv_admin_site)
-class ProyeccionManualAdmin(admin.ModelAdmin):
-    list_display = ('config', 'total_anual_fmt')
-    search_fields = ('config__marca__nombre',)
-    readonly_fields = ('fecha_creacion', 'fecha_modificacion')
-
-    fieldsets = (
-        ('Configuración', {
-            'fields': ('config',)
-        }),
-        ('Ventas Mensuales', {
-            'fields': (
-                ('enero', 'febrero', 'marzo'),
-                ('abril', 'mayo', 'junio'),
-                ('julio', 'agosto', 'septiembre'),
-                ('octubre', 'noviembre', 'diciembre'),
-            )
-        }),
-        ('Metadata', {
-            'fields': ('fecha_creacion', 'fecha_modificacion'),
-            'classes': ('collapse',)
-        }),
-    )
-
-    def total_anual_fmt(self, obj):
-        return f"${obj.get_total_anual():,.0f}"
-    total_anual_fmt.short_description = 'Total Anual'
-
-
-@admin.register(ProyeccionCrecimiento, site=dxv_admin_site)
-class ProyeccionCrecimientoAdmin(admin.ModelAdmin):
-    list_display = ('config', 'anio_base', 'ventas_base_fmt', 'factor_crecimiento', 'venta_proyectada_fmt')
-    search_fields = ('config__marca__nombre',)
-    readonly_fields = ('fecha_creacion', 'fecha_modificacion')
-
-    fieldsets = (
-        ('Configuración', {
-            'fields': ('config',)
-        }),
-        ('Parámetros de Crecimiento', {
-            'fields': ('anio_base', 'ventas_base_anual', 'factor_crecimiento')
-        }),
-        ('Metadata', {
-            'fields': ('fecha_creacion', 'fecha_modificacion'),
-            'classes': ('collapse',)
-        }),
-    )
-
-    def ventas_base_fmt(self, obj):
-        return f"${obj.ventas_base_anual:,.0f}"
-    ventas_base_fmt.short_description = 'Ventas Base'
-
-    def venta_proyectada_fmt(self, obj):
-        return f"${obj.get_venta_anual_proyectada():,.0f}"
-    venta_proyectada_fmt.short_description = 'Venta Proyectada'
-
-
-@admin.register(ProyeccionProducto, site=dxv_admin_site)
-class ProyeccionProductoAdmin(admin.ModelAdmin):
-    list_display = ('config', 'tipo', 'producto', 'categoria', 'precio_unitario_fmt', 'total_unidades', 'total_ventas_fmt')
-    list_filter = ('config__marca', 'tipo')
-    search_fields = ('config__marca__nombre', 'producto__nombre', 'categoria__nombre')
-    readonly_fields = ('fecha_creacion', 'fecha_modificacion')
-
-    fieldsets = (
-        ('Configuración', {
-            'fields': ('config', 'tipo', 'producto', 'categoria', 'precio_unitario')
-        }),
-        ('Unidades por Mes', {
-            'fields': (
-                ('unidades_enero', 'unidades_febrero', 'unidades_marzo'),
-                ('unidades_abril', 'unidades_mayo', 'unidades_junio'),
-                ('unidades_julio', 'unidades_agosto', 'unidades_septiembre'),
-                ('unidades_octubre', 'unidades_noviembre', 'unidades_diciembre'),
-            )
-        }),
-        ('Metadata', {
-            'fields': ('fecha_creacion', 'fecha_modificacion'),
-            'classes': ('collapse',)
-        }),
-    )
-
-    def precio_unitario_fmt(self, obj):
-        return f"${obj.precio_unitario:,.0f}"
-    precio_unitario_fmt.short_description = 'Precio Unit.'
-
-    def total_unidades(self, obj):
-        return f"{obj.get_total_unidades():,}"
-    total_unidades.short_description = 'Total Unid.'
-
-    def total_ventas_fmt(self, obj):
-        return f"${obj.get_total_ventas():,.0f}"
-    total_ventas_fmt.short_description = 'Total Ventas'
-
-
-@admin.register(ProyeccionCanal, site=dxv_admin_site)
-class ProyeccionCanalAdmin(admin.ModelAdmin):
-    list_display = ('config', 'canal', 'total_anual_fmt')
-    list_filter = ('config__marca', 'canal')
-    search_fields = ('config__marca__nombre', 'canal__nombre')
-    readonly_fields = ('fecha_creacion', 'fecha_modificacion')
-
-    fieldsets = (
-        ('Configuración', {
-            'fields': ('config', 'canal')
-        }),
-        ('Ventas Mensuales', {
-            'fields': (
-                ('enero', 'febrero', 'marzo'),
-                ('abril', 'mayo', 'junio'),
-                ('julio', 'agosto', 'septiembre'),
-                ('octubre', 'noviembre', 'diciembre'),
-            )
-        }),
-        ('Metadata', {
-            'fields': ('fecha_creacion', 'fecha_modificacion'),
-            'classes': ('collapse',)
-        }),
-    )
-
-    def total_anual_fmt(self, obj):
-        return f"${obj.get_total_anual():,.0f}"
-    total_anual_fmt.short_description = 'Total Anual'
-
-
-@admin.register(ProyeccionPenetracion, site=dxv_admin_site)
-class ProyeccionPenetracionAdmin(admin.ModelAdmin):
-    list_display = ('config', 'mercado', 'penetracion_inicial', 'penetracion_final', 'venta_proyectada_fmt')
-    list_filter = ('config__marca', 'mercado')
-    search_fields = ('config__marca__nombre', 'mercado__nombre')
-    readonly_fields = ('fecha_creacion', 'fecha_modificacion')
-
-    fieldsets = (
-        ('Configuración', {
-            'fields': ('config', 'mercado')
-        }),
-        ('Penetración', {
-            'fields': ('penetracion_inicial', 'penetracion_final'),
-            'description': 'Porcentaje del mercado a capturar al inicio y final del año'
-        }),
-        ('Metadata', {
-            'fields': ('fecha_creacion', 'fecha_modificacion'),
-            'classes': ('collapse',)
-        }),
-    )
-
-    def venta_proyectada_fmt(self, obj):
-        return f"${obj.get_venta_anual_proyectada():,.0f}"
-    venta_proyectada_fmt.short_description = 'Venta Proyectada'
-
-
 # =============================================================================
-# NUEVOS ADMINS PARA LISTA DE PRECIOS
+# ADMINS PARA LISTA DE PRECIOS
 # =============================================================================
 
 @admin.register(ListaPreciosProducto, site=dxv_admin_site)
