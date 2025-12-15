@@ -1965,6 +1965,24 @@ class TipologiaProyeccionInline(admin.TabularInline):
     )
     readonly_fields = ('venta_mensual_fmt', 'venta_anual_fmt')
 
+    def formfield_for_dbfield(self, db_field, request, **kwargs):
+        """Ajustar ancho de campos según tipo"""
+        field = super().formfield_for_dbfield(db_field, request, **kwargs)
+        if field:
+            # Campos de porcentaje: más angostos (60px)
+            if db_field.name in ('efectividad', 'crecimiento_clientes', 'crecimiento_efectividad', 'crecimiento_ticket'):
+                field.widget.attrs.update({'style': 'width: 60px;'})
+            # Campos numéricos pequeños (70px)
+            elif db_field.name in ('numero_clientes', 'visitas_mes'):
+                field.widget.attrs.update({'style': 'width: 70px;'})
+            # Ticket promedio (90px)
+            elif db_field.name == 'ticket_promedio':
+                field.widget.attrs.update({'style': 'width: 90px;'})
+            # Nombre (120px)
+            elif db_field.name == 'nombre':
+                field.widget.attrs.update({'style': 'width: 120px;'})
+        return field
+
     def venta_mensual_fmt(self, obj):
         if not obj.pk:
             return "-"
