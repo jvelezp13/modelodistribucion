@@ -47,14 +47,15 @@ const formatCurrency = (value: number): string => {
 };
 
 const formatCurrencyShort = (value: number): string => {
+  // Formato colombiano: M = millones, MM = miles de millones
   if (value >= 1000000000) {
-    return `$${(value / 1000000000).toFixed(1)}B`;
+    return `$${(value / 1000000).toLocaleString('es-CO', { maximumFractionDigits: 0 })}M`;
   }
   if (value >= 1000000) {
-    return `$${(value / 1000000).toFixed(0)}M`;
+    return `$${(value / 1000000).toLocaleString('es-CO', { maximumFractionDigits: 0 })}M`;
   }
   if (value >= 1000) {
-    return `$${(value / 1000).toFixed(0)}K`;
+    return `$${(value / 1000).toLocaleString('es-CO', { maximumFractionDigits: 0 })}K`;
   }
   return formatCurrency(value);
 };
