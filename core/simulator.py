@@ -625,6 +625,7 @@ class Simulator:
         self.marcas = []
         self.rubros_compartidos = []
 
+        errores_carga = []
         for marca_id in marcas_ids:
             try:
                 # Cargar datos completos de la marca
@@ -641,7 +642,10 @@ class Simulator:
                 self.marcas.append(marca)
 
             except Exception as e:
-                logger.error(f"Error cargando marca '{marca_id}': {e}")
+                import traceback
+                error_detalle = f"Error cargando marca '{marca_id}': {e}\n{traceback.format_exc()}"
+                logger.error(error_detalle)
+                errores_carga.append(error_detalle)
 
         # Procesar rubros compartidos administrativos
         self._procesar_rubros_compartidos_admin()
@@ -653,10 +657,15 @@ class Simulator:
         except Exception as e:
             logger.warning(f"No se pudieron cargar descuentos: {e}")
 
+        # Guardar errores para referencia
+        self._errores_carga = errores_carga
+
         logger.info(
             f"Cargadas {len(self.marcas)} marcas y "
             f"{len(self.rubros_compartidos)} rubros compartidos"
         )
+        if errores_carga:
+            logger.warning(f"Hubo {len(errores_carga)} errores al cargar marcas")
 
     def ejecutar_simulacion(self) -> ResultadoSimulacion:
         """
@@ -669,6 +678,9 @@ class Simulator:
 
         # Validar que haya marcas cargadas
         if not self.marcas:
+            errores = getattr(self, '_errores_carga', [])
+            if errores:
+                raise ValueError(f"No hay marcas cargadas. Errores:\n" + "\n".join(errores))
             raise ValueError("No hay marcas cargadas. Ejecute cargar_marcas() primero.")
 
         # Crear allocator
