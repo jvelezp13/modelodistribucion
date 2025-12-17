@@ -1711,7 +1711,8 @@ def obtener_pyg_zonas(
             marcas_ids=[marca_id],
             operacion_ids=operacion_ids_list
         )
-        ventas_mensuales = ventas_por_marca.get(marca_id, {})
+        # Extraer solo el diccionario de ventas, no la estructura completa
+        ventas_mensuales = ventas_por_marca.get(marca_id, {}).get('ventas', {})
 
         # Obtener configuración de descuentos
         config_descuentos = None
