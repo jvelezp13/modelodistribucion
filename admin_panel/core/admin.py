@@ -207,12 +207,13 @@ class EscenarioAdmin(admin.ModelAdmin):
 # =============================================================================
 
 class MarcaOperacionInline(admin.TabularInline):
-    """Inline para ver/editar marcas asociadas a una operación"""
+    """Inline para ver marcas asociadas a una operación (solo lectura de participaciones)"""
     model = MarcaOperacion
     extra = 0
     autocomplete_fields = ['marca']
     fields = ['marca', 'participacion_ventas', 'venta_proyectada_fmt', 'activo']
-    readonly_fields = ['venta_proyectada_fmt']
+    readonly_fields = ['participacion_ventas', 'venta_proyectada_fmt']
+    verbose_name_plural = 'Marcas en esta Operación (para editar participaciones use Distribución de Ventas)'
 
     def venta_proyectada_fmt(self, obj):
         if obj.venta_proyectada:
@@ -271,13 +272,13 @@ class MarcaOperacionAdmin(admin.ModelAdmin):
     Admin para la relación Marca-Operación.
 
     Flujo de ventas:
-    - Usuario configura participacion_ventas (% de la marca)
+    - Usuario configura participacion_ventas desde Distribución de Ventas
     - venta_proyectada se calcula automáticamente desde ProyeccionVentasConfig
     """
     list_display = ('marca', 'operacion', 'escenario_display', 'participacion_ventas', 'venta_proyectada_fmt', 'activo')
     list_filter = ('operacion__escenario', 'operacion', 'marca', 'activo')
     search_fields = ('marca__nombre', 'operacion__nombre', 'operacion__escenario__nombre')
-    readonly_fields = ('venta_proyectada', 'fecha_creacion', 'fecha_modificacion')
+    readonly_fields = ('participacion_ventas', 'venta_proyectada', 'fecha_creacion', 'fecha_modificacion')
     autocomplete_fields = ['marca', 'operacion']
 
     fieldsets = (
@@ -286,7 +287,7 @@ class MarcaOperacionAdmin(admin.ModelAdmin):
         }),
         ('Distribución de Ventas', {
             'fields': ('participacion_ventas', 'venta_proyectada'),
-            'description': 'Configure el % de ventas de la marca en esta operación. La venta se calcula automáticamente desde Proyección de Ventas.'
+            'description': 'Solo lectura. Para modificar participaciones use <a href="/dxv/distribucion-ventas/">Distribución de Ventas</a> donde se valida que sumen 100%.'
         }),
         ('Metadata', {
             'fields': ('fecha_creacion', 'fecha_modificacion'),
