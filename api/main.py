@@ -204,14 +204,6 @@ def obtener_ventas_mensuales_por_marca(
                     anio=escenario.anio
                 )
                 ventas_totales = config.calcular_ventas_mensuales()
-                cmv_totales = config.calcular_cmv_mensuales() if config.tipo == 'lista_precios' else {}
-
-                # Calcular margen bruto de lista (antes de descuentos)
-                margen_lista = {}
-                for mes in ventas_totales:
-                    v = float(ventas_totales.get(mes, 0))
-                    c = float(cmv_totales.get(mes, 0)) if cmv_totales else 0
-                    margen_lista[mes] = v - c
 
                 if operacion_ids:
                     # Calcular ventas aplicando participación de las operaciones seleccionadas
@@ -229,37 +221,21 @@ def obtener_ventas_mensuales_por_marca(
 
                     # Aplicar participación a cada mes
                     ventas_filtradas = {}
-                    cmv_filtrado = {}
-                    margen_filtrado = {}
-
                     for mes, venta in ventas_totales.items():
                         ventas_filtradas[mes] = float(Decimal(str(venta)) * participacion_total)
-                    for mes, cmv in cmv_totales.items():
-                        cmv_filtrado[mes] = float(Decimal(str(cmv)) * participacion_total)
-                    for mes, margen in margen_lista.items():
-                        margen_filtrado[mes] = float(Decimal(str(margen)) * participacion_total)
 
                     resultado[marca_id] = {
                         'ventas': ventas_filtradas,
-                        'cmv': cmv_filtrado if cmv_totales else {},
-                        'margen_lista': margen_filtrado,
-                        'tipo_proyeccion': config.tipo,
                     }
                 else:
                     # Sin filtro de operaciones, devolver ventas totales
                     resultado[marca_id] = {
                         'ventas': {k: float(v) for k, v in ventas_totales.items()},
-                        'cmv': {k: float(v) for k, v in cmv_totales.items()} if cmv_totales else {},
-                        'margen_lista': {k: float(v) for k, v in margen_lista.items()},
-                        'tipo_proyeccion': config.tipo,
                     }
 
             except (Marca.DoesNotExist, ProyeccionVentasConfig.DoesNotExist):
                 resultado[marca_id] = {
                     'ventas': {},
-                    'cmv': {},
-                    'margen_lista': {},
-                    'tipo_proyeccion': None,
                 }
 
         return resultado
@@ -1713,11 +1689,6 @@ def obtener_pyg_zonas(
         )
         # Extraer solo el diccionario de ventas, no la estructura completa
         ventas_mensuales = ventas_por_marca.get(marca_id, {}).get('ventas', {})
-
-        logger.info(f"[PyG Zonas] marca_id={marca_id}, escenario_id={escenario_id}, operacion_ids={operacion_ids_list}")
-        logger.info(f"[PyG Zonas] ventas_por_marca keys: {ventas_por_marca.keys()}")
-        logger.info(f"[PyG Zonas] ventas_por_marca[{marca_id}]: {ventas_por_marca.get(marca_id, 'NO ENCONTRADO')}")
-        logger.info(f"[PyG Zonas] ventas_mensuales final: {ventas_mensuales}")
 
         # Obtener configuración de descuentos
         config_descuentos = None
