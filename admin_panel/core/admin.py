@@ -522,6 +522,10 @@ class PersonalComercialAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin)
         ('Información Básica', {
             'fields': ('escenario', 'nombre', 'tipo', 'cantidad', 'salario_base', 'perfil_prestacional')
         }),
+        ('Proyección Anual', {
+            'fields': ('indice_incremento',),
+            'description': 'Índice usado para proyectar este costo a años futuros.'
+        }),
         ('Distribución Geográfica y Operaciones', {
             'fields': (
                 'tipo_asignacion_operacion',
@@ -535,10 +539,6 @@ class PersonalComercialAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin)
                 <b>Por Zona:</b> Directo = 100% a una zona | Proporcional = según ventas | Compartido = equitativo
             '''
         }),
-        ('Proyección Anual', {
-            'fields': ('indice_incremento',),
-            'description': 'Índice usado para proyectar este costo a años futuros.'
-        }),
         ('Auxilios No Prestacionales', {
             'fields': ('auxilios_no_prestacionales',),
             'description': 'Auxilios que NO generan prestaciones sociales.',
@@ -551,7 +551,7 @@ class PersonalComercialAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin)
     )
 
     class Media:
-        js = ('admin/js/personal_condicional.js',)
+        js = ('admin/js/personal_condicional.js', 'admin/js/distribuir_equitativo.js')
 
     def marcas_display_admin(self, obj):
         """Muestra las marcas asignadas en el list_display"""
@@ -626,21 +626,23 @@ class PersonalLogisticoForm(forms.ModelForm):
 class PersonalLogisticoAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin):
     form = PersonalLogisticoForm
     change_list_template = 'admin/core/change_list_with_total.html'
-    list_display = ('marca', 'nombre', 'escenario', 'tipo', 'cantidad', 'salario_formateado', 'costo_total_estimado', 'asignacion', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento')
-    list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento', 'perfil_prestacional')
-    search_fields = ('marca__nombre', 'nombre')
+    list_display = ('marcas_display_admin', 'nombre', 'escenario', 'tipo', 'cantidad', 'salario_formateado', 'costo_total_estimado', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento')
+    list_filter = ('escenario', 'tipo', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento', 'perfil_prestacional')
+    search_fields = ('nombre', 'asignaciones_marca__marca__nombre')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
     actions = ['duplicar_registros']
+    inlines = [PersonalLogisticoMarcaInline]
 
     fieldsets = (
         ('Información Básica', {
-            'fields': ('marca', 'escenario', 'nombre', 'tipo', 'cantidad', 'salario_base', 'perfil_prestacional')
+            'fields': ('escenario', 'nombre', 'tipo', 'cantidad', 'salario_base', 'perfil_prestacional')
         }),
-        ('Distribución de Costos', {
+        ('Proyección Anual', {
+            'fields': ('indice_incremento',),
+            'description': 'Índice usado para proyectar este costo a años futuros.'
+        }),
+        ('Distribución Geográfica y Operaciones', {
             'fields': (
-                'asignacion',
-                'porcentaje_dedicacion',
-                'criterio_prorrateo',
                 'tipo_asignacion_operacion',
                 'operacion',
                 'criterio_prorrateo_operacion',
@@ -648,14 +650,9 @@ class PersonalLogisticoAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin)
                 'zona',
             ),
             'description': '''
-                <b>Por Marca:</b> Individual = 100% a esta marca | Compartido = se distribuye entre marcas<br>
                 <b>Por Operación:</b> Individual = asignado a una operación | Compartido = se distribuye entre operaciones<br>
                 <b>Por Zona:</b> Directo = 100% a una zona | Proporcional = según ventas | Compartido = equitativo
             '''
-        }),
-        ('Proyección Anual', {
-            'fields': ('indice_incremento',),
-            'description': 'Índice usado para proyectar este costo a años futuros.'
         }),
         ('Auxilios No Prestacionales', {
             'fields': ('auxilios_no_prestacionales',),
@@ -669,7 +666,12 @@ class PersonalLogisticoAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin)
     )
 
     class Media:
-        js = ('admin/js/personal_condicional.js',)
+        js = ('admin/js/personal_condicional.js', 'admin/js/distribuir_equitativo.js')
+
+    def marcas_display_admin(self, obj):
+        """Muestra las marcas asignadas en el list_display"""
+        return obj.marcas_display
+    marcas_display_admin.short_description = 'Marcas'
 
     def salario_formateado(self, obj):
         return f"${obj.salario_base:,.0f}" if obj.salario_base else "-"
@@ -1029,47 +1031,41 @@ class PersonalAdministrativoForm(forms.ModelForm):
 class PersonalAdministrativoAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin):
     form = PersonalAdministrativoForm
     change_list_template = 'admin/core/change_list_with_total.html'
-    list_display = ('nombre', 'marca', 'escenario', 'tipo', 'cantidad', 'asignacion', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'tipo_contrato', 'valor_mensual', 'costo_total_estimado', 'indice_incremento')
-    list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento', 'tipo_contrato')
-    search_fields = ('nombre',)
+    list_display = ('marcas_display_admin', 'nombre', 'escenario', 'tipo', 'cantidad', 'tipo_contrato', 'valor_mensual', 'costo_total_estimado', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento')
+    list_filter = ('escenario', 'tipo', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento', 'tipo_contrato')
+    search_fields = ('nombre', 'asignaciones_marca__marca__nombre')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
     actions = ['duplicar_registros']
+    inlines = [PersonalAdministrativoMarcaInline]
 
     fieldsets = (
         ('Información Básica', {
-            'fields': ('marca', 'escenario', 'nombre', 'tipo', 'cantidad', 'tipo_contrato')
+            'fields': ('escenario', 'nombre', 'tipo', 'cantidad')
         }),
-        ('Nómina', {
-            'fields': ('salario_base', 'perfil_prestacional'),
-            'description': 'Diligenciar solo si tipo de contrato es Nómina.'
+        ('Compensación', {
+            'fields': ('tipo_contrato', 'salario_base', 'perfil_prestacional', 'honorarios_mensuales'),
+            'description': 'Nómina: Salario Base + Perfil Prestacional | Honorarios: Honorarios Mensuales'
         }),
-        ('Honorarios', {
-            'fields': ('honorarios_mensuales',),
-            'description': 'Diligenciar solo si tipo de contrato es Honorarios.'
+        ('Proyección Anual', {
+            'fields': ('indice_incremento',),
+            'description': 'Índice usado para proyectar este costo a años futuros.'
         }),
-        ('Auxilios No Prestacionales', {
-            'fields': ('auxilios_no_prestacionales',),
-            'description': 'Auxilios que NO generan prestaciones sociales.',
-            'classes': ('collapse',)
-        }),
-        ('Distribución de Costos', {
+        ('Distribución Geográfica y Operaciones', {
             'fields': (
-                'asignacion',
-                'criterio_prorrateo',
                 'tipo_asignacion_operacion',
                 'operacion',
                 'criterio_prorrateo_operacion',
                 'tipo_asignacion_geo',
             ),
             'description': '''
-                <b>Por Marca:</b> Individual = 100% a esta marca | Compartido = se distribuye entre marcas<br>
                 <b>Por Operación:</b> Individual = asignado a una operación | Compartido = se distribuye entre operaciones<br>
                 <b>Por Zona:</b> Típicamente Proporcional o Compartido (personal admin no se asigna directo a zona)
             '''
         }),
-        ('Proyección Anual', {
-            'fields': ('indice_incremento',),
-            'description': 'Índice usado para proyectar este costo a años futuros.'
+        ('Auxilios No Prestacionales', {
+            'fields': ('auxilios_no_prestacionales',),
+            'description': 'Auxilios que NO generan prestaciones sociales.',
+            'classes': ('collapse',)
         }),
         ('Metadata', {
             'fields': ('fecha_creacion', 'fecha_modificacion'),
@@ -1078,7 +1074,12 @@ class PersonalAdministrativoAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelA
     )
 
     class Media:
-        js = ('admin/js/personal_condicional.js',)
+        js = ('admin/js/personal_condicional.js', 'admin/js/distribuir_equitativo.js')
+
+    def marcas_display_admin(self, obj):
+        """Muestra las marcas asignadas en el list_display"""
+        return obj.marcas_display
+    marcas_display_admin.short_description = 'Marcas'
 
     def valor_mensual(self, obj):
         if obj.tipo_contrato == 'nomina' and obj.salario_base:
@@ -1156,34 +1157,32 @@ class GastoAdministrativoForm(forms.ModelForm):
 class GastoAdministrativoAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin):
     form = GastoAdministrativoForm
     change_list_template = 'admin/core/change_list_with_total.html'
-    list_display = ('nombre', 'marca', 'escenario', 'tipo', 'valor_mensual_formateado', 'asignacion', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'criterio_prorrateo', 'indice_incremento')
-    list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento', 'criterio_prorrateo')
-    search_fields = ('nombre', 'notas')
+    list_display = ('marcas_display_admin', 'nombre', 'escenario', 'tipo', 'valor_mensual_formateado', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento')
+    list_filter = ('escenario', 'tipo', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento')
+    search_fields = ('nombre', 'notas', 'asignaciones_marca__marca__nombre')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
     actions = ['duplicar_registros']
+    inlines = [GastoAdministrativoMarcaInline]
 
     fieldsets = (
         ('Información Básica', {
-            'fields': ('marca', 'escenario', 'nombre', 'tipo', 'valor_mensual')
+            'fields': ('escenario', 'nombre', 'tipo', 'valor_mensual')
         }),
-        ('Distribución de Costos', {
+        ('Proyección Anual', {
+            'fields': ('indice_incremento',),
+            'description': 'Índice usado para proyectar este costo a años futuros.'
+        }),
+        ('Distribución Geográfica y Operaciones', {
             'fields': (
-                'asignacion',
-                'criterio_prorrateo',
                 'tipo_asignacion_operacion',
                 'operacion',
                 'criterio_prorrateo_operacion',
                 'tipo_asignacion_geo',
             ),
             'description': '''
-                <b>Por Marca:</b> Individual = 100% a esta marca | Compartido = se distribuye entre marcas<br>
                 <b>Por Operación:</b> Individual = asignado a una operación | Compartido = se distribuye entre operaciones<br>
                 <b>Por Zona:</b> Típicamente Proporcional o Compartido (gastos admin no se asignan directo a zona)
             '''
-        }),
-        ('Proyección Anual', {
-            'fields': ('indice_incremento',),
-            'description': 'Índice usado para proyectar este costo a años futuros.'
         }),
         ('Notas', {
             'fields': ('notas',),
@@ -1196,7 +1195,12 @@ class GastoAdministrativoAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmi
     )
 
     class Media:
-        js = ('admin/js/personal_condicional.js',)
+        js = ('admin/js/personal_condicional.js', 'admin/js/distribuir_equitativo.js')
+
+    def marcas_display_admin(self, obj):
+        """Muestra las marcas asignadas en el list_display"""
+        return obj.marcas_display
+    marcas_display_admin.short_description = 'Marcas'
 
     def valor_mensual_formateado(self, obj):
         return f"${obj.valor_mensual:,.0f}"
@@ -1235,19 +1239,23 @@ class GastoComercialForm(forms.ModelForm):
 class GastoComercialAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin):
     form = GastoComercialForm
     change_list_template = 'admin/core/change_list_with_total.html'
-    list_display = ('marca', 'escenario', 'nombre', 'tipo', 'valor_mensual_formateado', 'asignacion', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento')
-    list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento')
-    search_fields = ('nombre', 'notas')
+    list_display = ('marcas_display_admin', 'escenario', 'nombre', 'tipo', 'valor_mensual_formateado', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento')
+    list_filter = ('escenario', 'tipo', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento')
+    search_fields = ('nombre', 'notas', 'asignaciones_marca__marca__nombre')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
     actions = ['duplicar_registros']
+    inlines = [GastoComercialMarcaInline]
 
     fieldsets = (
         ('Información Básica', {
-            'fields': ('marca', 'escenario', 'nombre', 'tipo', 'valor_mensual')
+            'fields': ('escenario', 'nombre', 'tipo', 'valor_mensual')
         }),
-        ('Distribución de Costos', {
+        ('Proyección Anual', {
+            'fields': ('indice_incremento',),
+            'description': 'Índice usado para proyectar este costo a años futuros.'
+        }),
+        ('Distribución Geográfica y Operaciones', {
             'fields': (
-                'asignacion',
                 'tipo_asignacion_operacion',
                 'operacion',
                 'criterio_prorrateo_operacion',
@@ -1255,14 +1263,9 @@ class GastoComercialAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin):
                 'zona',
             ),
             'description': '''
-                <b>Por Marca:</b> Individual = 100% a esta marca | Compartido = se distribuye entre marcas<br>
                 <b>Por Operación:</b> Individual = asignado a una operación | Compartido = se distribuye entre operaciones<br>
                 <b>Por Zona:</b> Directo = 100% a una zona | Proporcional = según ventas
             '''
-        }),
-        ('Proyección Anual', {
-            'fields': ('indice_incremento',),
-            'description': 'Índice usado para proyectar este costo a años futuros.'
         }),
         ('Notas', {
             'fields': ('notas',),
@@ -1275,7 +1278,12 @@ class GastoComercialAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin):
     )
 
     class Media:
-        js = ('admin/js/personal_condicional.js',)
+        js = ('admin/js/personal_condicional.js', 'admin/js/distribuir_equitativo.js')
+
+    def marcas_display_admin(self, obj):
+        """Muestra las marcas asignadas en el list_display"""
+        return obj.marcas_display
+    marcas_display_admin.short_description = 'Marcas'
 
     def valor_mensual_formateado(self, obj):
         return f"${obj.valor_mensual:,.0f}"
@@ -1314,20 +1322,24 @@ class GastoLogisticoForm(forms.ModelForm):
 class GastoLogisticoAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin):
     form = GastoLogisticoForm
     change_list_template = 'admin/core/change_list_with_total.html'
-    list_display = ('marca', 'escenario', 'nombre', 'tipo', 'valor_mensual_formateado', 'asignacion', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento')
-    list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento')
-    search_fields = ('nombre', 'notas')
+    list_display = ('marcas_display_admin', 'escenario', 'nombre', 'tipo', 'valor_mensual_formateado', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento')
+    list_filter = ('escenario', 'tipo', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento')
+    search_fields = ('nombre', 'notas', 'asignaciones_marca__marca__nombre')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
     actions = ['duplicar_registros']
+    inlines = [GastoLogisticoMarcaInline]
 
     fieldsets = (
         ('Información Básica', {
-            'fields': ('marca', 'escenario', 'nombre', 'tipo', 'valor_mensual'),
+            'fields': ('escenario', 'nombre', 'tipo', 'valor_mensual'),
             'description': 'Para fletes de terceros, usar VEHÍCULOS con esquema="Tercero".'
         }),
-        ('Distribución de Costos', {
+        ('Proyección Anual', {
+            'fields': ('indice_incremento',),
+            'description': 'Índice usado para proyectar este costo a años futuros.'
+        }),
+        ('Distribución Geográfica y Operaciones', {
             'fields': (
-                'asignacion',
                 'tipo_asignacion_operacion',
                 'operacion',
                 'criterio_prorrateo_operacion',
@@ -1335,14 +1347,9 @@ class GastoLogisticoAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin):
                 'zona',
             ),
             'description': '''
-                <b>Por Marca:</b> Individual = 100% a esta marca | Compartido = se distribuye entre marcas<br>
                 <b>Por Operación:</b> Individual = asignado a una operación | Compartido = se distribuye entre operaciones<br>
                 <b>Por Zona:</b> Directo = 100% a una zona | Proporcional = según ventas
             '''
-        }),
-        ('Proyección Anual', {
-            'fields': ('indice_incremento',),
-            'description': 'Índice usado para proyectar este costo a años futuros.'
         }),
         ('Notas', {
             'fields': ('notas',),
@@ -1355,7 +1362,12 @@ class GastoLogisticoAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin):
     )
 
     class Media:
-        js = ('admin/js/personal_condicional.js',)
+        js = ('admin/js/personal_condicional.js', 'admin/js/distribuir_equitativo.js')
+
+    def marcas_display_admin(self, obj):
+        """Muestra las marcas asignadas en el list_display"""
+        return obj.marcas_display
+    marcas_display_admin.short_description = 'Marcas'
 
     def valor_mensual_formateado(self, obj):
         return f"${obj.valor_mensual:,.0f}"
@@ -1815,7 +1827,7 @@ class ZonaAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin):
     )
 
     class Media:
-        js = ('admin/js/personal_condicional.js',)
+        js = ('admin/js/personal_condicional.js', 'admin/js/distribuir_equitativo.js')
 
     def venta_proyectada_fmt(self, obj):
         return f"${obj.venta_proyectada:,.0f}"

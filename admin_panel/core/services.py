@@ -13,7 +13,10 @@ from .models import (
     PersonalAdministrativo, Vehiculo, GastoComercial, GastoLogistico,
     GastoAdministrativo, Zona, ZonaMunicipio, RutaLogistica, RutaMunicipio,
     ProyeccionVentasConfig, ProyeccionManual, TipologiaProyeccion,
-    Marca, FactorPrestacional
+    Marca, FactorPrestacional,
+    # Modelos intermedios para asignación multi-marca
+    PersonalComercialMarca, PersonalLogisticoMarca, PersonalAdministrativoMarca,
+    GastoComercialMarca, GastoLogisticoMarca, GastoAdministrativoMarca
 )
 from .utils import copiar_instancia, get_campos_monetarios
 
@@ -129,43 +132,64 @@ class EscenarioService:
             return cls.get_incremento_valor(indice_nombre, macros)
 
         # =====================
-        # PERSONAL COMERCIAL
+        # PERSONAL COMERCIAL (con asignaciones de marca)
         # =====================
         for item in PersonalComercial.objects.filter(escenario=source):
             incremento = get_factor(getattr(item, 'indice_incremento', 'salarios'))
-            copiar_instancia(
+            nuevo = copiar_instancia(
                 item,
                 override={'escenario': target},
                 campos_monetarios=get_campos_monetarios(item),
                 factor_incremento=incremento,
                 sufijo_nombre=""
             )
+            # Copiar asignaciones de marca
+            for asig in item.asignaciones_marca.all():
+                PersonalComercialMarca.objects.create(
+                    personal=nuevo,
+                    marca=asig.marca,
+                    porcentaje=asig.porcentaje
+                )
 
         # =====================
-        # PERSONAL LOGÍSTICO
+        # PERSONAL LOGÍSTICO (con asignaciones de marca)
         # =====================
         for item in PersonalLogistico.objects.filter(escenario=source):
             incremento = get_factor(getattr(item, 'indice_incremento', 'salarios'))
-            copiar_instancia(
+            nuevo = copiar_instancia(
                 item,
                 override={'escenario': target},
                 campos_monetarios=get_campos_monetarios(item),
                 factor_incremento=incremento,
                 sufijo_nombre=""
             )
+            # Copiar asignaciones de marca
+            for asig in item.asignaciones_marca.all():
+                PersonalLogisticoMarca.objects.create(
+                    personal=nuevo,
+                    marca=asig.marca,
+                    porcentaje=asig.porcentaje
+                )
 
         # =====================
-        # PERSONAL ADMINISTRATIVO
+        # PERSONAL ADMINISTRATIVO (con asignaciones de marca)
         # =====================
         for item in PersonalAdministrativo.objects.filter(escenario=source):
             incremento = get_factor(getattr(item, 'indice_incremento', 'salarios'))
-            copiar_instancia(
+            nuevo = copiar_instancia(
                 item,
                 override={'escenario': target},
                 campos_monetarios=get_campos_monetarios(item),
                 factor_incremento=incremento,
                 sufijo_nombre=""
             )
+            # Copiar asignaciones de marca
+            for asig in item.asignaciones_marca.all():
+                PersonalAdministrativoMarca.objects.create(
+                    personal=nuevo,
+                    marca=asig.marca,
+                    porcentaje=asig.porcentaje
+                )
 
         # =====================
         # VEHÍCULOS
@@ -180,43 +204,64 @@ class EscenarioService:
             vehiculos_map[item.pk] = nuevo_vehiculo
 
         # =====================
-        # GASTOS COMERCIALES
+        # GASTOS COMERCIALES (con asignaciones de marca)
         # =====================
         for item in GastoComercial.objects.filter(escenario=source):
             incremento = get_factor(getattr(item, 'indice_incremento', 'ipc'))
-            copiar_instancia(
+            nuevo = copiar_instancia(
                 item,
                 override={'escenario': target},
                 campos_monetarios=get_campos_monetarios(item),
                 factor_incremento=incremento,
                 sufijo_nombre=""
             )
+            # Copiar asignaciones de marca
+            for asig in item.asignaciones_marca.all():
+                GastoComercialMarca.objects.create(
+                    gasto=nuevo,
+                    marca=asig.marca,
+                    porcentaje=asig.porcentaje
+                )
 
         # =====================
-        # GASTOS LOGÍSTICOS
+        # GASTOS LOGÍSTICOS (con asignaciones de marca)
         # =====================
         for item in GastoLogistico.objects.filter(escenario=source):
             incremento = get_factor(getattr(item, 'indice_incremento', 'ipc'))
-            copiar_instancia(
+            nuevo = copiar_instancia(
                 item,
                 override={'escenario': target},
                 campos_monetarios=get_campos_monetarios(item),
                 factor_incremento=incremento,
                 sufijo_nombre=""
             )
+            # Copiar asignaciones de marca
+            for asig in item.asignaciones_marca.all():
+                GastoLogisticoMarca.objects.create(
+                    gasto=nuevo,
+                    marca=asig.marca,
+                    porcentaje=asig.porcentaje
+                )
 
         # =====================
-        # GASTOS ADMINISTRATIVOS
+        # GASTOS ADMINISTRATIVOS (con asignaciones de marca)
         # =====================
         for item in GastoAdministrativo.objects.filter(escenario=source):
             incremento = get_factor(getattr(item, 'indice_incremento', 'ipc'))
-            copiar_instancia(
+            nuevo = copiar_instancia(
                 item,
                 override={'escenario': target},
                 campos_monetarios=get_campos_monetarios(item),
                 factor_incremento=incremento,
                 sufijo_nombre=""
             )
+            # Copiar asignaciones de marca
+            for asig in item.asignaciones_marca.all():
+                GastoAdministrativoMarca.objects.create(
+                    gasto=nuevo,
+                    marca=asig.marca,
+                    porcentaje=asig.porcentaje
+                )
 
         # =====================
         # ZONAS COMERCIALES

@@ -270,6 +270,9 @@ def _distribuir_costos_a_zona(
     - Gastos: desde tabla Gasto* (excluyendo lejanías y flota)
     - Flota: desde tabla Vehiculo
     - Lejanías: desde CalculadoraLejanias
+
+    NOTA: Usa el sistema multi-marca con through table (asignaciones_marca)
+    para distribuir costos según porcentaje asignado a cada marca.
     """
     from core.models import GastoLogistico, GastoComercial
 
@@ -277,13 +280,18 @@ def _distribuir_costos_a_zona(
     personal_total = Decimal('0')
     gastos_total = Decimal('0')
 
-    # Personal
+    # Personal - filtrar por asignaciones de marca
     personal_qs = modelo_personal.objects.filter(
         escenario=escenario,
-        marca=marca
-    )
+        asignaciones_marca__marca=marca
+    ).distinct()
+
     for p in personal_qs:
-        costo = Decimal(str(p.calcular_costo_mensual()))
+        costo_total = Decimal(str(p.calcular_costo_mensual()))
+        # Obtener porcentaje asignado a esta marca (0-1)
+        porcentaje_marca = p.get_distribucion_marcas().get(marca.marca_id, Decimal('0'))
+        costo = costo_total * porcentaje_marca
+
         asignacion_geo = getattr(p, 'tipo_asignacion_geo', 'proporcional')
         zona_asignada = getattr(p, 'zona', None)
 
@@ -298,8 +306,9 @@ def _distribuir_costos_a_zona(
     # Gastos - excluir lejanías y flota (calculados aparte)
     gastos_qs = modelo_gasto.objects.filter(
         escenario=escenario,
-        marca=marca
-    )
+        asignaciones_marca__marca=marca
+    ).distinct()
+
     for g in gastos_qs:
         nombre = g.nombre or ''
         tipo = g.tipo or ''
@@ -314,16 +323,21 @@ def _distribuir_costos_a_zona(
         if modelo_gasto == GastoLogistico and es_gasto_flota_vehiculos(nombre, tipo):
             continue
 
+        valor_total = g.valor_mensual or Decimal('0')
+        # Obtener porcentaje asignado a esta marca (0-1)
+        porcentaje_marca = g.get_distribucion_marcas().get(marca.marca_id, Decimal('0'))
+        valor = valor_total * porcentaje_marca
+
         asignacion_geo = getattr(g, 'tipo_asignacion_geo', 'proporcional')
         zona_asignada = getattr(g, 'zona', None)
 
         if asignacion_geo == 'directo':
             if zona_asignada and zona_asignada.id == zona.id:
-                gastos_total += g.valor_mensual
+                gastos_total += valor
         elif asignacion_geo == 'proporcional':
-            gastos_total += g.valor_mensual * participacion
+            gastos_total += valor * participacion
         elif asignacion_geo == 'compartido':
-            gastos_total += g.valor_mensual / zonas_count
+            gastos_total += valor / zonas_count
 
     return {
         'personal': personal_total,
@@ -433,28 +447,35 @@ def calcular_pyg_todas_zonas(escenario, marca, operacion_ids: Optional[List[int]
 
     # =========================================================================
     # PRE-CARGA DE DATOS (una sola vez, antes del loop)
+    # NOTA: Usa sistema multi-marca con porcentajes por through table
     # =========================================================================
 
     # 1. Pre-cargar todo el personal y gastos (evita N+1 queries)
+    # Filtrar por asignaciones de marca usando through table
     todo_personal_comercial = list(PersonalComercial.objects.filter(
-        escenario=escenario, marca=marca
-    ))
+        escenario=escenario, asignaciones_marca__marca=marca
+    ).distinct().prefetch_related('asignaciones_marca'))
     todo_gasto_comercial = [
-        g for g in GastoComercial.objects.filter(escenario=escenario, marca=marca)
+        g for g in GastoComercial.objects.filter(
+            escenario=escenario, asignaciones_marca__marca=marca
+        ).distinct().prefetch_related('asignaciones_marca')
         if not es_gasto_lejania_comercial(g.nombre or '')
     ]
     todo_personal_logistico = list(PersonalLogistico.objects.filter(
-        escenario=escenario, marca=marca
-    ))
+        escenario=escenario, asignaciones_marca__marca=marca
+    ).distinct().prefetch_related('asignaciones_marca'))
     todo_gasto_logistico = [
-        g for g in GastoLogistico.objects.filter(escenario=escenario, marca=marca)
+        g for g in GastoLogistico.objects.filter(
+            escenario=escenario, asignaciones_marca__marca=marca
+        ).distinct().prefetch_related('asignaciones_marca')
         if not es_gasto_lejania_logistica(g.nombre or '')
     ]
 
     # 2. Pre-calcular costos de personal (evita llamar calcular_costo_mensual múltiples veces)
+    # Aplicar porcentaje asignado a esta marca
     costos_personal_comercial = [
         {
-            'costo': Decimal(str(p.calcular_costo_mensual())),
+            'costo': Decimal(str(p.calcular_costo_mensual())) * p.get_distribucion_marcas().get(marca.marca_id, Decimal('0')),
             'tipo_asignacion': getattr(p, 'tipo_asignacion_geo', 'proporcional'),
             'zona_id': p.zona_id if hasattr(p, 'zona_id') else None
         }
@@ -462,7 +483,7 @@ def calcular_pyg_todas_zonas(escenario, marca, operacion_ids: Optional[List[int]
     ]
     costos_personal_logistico = [
         {
-            'costo': Decimal(str(p.calcular_costo_mensual())),
+            'costo': Decimal(str(p.calcular_costo_mensual())) * p.get_distribucion_marcas().get(marca.marca_id, Decimal('0')),
             'tipo_asignacion': getattr(p, 'tipo_asignacion_geo', 'proporcional'),
             'zona_id': p.zona_id if hasattr(p, 'zona_id') else None
         }
@@ -470,7 +491,7 @@ def calcular_pyg_todas_zonas(escenario, marca, operacion_ids: Optional[List[int]
     ]
     costos_gastos_comercial = [
         {
-            'costo': g.valor_mensual or Decimal('0'),
+            'costo': (g.valor_mensual or Decimal('0')) * g.get_distribucion_marcas().get(marca.marca_id, Decimal('0')),
             'tipo_asignacion': getattr(g, 'tipo_asignacion_geo', 'proporcional'),
             'zona_id': g.zona_id if hasattr(g, 'zona_id') else None
         }
@@ -478,7 +499,7 @@ def calcular_pyg_todas_zonas(escenario, marca, operacion_ids: Optional[List[int]
     ]
     costos_gastos_logistico = [
         {
-            'costo': g.valor_mensual or Decimal('0'),
+            'costo': (g.valor_mensual or Decimal('0')) * g.get_distribucion_marcas().get(marca.marca_id, Decimal('0')),
             'tipo_asignacion': getattr(g, 'tipo_asignacion_geo', 'proporcional'),
             'zona_id': g.zona_id if hasattr(g, 'zona_id') else None
         }

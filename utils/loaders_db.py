@@ -180,7 +180,10 @@ class DataLoaderDB:
             marca = Marca.objects.get(marca_id=marca_id)
 
             # IMPORTANTE: Forzar recarga desde DB (evitar caché de Django ORM)
-            personal = PersonalComercial.objects.filter(marca=marca, **self._get_filter_kwargs()).all()
+            # Usar sistema multi-marca con through table
+            personal = PersonalComercial.objects.filter(
+                asignaciones_marca__marca=marca, **self._get_filter_kwargs()
+            ).distinct().prefetch_related('asignaciones_marca').all()
 
             # DEBUG: Log para verificar qué se está leyendo
             logger.info(f"[DEBUG] Cargando personal comercial de {marca_id}")
@@ -212,17 +215,23 @@ class DataLoaderDB:
                 if tipo_key not in recursos_comerciales:
                     recursos_comerciales[tipo_key] = []
 
+                # Obtener porcentaje asignado a esta marca (0-1)
+                porcentaje_marca = float(p.get_distribucion_marcas().get(marca.marca_id, 0))
+                costo_total = float(p.calcular_costo_mensual())
+                costo_marca = costo_total * porcentaje_marca
+
                 data = {
                     'tipo': p.tipo,
                     'nombre': p.nombre if hasattr(p, 'nombre') else '',
                     'cantidad': p.cantidad,
                     'salario_base': float(p.salario_base),
                     'perfil_prestacional': p.perfil_prestacional,
-                    'asignacion': p.asignacion,
+                    'asignacion': 'individual' if porcentaje_marca >= 1 else 'compartido',
                     'auxilios_no_prestacionales': p.auxilios_no_prestacionales or {},
-                    'porcentaje_dedicacion': float(p.porcentaje_dedicacion) if p.porcentaje_dedicacion else None,
+                    'porcentaje_dedicacion': porcentaje_marca,
                     'criterio_prorrateo': p.criterio_prorrateo,
-                    'costo_mensual_calculado': float(p.calcular_costo_mensual()),
+                    'costo_mensual_calculado': costo_marca,  # Costo ya prorrateado por marca
+                    'porcentaje_marca': porcentaje_marca,  # Nuevo: porcentaje asignado
                     # Campos de operación para distribución por centro de costos
                     'operacion_id': p.operacion_id,
                     'operacion_nombre': p.operacion.nombre if p.operacion else None,
@@ -236,8 +245,11 @@ class DataLoaderDB:
             # Cargar gastos comerciales
             # IMPORTANTE: Excluir gastos de lejanías porque se calculan dinámicamente
             # mediante CalculadoraLejanias y se agregan en marca.lejania_comercial
+            # Usar sistema multi-marca con through table
             gastos_comerciales = []
-            gastos_qs = GastoComercial.objects.filter(marca=marca, **self._get_filter_kwargs())
+            gastos_qs = GastoComercial.objects.filter(
+                asignaciones_marca__marca=marca, **self._get_filter_kwargs()
+            ).distinct().prefetch_related('asignaciones_marca')
 
             for gasto in gastos_qs:
                 # Filtrar gastos de lejanías (mismo criterio que pyg_service.py)
@@ -246,12 +258,18 @@ class DataLoaderDB:
                     logger.debug(f"[DEBUG] Excluyendo gasto de lejanía: {nombre}")
                     continue
 
+                # Obtener porcentaje asignado a esta marca (0-1)
+                porcentaje_marca = float(gasto.get_distribucion_marcas().get(marca.marca_id, 0))
+                valor_total = float(gasto.valor_mensual or 0)
+                valor_marca = valor_total * porcentaje_marca
+
                 gastos_comerciales.append({
                     'tipo': gasto.tipo,
                     'nombre': gasto.nombre,
-                    'valor_mensual': float(gasto.valor_mensual),
-                    'asignacion': gasto.asignacion,
-                    'criterio_prorrateo': gasto.criterio_prorrateo if gasto.asignacion == 'compartido' else None,
+                    'valor_mensual': valor_marca,  # Valor ya prorrateado por marca
+                    'asignacion': 'individual' if porcentaje_marca >= 1 else 'compartido',
+                    'porcentaje_marca': porcentaje_marca,  # Nuevo: porcentaje asignado
+                    'criterio_prorrateo': gasto.criterio_prorrateo if porcentaje_marca < 1 else None,
                     # Campos de operación para distribución por centro de costos
                     'operacion_id': gasto.operacion_id,
                     'operacion_nombre': gasto.operacion.nombre if gasto.operacion else None,
@@ -319,7 +337,10 @@ class DataLoaderDB:
                 vehiculos_dict[v.esquema].append(vehiculo_data)
 
             # Cargar personal logístico
-            personal_qs = PersonalLogistico.objects.filter(marca=marca, **self._get_filter_kwargs())
+            # Usar sistema multi-marca con through table
+            personal_qs = PersonalLogistico.objects.filter(
+                asignaciones_marca__marca=marca, **self._get_filter_kwargs()
+            ).distinct().prefetch_related('asignaciones_marca')
             personal_dict = {}
 
             for p in personal_qs:
@@ -328,16 +349,22 @@ class DataLoaderDB:
                 if tipo_key not in personal_dict:
                     personal_dict[tipo_key] = []
 
+                # Obtener porcentaje asignado a esta marca (0-1)
+                porcentaje_marca = float(p.get_distribucion_marcas().get(marca.marca_id, 0))
+                costo_total = float(p.calcular_costo_mensual())
+                costo_marca = costo_total * porcentaje_marca
+
                 personal_dict[tipo_key].append({
                     'nombre': p.nombre if hasattr(p, 'nombre') else '',
                     'cantidad': p.cantidad,
                     'salario_base': float(p.salario_base),
                     'perfil_prestacional': p.perfil_prestacional,
-                    'asignacion': p.asignacion,
+                    'asignacion': 'individual' if porcentaje_marca >= 1 else 'compartido',
                     'auxilios_no_prestacionales': p.auxilios_no_prestacionales or {},
-                    'porcentaje_dedicacion': float(p.porcentaje_dedicacion) if p.porcentaje_dedicacion else None,
+                    'porcentaje_dedicacion': porcentaje_marca,
                     'criterio_prorrateo': p.criterio_prorrateo,
-                    'costo_mensual_calculado': float(p.calcular_costo_mensual()),
+                    'costo_mensual_calculado': costo_marca,  # Costo ya prorrateado por marca
+                    'porcentaje_marca': porcentaje_marca,  # Nuevo: porcentaje asignado
                     # Campos de operación para distribución por centro de costos
                     'operacion_id': p.operacion_id,
                     'operacion_nombre': p.operacion.nombre if p.operacion else None,
@@ -348,8 +375,11 @@ class DataLoaderDB:
             # Cargar gastos logísticos
             # IMPORTANTE: Excluir gastos de lejanías logísticas porque se calculan dinámicamente
             # mediante CalculadoraLejanias y se agregan en marca.lejania_logistica
+            # Usar sistema multi-marca con through table
             gastos_logisticos = []
-            gastos_qs = GastoLogistico.objects.filter(marca=marca, **self._get_filter_kwargs())
+            gastos_qs = GastoLogistico.objects.filter(
+                asignaciones_marca__marca=marca, **self._get_filter_kwargs()
+            ).distinct().prefetch_related('asignaciones_marca')
 
             for gasto in gastos_qs:
                 # Filtrar gastos de lejanías logísticas (mismo criterio que pyg_service.py)
@@ -363,12 +393,18 @@ class DataLoaderDB:
                     logger.debug(f"[DEBUG] Excluyendo gasto de lejanía logística: {nombre}")
                     continue
 
+                # Obtener porcentaje asignado a esta marca (0-1)
+                porcentaje_marca = float(gasto.get_distribucion_marcas().get(marca.marca_id, 0))
+                valor_total = float(gasto.valor_mensual or 0)
+                valor_marca = valor_total * porcentaje_marca
+
                 gastos_logisticos.append({
                     'tipo': gasto.tipo,
                     'nombre': gasto.nombre,
-                    'valor_mensual': float(gasto.valor_mensual),
-                    'asignacion': gasto.asignacion,
-                    'criterio_prorrateo': gasto.criterio_prorrateo if gasto.asignacion == 'compartido' else None,
+                    'valor_mensual': valor_marca,  # Valor ya prorrateado por marca
+                    'asignacion': 'individual' if porcentaje_marca >= 1 else 'compartido',
+                    'porcentaje_marca': porcentaje_marca,  # Nuevo: porcentaje asignado
+                    'criterio_prorrateo': gasto.criterio_prorrateo if porcentaje_marca < 1 else None,
                     # Campos de operación para distribución por centro de costos
                     'operacion_id': gasto.operacion_id,
                     'operacion_nombre': gasto.operacion.nombre if gasto.operacion else None,
@@ -437,12 +473,20 @@ class DataLoaderDB:
             marca = Marca.objects.get(marca_id=marca_id)
 
             # Cargar personal administrativo
+            # Usar sistema multi-marca con through table
             personal_dict = []
             try:
-                personal_qs = PersonalAdministrativo.objects.filter(marca=marca, **self._get_filter_kwargs())
+                personal_qs = PersonalAdministrativo.objects.filter(
+                    asignaciones_marca__marca=marca, **self._get_filter_kwargs()
+                ).distinct().prefetch_related('asignaciones_marca')
 
                 for p in personal_qs:
                     try:
+                        # Obtener porcentaje asignado a esta marca (0-1)
+                        porcentaje_marca = float(p.get_distribucion_marcas().get(marca.marca_id, 0))
+                        costo_total = float(p.calcular_costo_mensual())
+                        costo_marca = costo_total * porcentaje_marca
+
                         personal_dict.append({
                             'tipo': p.tipo,
                             'nombre': p.nombre if p.nombre else '',
@@ -452,9 +496,10 @@ class DataLoaderDB:
                             'tipo_contrato': p.tipo_contrato,
                             'honorarios_mensuales': float(p.honorarios_mensuales) if p.honorarios_mensuales else 0,
                             'auxilios_no_prestacionales': p.auxilios_no_prestacionales or {},
-                            'asignacion': p.asignacion,
+                            'asignacion': 'individual' if porcentaje_marca >= 1 else 'compartido',
+                            'porcentaje_marca': porcentaje_marca,  # Nuevo: porcentaje asignado
                             'criterio_prorrateo': p.criterio_prorrateo,
-                            'costo_mensual_calculado': float(p.calcular_costo_mensual()),
+                            'costo_mensual_calculado': costo_marca,  # Costo ya prorrateado por marca
                             # Campos de operación para distribución por centro de costos
                             'operacion_id': p.operacion_id,
                             'operacion_nombre': p.operacion.nombre if p.operacion else None,
@@ -468,18 +513,27 @@ class DataLoaderDB:
                 logger.warning(f"Error cargando personal administrativo de {marca_id}: {e}")
 
             # Cargar gastos administrativos
+            # Usar sistema multi-marca con through table
             gastos_dict = []
             try:
-                gastos_qs = GastoAdministrativo.objects.filter(marca=marca, **self._get_filter_kwargs())
+                gastos_qs = GastoAdministrativo.objects.filter(
+                    asignaciones_marca__marca=marca, **self._get_filter_kwargs()
+                ).distinct().prefetch_related('asignaciones_marca')
 
                 for gasto in gastos_qs:
                     try:
+                        # Obtener porcentaje asignado a esta marca (0-1)
+                        porcentaje_marca = float(gasto.get_distribucion_marcas().get(marca.marca_id, 0))
+                        valor_total = float(gasto.valor_mensual or 0)
+                        valor_marca = valor_total * porcentaje_marca
+
                         gastos_dict.append({
                             'tipo': gasto.tipo,
                             'nombre': gasto.nombre,
-                            'valor_mensual': float(gasto.valor_mensual),
-                            'asignacion': gasto.asignacion,
-                            'criterio_prorrateo': gasto.criterio_prorrateo if gasto.asignacion == 'compartido' else None,
+                            'valor_mensual': valor_marca,  # Valor ya prorrateado por marca
+                            'asignacion': 'individual' if porcentaje_marca >= 1 else 'compartido',
+                            'porcentaje_marca': porcentaje_marca,  # Nuevo: porcentaje asignado
+                            'criterio_prorrateo': gasto.criterio_prorrateo if porcentaje_marca < 1 else None,
                             # Campos de operación para distribución por centro de costos
                             'operacion_id': gasto.operacion_id,
                             'operacion_nombre': gasto.operacion.nombre if gasto.operacion else None,
