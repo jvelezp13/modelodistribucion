@@ -24,7 +24,10 @@ from .models import (
     # Módulo de Proyección de Ventas
     CanalVenta, CategoriaProducto, Producto,
     ProyeccionVentasConfig, ProyeccionManual,
-    TipologiaProyeccion
+    TipologiaProyeccion,
+    # Modelos de asignación multi-marca
+    PersonalComercialMarca, PersonalLogisticoMarca, PersonalAdministrativoMarca,
+    GastoComercialMarca, GastoLogisticoMarca, GastoAdministrativoMarca,
 )
 from .admin_site import dxv_admin_site
 
@@ -114,6 +117,76 @@ class GlobalFilterMixin:
             kwargs['initial'] = marca_id
 
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+
+# =============================================================================
+# INLINES PARA ASIGNACIÓN MULTI-MARCA
+# =============================================================================
+
+class PersonalComercialMarcaInline(admin.TabularInline):
+    """Inline para asignar marcas con porcentajes a Personal Comercial"""
+    model = PersonalComercialMarca
+    extra = 1
+    min_num = 1
+    autocomplete_fields = ['marca']
+    fields = ['marca', 'porcentaje']
+    verbose_name = "Marca Asignada"
+    verbose_name_plural = "Marcas Asignadas (debe sumar 100%)"
+
+
+class PersonalLogisticoMarcaInline(admin.TabularInline):
+    """Inline para asignar marcas con porcentajes a Personal Logístico"""
+    model = PersonalLogisticoMarca
+    extra = 1
+    min_num = 1
+    autocomplete_fields = ['marca']
+    fields = ['marca', 'porcentaje']
+    verbose_name = "Marca Asignada"
+    verbose_name_plural = "Marcas Asignadas (debe sumar 100%)"
+
+
+class PersonalAdministrativoMarcaInline(admin.TabularInline):
+    """Inline para asignar marcas con porcentajes a Personal Administrativo"""
+    model = PersonalAdministrativoMarca
+    extra = 1
+    min_num = 1
+    autocomplete_fields = ['marca']
+    fields = ['marca', 'porcentaje']
+    verbose_name = "Marca Asignada"
+    verbose_name_plural = "Marcas Asignadas (debe sumar 100%)"
+
+
+class GastoComercialMarcaInline(admin.TabularInline):
+    """Inline para asignar marcas con porcentajes a Gasto Comercial"""
+    model = GastoComercialMarca
+    extra = 1
+    min_num = 1
+    autocomplete_fields = ['marca']
+    fields = ['marca', 'porcentaje']
+    verbose_name = "Marca Asignada"
+    verbose_name_plural = "Marcas Asignadas (debe sumar 100%)"
+
+
+class GastoLogisticoMarcaInline(admin.TabularInline):
+    """Inline para asignar marcas con porcentajes a Gasto Logístico"""
+    model = GastoLogisticoMarca
+    extra = 1
+    min_num = 1
+    autocomplete_fields = ['marca']
+    fields = ['marca', 'porcentaje']
+    verbose_name = "Marca Asignada"
+    verbose_name_plural = "Marcas Asignadas (debe sumar 100%)"
+
+
+class GastoAdministrativoMarcaInline(admin.TabularInline):
+    """Inline para asignar marcas con porcentajes a Gasto Administrativo"""
+    model = GastoAdministrativoMarca
+    extra = 1
+    min_num = 1
+    autocomplete_fields = ['marca']
+    fields = ['marca', 'porcentaje']
+    verbose_name = "Marca Asignada"
+    verbose_name_plural = "Marcas Asignadas (debe sumar 100%)"
 
 
 @admin.register(Escenario, site=dxv_admin_site)
@@ -438,21 +511,19 @@ class PersonalComercialForm(forms.ModelForm):
 class PersonalComercialAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin):
     form = PersonalComercialForm
     change_list_template = 'admin/core/change_list_with_total.html'
-    list_display = ('marca', 'nombre', 'escenario', 'tipo', 'cantidad', 'salario_formateado', 'costo_total_estimado', 'asignacion', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento')
-    list_filter = ('escenario', 'marca', 'tipo', 'asignacion', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento', 'perfil_prestacional')
-    search_fields = ('marca__nombre', 'nombre')
+    list_display = ('marcas_display_admin', 'nombre', 'escenario', 'tipo', 'cantidad', 'salario_formateado', 'costo_total_estimado', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento')
+    list_filter = ('escenario', 'tipo', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento', 'perfil_prestacional')
+    search_fields = ('nombre', 'asignaciones_marca__marca__nombre')
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
     actions = ['duplicar_registros']
+    inlines = [PersonalComercialMarcaInline]
 
     fieldsets = (
         ('Información Básica', {
-            'fields': ('marca', 'escenario', 'nombre', 'tipo', 'cantidad', 'salario_base', 'perfil_prestacional')
+            'fields': ('escenario', 'nombre', 'tipo', 'cantidad', 'salario_base', 'perfil_prestacional')
         }),
-        ('Distribución de Costos', {
+        ('Distribución Geográfica y Operaciones', {
             'fields': (
-                'asignacion',
-                'porcentaje_dedicacion',
-                'criterio_prorrateo',
                 'tipo_asignacion_operacion',
                 'operacion',
                 'criterio_prorrateo_operacion',
@@ -460,7 +531,6 @@ class PersonalComercialAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin)
                 'zona',
             ),
             'description': '''
-                <b>Por Marca:</b> Individual = 100% a esta marca | Compartido = se distribuye entre marcas<br>
                 <b>Por Operación:</b> Individual = asignado a una operación | Compartido = se distribuye entre operaciones<br>
                 <b>Por Zona:</b> Directo = 100% a una zona | Proporcional = según ventas | Compartido = equitativo
             '''
@@ -482,6 +552,11 @@ class PersonalComercialAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin)
 
     class Media:
         js = ('admin/js/personal_condicional.js',)
+
+    def marcas_display_admin(self, obj):
+        """Muestra las marcas asignadas en el list_display"""
+        return obj.marcas_display
+    marcas_display_admin.short_description = 'Marcas'
 
     def salario_formateado(self, obj):
         return f"${obj.salario_base:,.0f}" if obj.salario_base else "-"

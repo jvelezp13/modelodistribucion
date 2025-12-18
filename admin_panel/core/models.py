@@ -476,8 +476,51 @@ class PersonalComercial(models.Model):
             return self.auxilio_adicional or Decimal('0')
         return sum(Decimal(str(v)) for v in self.auxilios_no_prestacionales.values())
 
+    # =========================================================================
+    # MÉTODOS PARA ASIGNACIÓN MULTI-MARCA
+    # =========================================================================
+
+    def get_distribucion_marcas(self):
+        """
+        Retorna la distribución de este recurso entre marcas.
+        Returns: dict {marca_id: porcentaje_decimal (0-1)}
+        """
+        # Primero intentar con nuevo modelo (asignaciones_marca)
+        asignaciones = self.asignaciones_marca.select_related('marca').all()
+        if asignaciones.exists():
+            return {
+                asig.marca.marca_id: asig.porcentaje / Decimal('100')
+                for asig in asignaciones
+            }
+        # Fallback: usar campo antiguo marca (retrocompatibilidad)
+        if self.marca_id:
+            return {self.marca.marca_id: Decimal('1')}
+        return {}
+
+    @property
+    def es_compartido(self):
+        """True si el recurso está asignado a múltiples marcas."""
+        asignaciones = self.asignaciones_marca.all()
+        if asignaciones.exists():
+            return asignaciones.count() > 1
+        # Fallback: usar campo antiguo
+        return self.asignacion == 'compartido'
+
+    @property
+    def marcas_display(self):
+        """Retorna string con nombres de marcas para mostrar en admin."""
+        asignaciones = self.asignaciones_marca.select_related('marca').all()
+        if asignaciones.exists():
+            return ", ".join([f"{a.marca.nombre}" for a in asignaciones])
+        # Fallback: usar campo antiguo
+        if self.marca:
+            return self.marca.nombre
+        return "-"
+
     def __str__(self):
-        return f"{self.marca.nombre} - {self.nombre} ({self.cantidad})"
+        # Usar marcas_display si hay asignaciones nuevas
+        marcas = self.marcas_display
+        return f"{marcas} - {self.nombre} ({self.cantidad})"
 
 
 class PersonalLogistico(models.Model):
@@ -666,8 +709,43 @@ class PersonalLogistico(models.Model):
             return self.auxilio_adicional or Decimal('0')
         return sum(Decimal(str(v)) for v in self.auxilios_no_prestacionales.values())
 
+    # =========================================================================
+    # MÉTODOS PARA ASIGNACIÓN MULTI-MARCA
+    # =========================================================================
+
+    def get_distribucion_marcas(self):
+        """Retorna la distribución de este recurso entre marcas."""
+        asignaciones = self.asignaciones_marca.select_related('marca').all()
+        if asignaciones.exists():
+            return {
+                asig.marca.marca_id: asig.porcentaje / Decimal('100')
+                for asig in asignaciones
+            }
+        if self.marca_id:
+            return {self.marca.marca_id: Decimal('1')}
+        return {}
+
+    @property
+    def es_compartido(self):
+        """True si el recurso está asignado a múltiples marcas."""
+        asignaciones = self.asignaciones_marca.all()
+        if asignaciones.exists():
+            return asignaciones.count() > 1
+        return self.asignacion == 'compartido'
+
+    @property
+    def marcas_display(self):
+        """Retorna string con nombres de marcas para mostrar en admin."""
+        asignaciones = self.asignaciones_marca.select_related('marca').all()
+        if asignaciones.exists():
+            return ", ".join([f"{a.marca.nombre}" for a in asignaciones])
+        if self.marca:
+            return self.marca.nombre
+        return "-"
+
     def __str__(self):
-        return f"{self.marca.nombre} - {self.nombre} ({self.cantidad})"
+        marcas = self.marcas_display
+        return f"{marcas} - {self.nombre} ({self.cantidad})"
 
 
 class Vehiculo(models.Model):
@@ -1369,10 +1447,43 @@ class PersonalAdministrativo(models.Model):
             return self.auxilio_adicional or Decimal('0')
         return sum(Decimal(str(v)) for v in self.auxilios_no_prestacionales.values())
 
-    def __str__(self):
+    # =========================================================================
+    # MÉTODOS PARA ASIGNACIÓN MULTI-MARCA
+    # =========================================================================
+
+    def get_distribucion_marcas(self):
+        """Retorna la distribución de este recurso entre marcas."""
+        asignaciones = self.asignaciones_marca.select_related('marca').all()
+        if asignaciones.exists():
+            return {
+                asig.marca.marca_id: asig.porcentaje / Decimal('100')
+                for asig in asignaciones
+            }
+        if self.marca_id:
+            return {self.marca.marca_id: Decimal('1')}
+        return {}
+
+    @property
+    def es_compartido(self):
+        """True si el recurso está asignado a múltiples marcas."""
+        asignaciones = self.asignaciones_marca.all()
+        if asignaciones.exists():
+            return asignaciones.count() > 1
+        return self.asignacion == 'compartido'
+
+    @property
+    def marcas_display(self):
+        """Retorna string con nombres de marcas para mostrar en admin."""
+        asignaciones = self.asignaciones_marca.select_related('marca').all()
+        if asignaciones.exists():
+            return ", ".join([f"{a.marca.nombre}" for a in asignaciones])
         if self.marca:
-            return f"{self.marca.nombre} - {self.get_tipo_display()} ({self.cantidad})"
-        return f"{self.get_tipo_display()} - Compartido ({self.cantidad})"
+            return self.marca.nombre
+        return "Compartido"
+
+    def __str__(self):
+        marcas = self.marcas_display
+        return f"{marcas} - {self.get_tipo_display()} ({self.cantidad})"
 
 
 class GastoAdministrativo(models.Model):
@@ -1495,10 +1606,43 @@ class GastoAdministrativo(models.Model):
         verbose_name_plural = "Gastos Administrativos"
         ordering = ['tipo', 'nombre']
 
-    def __str__(self):
+    # =========================================================================
+    # MÉTODOS PARA ASIGNACIÓN MULTI-MARCA
+    # =========================================================================
+
+    def get_distribucion_marcas(self):
+        """Retorna la distribución de este gasto entre marcas."""
+        asignaciones = self.asignaciones_marca.select_related('marca').all()
+        if asignaciones.exists():
+            return {
+                asig.marca.marca_id: asig.porcentaje / Decimal('100')
+                for asig in asignaciones
+            }
+        if self.marca_id:
+            return {self.marca.marca_id: Decimal('1')}
+        return {}
+
+    @property
+    def es_compartido(self):
+        """True si el gasto está asignado a múltiples marcas."""
+        asignaciones = self.asignaciones_marca.all()
+        if asignaciones.exists():
+            return asignaciones.count() > 1
+        return self.asignacion == 'compartido'
+
+    @property
+    def marcas_display(self):
+        """Retorna string con nombres de marcas para mostrar en admin."""
+        asignaciones = self.asignaciones_marca.select_related('marca').all()
+        if asignaciones.exists():
+            return ", ".join([f"{a.marca.nombre}" for a in asignaciones])
         if self.marca:
-            return f"{self.marca.nombre} - {self.get_tipo_display()} - ${self.valor_mensual:,.0f}"
-        return f"{self.get_tipo_display()} - Compartido - ${self.valor_mensual:,.0f}"
+            return self.marca.nombre
+        return "Compartido"
+
+    def __str__(self):
+        marcas = self.marcas_display
+        return f"{marcas} - {self.get_tipo_display()} - ${self.valor_mensual:,.0f}"
 
 
 class GastoComercial(models.Model):
@@ -1613,8 +1757,43 @@ class GastoComercial(models.Model):
         verbose_name_plural = "Gastos Comerciales"
         ordering = ['marca', 'tipo']
 
+    # =========================================================================
+    # MÉTODOS PARA ASIGNACIÓN MULTI-MARCA
+    # =========================================================================
+
+    def get_distribucion_marcas(self):
+        """Retorna la distribución de este gasto entre marcas."""
+        asignaciones = self.asignaciones_marca.select_related('marca').all()
+        if asignaciones.exists():
+            return {
+                asig.marca.marca_id: asig.porcentaje / Decimal('100')
+                for asig in asignaciones
+            }
+        if self.marca_id:
+            return {self.marca.marca_id: Decimal('1')}
+        return {}
+
+    @property
+    def es_compartido(self):
+        """True si el gasto está asignado a múltiples marcas."""
+        asignaciones = self.asignaciones_marca.all()
+        if asignaciones.exists():
+            return asignaciones.count() > 1
+        return self.asignacion == 'compartido'
+
+    @property
+    def marcas_display(self):
+        """Retorna string con nombres de marcas para mostrar en admin."""
+        asignaciones = self.asignaciones_marca.select_related('marca').all()
+        if asignaciones.exists():
+            return ", ".join([f"{a.marca.nombre}" for a in asignaciones])
+        if self.marca:
+            return self.marca.nombre
+        return "-"
+
     def __str__(self):
-        return f"{self.marca.nombre} - {self.get_tipo_display()}: ${self.valor_mensual:,.0f}"
+        marcas = self.marcas_display
+        return f"{marcas} - {self.get_tipo_display()}: ${self.valor_mensual:,.0f}"
 
 
 class GastoLogistico(models.Model):
@@ -1739,8 +1918,43 @@ class GastoLogistico(models.Model):
         verbose_name_plural = "Gastos Logísticos"
         ordering = ['marca', 'tipo']
 
+    # =========================================================================
+    # MÉTODOS PARA ASIGNACIÓN MULTI-MARCA
+    # =========================================================================
+
+    def get_distribucion_marcas(self):
+        """Retorna la distribución de este gasto entre marcas."""
+        asignaciones = self.asignaciones_marca.select_related('marca').all()
+        if asignaciones.exists():
+            return {
+                asig.marca.marca_id: asig.porcentaje / Decimal('100')
+                for asig in asignaciones
+            }
+        if self.marca_id:
+            return {self.marca.marca_id: Decimal('1')}
+        return {}
+
+    @property
+    def es_compartido(self):
+        """True si el gasto está asignado a múltiples marcas."""
+        asignaciones = self.asignaciones_marca.all()
+        if asignaciones.exists():
+            return asignaciones.count() > 1
+        return self.asignacion == 'compartido'
+
+    @property
+    def marcas_display(self):
+        """Retorna string con nombres de marcas para mostrar en admin."""
+        asignaciones = self.asignaciones_marca.select_related('marca').all()
+        if asignaciones.exists():
+            return ", ".join([f"{a.marca.nombre}" for a in asignaciones])
+        if self.marca:
+            return self.marca.nombre
+        return "-"
+
     def __str__(self):
-        return f"{self.marca.nombre} - {self.get_tipo_display()}: ${self.valor_mensual:,.0f}"
+        marcas = self.marcas_display
+        return f"{marcas} - {self.get_tipo_display()}: ${self.valor_mensual:,.0f}"
 
 
 class Impuesto(models.Model):
@@ -3191,3 +3405,184 @@ class TipologiaProyeccion(models.Model):
     def get_venta_anual(self):
         """Suma de los 12 meses con crecimiento"""
         return sum(self.get_ventas_mensuales().values())
+
+
+# =============================================================================
+# MODELOS INTERMEDIOS PARA ASIGNACIÓN MULTI-MARCA
+# =============================================================================
+# Estos modelos permiten asignar un recurso (personal o gasto) a múltiples
+# marcas con porcentajes específicos. Los porcentajes deben sumar 100%.
+
+
+class PersonalComercialMarca(models.Model):
+    """Relación entre PersonalComercial y Marca con porcentaje de asignación"""
+    personal = models.ForeignKey(
+        'PersonalComercial',
+        on_delete=models.CASCADE,
+        related_name='asignaciones_marca'
+    )
+    marca = models.ForeignKey(
+        'Marca',
+        on_delete=models.CASCADE,
+        related_name='personal_comercial_asignaciones'
+    )
+    porcentaje = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        help_text="Porcentaje asignado a esta marca (0-100). Debe sumar 100% entre todas las marcas."
+    )
+
+    class Meta:
+        db_table = 'dxv_personal_comercial_marca'
+        unique_together = [['personal', 'marca']]
+        verbose_name = "Asignación de Marca (Personal Comercial)"
+        verbose_name_plural = "Asignaciones de Marca (Personal Comercial)"
+
+    def __str__(self):
+        return f"{self.marca.nombre}: {self.porcentaje}%"
+
+
+class PersonalLogisticoMarca(models.Model):
+    """Relación entre PersonalLogistico y Marca con porcentaje de asignación"""
+    personal = models.ForeignKey(
+        'PersonalLogistico',
+        on_delete=models.CASCADE,
+        related_name='asignaciones_marca'
+    )
+    marca = models.ForeignKey(
+        'Marca',
+        on_delete=models.CASCADE,
+        related_name='personal_logistico_asignaciones'
+    )
+    porcentaje = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        help_text="Porcentaje asignado a esta marca (0-100). Debe sumar 100% entre todas las marcas."
+    )
+
+    class Meta:
+        db_table = 'dxv_personal_logistico_marca'
+        unique_together = [['personal', 'marca']]
+        verbose_name = "Asignación de Marca (Personal Logístico)"
+        verbose_name_plural = "Asignaciones de Marca (Personal Logístico)"
+
+    def __str__(self):
+        return f"{self.marca.nombre}: {self.porcentaje}%"
+
+
+class PersonalAdministrativoMarca(models.Model):
+    """Relación entre PersonalAdministrativo y Marca con porcentaje de asignación"""
+    personal = models.ForeignKey(
+        'PersonalAdministrativo',
+        on_delete=models.CASCADE,
+        related_name='asignaciones_marca'
+    )
+    marca = models.ForeignKey(
+        'Marca',
+        on_delete=models.CASCADE,
+        related_name='personal_administrativo_asignaciones'
+    )
+    porcentaje = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        help_text="Porcentaje asignado a esta marca (0-100). Debe sumar 100% entre todas las marcas."
+    )
+
+    class Meta:
+        db_table = 'dxv_personal_administrativo_marca'
+        unique_together = [['personal', 'marca']]
+        verbose_name = "Asignación de Marca (Personal Administrativo)"
+        verbose_name_plural = "Asignaciones de Marca (Personal Administrativo)"
+
+    def __str__(self):
+        return f"{self.marca.nombre}: {self.porcentaje}%"
+
+
+class GastoComercialMarca(models.Model):
+    """Relación entre GastoComercial y Marca con porcentaje de asignación"""
+    gasto = models.ForeignKey(
+        'GastoComercial',
+        on_delete=models.CASCADE,
+        related_name='asignaciones_marca'
+    )
+    marca = models.ForeignKey(
+        'Marca',
+        on_delete=models.CASCADE,
+        related_name='gasto_comercial_asignaciones'
+    )
+    porcentaje = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        help_text="Porcentaje asignado a esta marca (0-100). Debe sumar 100% entre todas las marcas."
+    )
+
+    class Meta:
+        db_table = 'dxv_gasto_comercial_marca'
+        unique_together = [['gasto', 'marca']]
+        verbose_name = "Asignación de Marca (Gasto Comercial)"
+        verbose_name_plural = "Asignaciones de Marca (Gasto Comercial)"
+
+    def __str__(self):
+        return f"{self.marca.nombre}: {self.porcentaje}%"
+
+
+class GastoLogisticoMarca(models.Model):
+    """Relación entre GastoLogistico y Marca con porcentaje de asignación"""
+    gasto = models.ForeignKey(
+        'GastoLogistico',
+        on_delete=models.CASCADE,
+        related_name='asignaciones_marca'
+    )
+    marca = models.ForeignKey(
+        'Marca',
+        on_delete=models.CASCADE,
+        related_name='gasto_logistico_asignaciones'
+    )
+    porcentaje = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        help_text="Porcentaje asignado a esta marca (0-100). Debe sumar 100% entre todas las marcas."
+    )
+
+    class Meta:
+        db_table = 'dxv_gasto_logistico_marca'
+        unique_together = [['gasto', 'marca']]
+        verbose_name = "Asignación de Marca (Gasto Logístico)"
+        verbose_name_plural = "Asignaciones de Marca (Gasto Logístico)"
+
+    def __str__(self):
+        return f"{self.marca.nombre}: {self.porcentaje}%"
+
+
+class GastoAdministrativoMarca(models.Model):
+    """Relación entre GastoAdministrativo y Marca con porcentaje de asignación"""
+    gasto = models.ForeignKey(
+        'GastoAdministrativo',
+        on_delete=models.CASCADE,
+        related_name='asignaciones_marca'
+    )
+    marca = models.ForeignKey(
+        'Marca',
+        on_delete=models.CASCADE,
+        related_name='gasto_administrativo_asignaciones'
+    )
+    porcentaje = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        help_text="Porcentaje asignado a esta marca (0-100). Debe sumar 100% entre todas las marcas."
+    )
+
+    class Meta:
+        db_table = 'dxv_gasto_administrativo_marca'
+        unique_together = [['gasto', 'marca']]
+        verbose_name = "Asignación de Marca (Gasto Administrativo)"
+        verbose_name_plural = "Asignaciones de Marca (Gasto Administrativo)"
+
+    def __str__(self):
+        return f"{self.marca.nombre}: {self.porcentaje}%"
