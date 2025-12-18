@@ -2108,10 +2108,10 @@ class ProyeccionVentasConfigAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelA
                 <p style="margin-bottom: 8px; color: {fuente_color}; font-weight: bold;">
                     📊 Fuente: {fuente}
                 </p>
-                <div style="overflow-x: auto; max-width: 100%;">
-                    <table style="border-collapse: collapse; min-width: 1000px; font-size: 12px;">
-                        <tr>{header_cells}<th style="padding: 8px; text-align: center; background: #e3f2fd; border: 1px solid #ddd; font-weight: bold;">TOTAL</th></tr>
-                        <tr>{value_cells}<td style="padding: 8px; text-align: right; border: 1px solid #ddd; background: #e3f2fd; font-weight: bold;">${total:,.0f}</td></tr>
+                <div style="overflow-x: scroll; overflow-y: hidden; max-width: 100%; padding-bottom: 10px;">
+                    <table style="border-collapse: collapse; min-width: 950px; font-size: 12px; white-space: nowrap;">
+                        <tr>{header_cells}<th style="padding: 8px 12px; text-align: center; background: #e3f2fd; border: 1px solid #ddd; font-weight: bold;">TOTAL</th></tr>
+                        <tr>{value_cells}<td style="padding: 8px 12px; text-align: right; border: 1px solid #ddd; background: #e3f2fd; font-weight: bold;">${total:,.0f}</td></tr>
                     </table>
                 </div>
             </div>
