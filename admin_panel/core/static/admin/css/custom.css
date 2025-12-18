@@ -217,3 +217,23 @@ a.deletelink,
     background: #166534 !important;
     color: #fff !important;
 }
+
+/* Sidebar más angosto */
+#nav-sidebar {
+    width: 200px !important;
+}
+
+#nav-sidebar .module th,
+#nav-sidebar .module caption {
+    font-size: 11px;
+}
+
+#nav-sidebar .module td a {
+    font-size: 12px;
+    padding: 6px 8px;
+}
+
+/* Ajustar contenido principal para sidebar angosto */
+.main.shifted {
+    margin-left: 205px !important;
+}
