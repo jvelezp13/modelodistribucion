@@ -2104,7 +2104,7 @@ class ProyeccionVentasConfigAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelA
             value_cells = ''.join([f'<td style="padding: 2px 3px; text-align: right; border: 1px solid #ddd;">${ventas[k]:,.0f}</td>' for k in meses_keys])
 
             html = f'''
-            <div style="margin: 10px 0 10px -240px; overflow-x: auto; width: calc(100% + 240px);">
+            <div style="margin: 10px 0 10px -150px; overflow-x: auto; width: calc(100% + 150px);">
                 <p style="margin-bottom: 6px; color: {fuente_color}; font-weight: bold; font-size: 10px;">
                     📊 Fuente: {fuente}
                 </p>
