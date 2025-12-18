@@ -2099,18 +2099,18 @@ class ProyeccionVentasConfigAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelA
             meses_keys = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
                          'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
 
-            # Construir tabla HTML
-            header_cells = ''.join([f'<th style="padding: 8px; text-align: center; background: #f5f5f5; border: 1px solid #ddd;">{m}</th>' for m in meses_labels])
-            value_cells = ''.join([f'<td style="padding: 8px; text-align: right; border: 1px solid #ddd;">${ventas[k]:,.0f}</td>' for k in meses_keys])
+            # Construir tabla HTML compacta
+            header_cells = ''.join([f'<th style="padding: 4px 6px; text-align: center; background: #f5f5f5; border: 1px solid #ddd;">{m}</th>' for m in meses_labels])
+            value_cells = ''.join([f'<td style="padding: 4px 6px; text-align: right; border: 1px solid #ddd;">${ventas[k]:,.0f}</td>' for k in meses_keys])
 
             html = f'''
-            <div style="margin: 10px 0; overflow-x: auto;">
-                <p style="margin-bottom: 8px; color: {fuente_color}; font-weight: bold;">
+            <div style="margin: 10px 0; overflow-x: auto; max-width: 100%;">
+                <p style="margin-bottom: 8px; color: {fuente_color}; font-weight: bold; font-size: 11px;">
                     📊 Fuente: {fuente}
                 </p>
-                <table style="border-collapse: collapse; min-width: 950px; font-size: 12px; white-space: nowrap;">
-                    <tr>{header_cells}<th style="padding: 8px 12px; text-align: center; background: #e3f2fd; border: 1px solid #ddd; font-weight: bold;">TOTAL</th></tr>
-                    <tr>{value_cells}<td style="padding: 8px 12px; text-align: right; border: 1px solid #ddd; background: #e3f2fd; font-weight: bold;">${total:,.0f}</td></tr>
+                <table style="border-collapse: collapse; width: 100%; font-size: 11px; white-space: nowrap;">
+                    <tr>{header_cells}<th style="padding: 4px 6px; text-align: center; background: #e3f2fd; border: 1px solid #ddd; font-weight: bold;">TOTAL</th></tr>
+                    <tr>{value_cells}<td style="padding: 4px 6px; text-align: right; border: 1px solid #ddd; background: #e3f2fd; font-weight: bold;">${total:,.0f}</td></tr>
                 </table>
             </div>
             '''
