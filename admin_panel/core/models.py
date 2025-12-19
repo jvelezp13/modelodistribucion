@@ -372,23 +372,9 @@ class PersonalComercial(models.Model):
         blank=True
     )
 
-    # Asignación geográfica (para P&G por zona)
-    tipo_asignacion_geo = models.CharField(
-        max_length=20,
-        choices=TIPO_ASIGNACION_GEO_CHOICES,
-        default='directo',
-        verbose_name="Asignación Geográfica",
-        help_text="Cómo se asigna este costo a las zonas"
-    )
-    zona = models.ForeignKey(
-        'Zona',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='personal_comercial',
-        verbose_name="Zona",
-        help_text="Zona asignada (solo si asignación es 'Directo a Zona')"
-    )
+    # NOTA: Asignación geográfica eliminada
+    # Las zonas ahora asignan el vendedor, no al revés
+    # Ver Zona.vendedor para la relación inversa (zonas_asignadas)
 
     # Asignación por operación (para P&G por operación/centro de costos)
     operacion = models.ForeignKey(
@@ -516,6 +502,17 @@ class PersonalComercial(models.Model):
         if self.marca:
             return self.marca.nombre
         return "-"
+
+    @property
+    def zonas_display(self):
+        """
+        Muestra las zonas donde trabaja este vendedor.
+        Usa la relación inversa zonas_asignadas.
+        """
+        zonas = self.zonas_asignadas.all()
+        if zonas.exists():
+            return ", ".join([z.nombre for z in zonas])
+        return "Sin zonas asignadas"
 
     def __str__(self):
         # Usar marcas_display si hay asignaciones nuevas
@@ -2580,14 +2577,18 @@ class Zona(models.Model):
         on_delete=models.CASCADE,
         verbose_name="Escenario"
     )
-    operacion = models.ForeignKey(
+    # Campo legacy - DEPRECADO: operacion se hereda del vendedor
+    # NOTA: Este campo será eliminado en migración futura
+    # Usar propiedad self.operacion que hereda de vendedor.operacion
+    operacion_legacy = models.ForeignKey(
         'Operacion',
-        on_delete=models.CASCADE,
-        related_name='zonas',
-        verbose_name="Operación",
+        on_delete=models.SET_NULL,
+        related_name='zonas_legacy',
+        verbose_name="Operación (Legacy - DEPRECADO)",
         null=True,
         blank=True,
-        help_text="Operación/Centro de Costos al que pertenece esta zona"
+        help_text="DEPRECADO - La operación se hereda del vendedor asignado",
+        db_column='operacion_id'  # Mantener mismo nombre de columna para migración
     )
 
     # Base del vendedor (para calcular rutas comerciales)
@@ -2670,6 +2671,32 @@ class Zona(models.Model):
 
     def __str__(self):
         return f"{self.nombre} ({self.marcas_display})"
+
+    # ===========================================
+    # PROPIEDADES HEREDADAS DEL VENDEDOR
+    # ===========================================
+
+    @property
+    def operacion(self):
+        """
+        Operación heredada del vendedor asignado.
+
+        La zona pertenece a la misma operación que su vendedor.
+        Si no tiene vendedor asignado, retorna None.
+        """
+        if self.vendedor and self.vendedor.operacion:
+            return self.vendedor.operacion
+        # Fallback temporal: usar operacion_legacy si existe
+        return self.operacion_legacy if hasattr(self, 'operacion_legacy') else None
+
+    @property
+    def operacion_nombre(self):
+        """Nombre de la operación para mostrar en admin"""
+        return self.operacion.nombre if self.operacion else "-"
+
+    # ===========================================
+    # MÉTODOS DE CÁLCULO DE VENTAS
+    # ===========================================
 
     def obtener_marca_operacion(self):
         """Obtiene el MarcaOperacion correspondiente a esta zona."""
@@ -2766,25 +2793,35 @@ class Zona(models.Model):
     def get_distribucion_marcas(self):
         """
         Retorna la distribución de esta zona entre marcas.
+        HEREDA la distribución del vendedor asignado.
 
         Returns:
             dict {marca_id: porcentaje_decimal (0-1)}
         """
-        # Primero intentar con nuevo modelo (asignaciones_marca)
+        # Heredar distribución del vendedor
+        if self.vendedor:
+            return self.vendedor.get_distribucion_marcas()
+
+        # Fallback temporal: usar asignaciones_marca de zona (legacy)
         asignaciones = self.asignaciones_marca.select_related('marca').all()
         if asignaciones.exists():
             return {
                 asig.marca.marca_id: asig.porcentaje / Decimal('100')
                 for asig in asignaciones
             }
+
         # Fallback: usar campo antiguo marca (retrocompatibilidad)
         if self.marca_id:
             return {self.marca.marca_id: Decimal('1')}
+
         return {}
 
     @property
     def es_compartido(self):
-        """True si la zona está asignada a múltiples marcas."""
+        """True si la zona está asignada a múltiples marcas (heredado del vendedor)."""
+        if self.vendedor:
+            return self.vendedor.es_compartido
+        # Fallback temporal
         asignaciones = self.asignaciones_marca.all()
         if asignaciones.exists():
             return asignaciones.count() > 1
@@ -2792,7 +2829,10 @@ class Zona(models.Model):
 
     @property
     def marcas_display(self):
-        """Retorna string con nombres de marcas para mostrar en admin."""
+        """Retorna string con nombres de marcas para mostrar en admin (heredado del vendedor)."""
+        if self.vendedor:
+            return self.vendedor.marcas_display
+        # Fallback temporal: usar asignaciones_marca de zona (legacy)
         asignaciones = self.asignaciones_marca.select_related('marca').all()
         if asignaciones.exists():
             return ", ".join([f"{a.marca.nombre} ({a.porcentaje}%)" for a in asignaciones])

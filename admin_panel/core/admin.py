@@ -523,10 +523,10 @@ class PersonalComercialForm(forms.ModelForm):
 class PersonalComercialAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin):
     form = PersonalComercialForm
     change_list_template = 'admin/core/change_list_with_total.html'
-    list_display = ('marcas_display_admin', 'nombre', 'escenario', 'tipo', 'cantidad', 'salario_formateado', 'costo_total_estimado', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento')
-    list_filter = ('escenario', 'tipo', 'tipo_asignacion_operacion', 'tipo_asignacion_geo', 'indice_incremento', 'perfil_prestacional')
-    search_fields = ('nombre', 'asignaciones_marca__marca__nombre')
-    readonly_fields = ('fecha_creacion', 'fecha_modificacion')
+    list_display = ('marcas_display_admin', 'nombre', 'escenario', 'tipo', 'cantidad', 'salario_formateado', 'costo_total_estimado', 'operacion', 'zonas_asignadas_display', 'indice_incremento')
+    list_filter = ('escenario', 'tipo', 'tipo_asignacion_operacion', 'indice_incremento', 'perfil_prestacional', 'operacion')
+    search_fields = ('nombre', 'asignaciones_marca__marca__nombre', 'operacion__nombre')
+    readonly_fields = ('zonas_asignadas_display', 'fecha_creacion', 'fecha_modificacion')
     actions = ['duplicar_registros']
     inlines = [PersonalComercialMarcaInline]
 
@@ -538,18 +538,21 @@ class PersonalComercialAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin)
             'fields': ('indice_incremento',),
             'description': 'Índice usado para proyectar este costo a años futuros.'
         }),
-        ('Distribución Geográfica y Operaciones', {
+        ('Asignación de Operación', {
             'fields': (
-                'tipo_asignacion_operacion',
                 'operacion',
+                'tipo_asignacion_operacion',
                 'criterio_prorrateo_operacion',
-                'tipo_asignacion_geo',
-                'zona',
             ),
             'description': '''
-                <b>Por Operación:</b> Individual = asignado a una operación | Compartido = se distribuye entre operaciones<br>
-                <b>Por Zona:</b> Directo = 100% a una zona | Proporcional = según ventas | Compartido = equitativo
+                <b>Operación:</b> Define el centro de costos al que pertenece este vendedor.<br>
+                <b>Tipo:</b> Individual = 100% a una operación | Compartido = se distribuye entre operaciones
             '''
+        }),
+        ('Zonas Asignadas', {
+            'fields': ('zonas_asignadas_display',),
+            'description': '🔒 Solo lectura - Las zonas se asignan desde el módulo de Zonas Comerciales, no aquí.',
+            'classes': ('collapse',)
         }),
         ('Auxilios No Prestacionales', {
             'fields': ('auxilios_no_prestacionales',),
@@ -564,6 +567,21 @@ class PersonalComercialAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin)
 
     class Media:
         js = ('admin/js/personal_condicional.js', 'admin/js/distribuir_equitativo.js')
+
+    def zonas_asignadas_display(self, obj):
+        """Muestra las zonas donde trabaja este vendedor"""
+        zonas = obj.zonas_asignadas.all()
+        if not zonas.exists():
+            return format_html('<em style="color: #999;">Sin zonas asignadas</em>')
+
+        from django.urls import reverse
+        links = []
+        for zona in zonas:
+            url = reverse('admin:core_zona_change', args=[zona.pk])
+            links.append(f'<a href="{url}" target="_blank">{zona.nombre}</a>')
+
+        return format_html(', '.join(links))
+    zonas_asignadas_display.short_description = 'Zonas Asignadas'
 
     def marcas_display_admin(self, obj):
         """Muestra las marcas asignadas en el list_display"""
@@ -1807,18 +1825,23 @@ class ZonaAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin):
     list_display = ('nombre', 'marcas_display_admin', 'operacion', 'vendedor', 'participacion_ventas_fmt', 'venta_proyectada_fmt', 'tipo_vehiculo_comercial', 'frecuencia', 'requiere_pernocta', 'activo')
     list_filter = ('asignaciones_marca__marca', 'escenario', 'operacion', 'frecuencia', 'requiere_pernocta', 'tipo_vehiculo_comercial', 'activo')
     search_fields = ['nombre', 'vendedor__nombre', 'asignaciones_marca__marca__nombre', 'operacion__nombre']
-    readonly_fields = ('participacion_ventas', 'venta_proyectada', 'fecha_creacion', 'fecha_modificacion')
-    autocomplete_fields = ['vendedor', 'municipio_base_vendedor', 'operacion']
-    inlines = [ZonaMarcaInline, ZonaMunicipioInline]
+    readonly_fields = ('operacion_display', 'marcas_heredadas_display', 'participacion_ventas', 'venta_proyectada', 'fecha_creacion', 'fecha_modificacion')
+    autocomplete_fields = ['vendedor', 'municipio_base_vendedor']
+    inlines = [ZonaMunicipioInline]  # ZonaMarcaInline eliminado - marcas se heredan del vendedor
     actions = ['duplicar_registros']
 
     fieldsets = (
         ('Información Básica', {
             'fields': ('nombre', 'activo')
         }),
-        ('Asignación', {
-            'fields': ('escenario', 'operacion', 'vendedor', 'municipio_base_vendedor'),
-            'description': 'La Operación determina el centro de costos. Las marcas se asignan en el inline inferior.'
+        ('Asignación de Vendedor', {
+            'fields': ('escenario', 'vendedor', 'municipio_base_vendedor'),
+            'description': 'Asigna el vendedor. La operación y marcas se heredan automáticamente del vendedor.'
+        }),
+        ('Información Heredada del Vendedor', {
+            'fields': ('operacion_display', 'marcas_heredadas_display'),
+            'description': '🔒 Solo lectura - Esta información se hereda del vendedor asignado',
+            'classes': ('collapse',)
         }),
         ('Distribución de Ventas', {
             'fields': ('participacion_ventas', 'venta_proyectada'),
@@ -1840,6 +1863,31 @@ class ZonaAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin):
 
     class Media:
         js = ('admin/js/personal_condicional.js', 'admin/js/distribuir_equitativo.js')
+
+    def operacion_display(self, obj):
+        """Muestra la operación heredada del vendedor"""
+        if obj.vendedor and obj.vendedor.operacion:
+            vendedor_nombre = obj.vendedor.nombre or "vendedor"
+            return format_html(
+                '<strong>{}</strong><br><small style="color: #666;">🔗 Heredado de: {}</small>',
+                obj.vendedor.operacion.nombre,
+                vendedor_nombre
+            )
+        return format_html('<em style="color: #999;">Sin vendedor asignado</em>')
+    operacion_display.short_description = 'Operación (Heredada del Vendedor)'
+
+    def marcas_heredadas_display(self, obj):
+        """Muestra las marcas heredadas del vendedor"""
+        if obj.vendedor:
+            vendedor_nombre = obj.vendedor.nombre or "vendedor"
+            marcas_texto = obj.vendedor.marcas_display
+            return format_html(
+                '<strong>{}</strong><br><small style="color: #666;">🔗 Heredado de: {}</small>',
+                marcas_texto,
+                vendedor_nombre
+            )
+        return format_html('<em style="color: #999;">Sin vendedor asignado</em>')
+    marcas_heredadas_display.short_description = 'Marcas (Heredadas del Vendedor)'
 
     def marcas_display_admin(self, obj):
         """Muestra las marcas asignadas en el listado"""
