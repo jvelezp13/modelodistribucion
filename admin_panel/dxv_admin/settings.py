@@ -8,11 +8,60 @@ from pathlib import Path
 # Build paths inside the project
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# SECURITY WARNING: keep the secret key used in production secret!
+# ============================================================================
+# SECURITY CONFIGURATION
+# ============================================================================
+
+# SECRET_KEY: Clave secreta para Django
+# IMPORTANTE: DEBE ser única y no compartirse en el código fuente
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-dev-key-change-in-production')
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
+# DEBUG: Modo de depuración
+# IMPORTANTE: DEBE ser False en producción para evitar exposición de información sensible
+DEBUG = False
+if os.environ.get('DJANGO_DEBUG', '').lower() in ('true', '1', 'yes'):
+    DEBUG = True
+
+# 🔒 VALIDACIÓN DE SEGURIDAD
+INSECURE_KEY_DETECTED = SECRET_KEY == 'django-insecure-dev-key-change-in-production'
+
+if not DEBUG and INSECURE_KEY_DETECTED:
+    raise ValueError(
+        "\n"
+        "=" * 70 + "\n"
+        "🚨 ERROR DE CONFIGURACIÓN DE SEGURIDAD 🚨\n"
+        "=" * 70 + "\n"
+        "SECRET_KEY inseguro detectado en modo producción (DEBUG=False).\n"
+        "\n"
+        "ACCIÓN REQUERIDA:\n"
+        "1. Generar una clave segura:\n"
+        "   python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())'\n"
+        "\n"
+        "2. Configurar en variables de entorno:\n"
+        "   export DJANGO_SECRET_KEY='<clave-generada>'\n"
+        "\n"
+        "3. O agregar a .env:\n"
+        "   DJANGO_SECRET_KEY=<clave-generada>\n"
+        "\n"
+        "NUNCA comitear la SECRET_KEY en el código fuente.\n"
+        "=" * 70
+    )
+
+# Advertencia en desarrollo si se usa clave insegura
+if DEBUG and INSECURE_KEY_DETECTED:
+    import warnings
+    warnings.warn(
+        "⚠️  Usando SECRET_KEY de desarrollo. Esto es aceptable solo en entorno local.",
+        stacklevel=2
+    )
+
+# Log del modo actual
+import logging
+logger = logging.getLogger(__name__)
+if DEBUG:
+    logger.warning("🟡 Servidor Django corriendo en modo DEBUG - Solo para desarrollo")
+else:
+    logger.info("🟢 Servidor Django corriendo en modo PRODUCCIÓN")
 
 ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0').split(',')
 

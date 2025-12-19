@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import sys
+import os
 from pathlib import Path
 import logging
 
@@ -38,13 +39,45 @@ app = FastAPI(
     version="2.0.0"
 )
 
-# Configurar CORS para permitir requests desde Next.js
+# ============================================================================
+# CONFIGURACIÓN SEGURA DE CORS
+# ============================================================================
+def get_allowed_origins() -> List[str]:
+    """
+    Obtiene orígenes permitidos desde variables de entorno.
+
+    En desarrollo: localhost:3000, localhost:8000
+    En producción: dominios específicos configurados en CORS_ALLOWED_ORIGINS
+
+    Returns:
+        Lista de orígenes permitidos
+    """
+    origins_str = os.environ.get(
+        'CORS_ALLOWED_ORIGINS',
+        'http://localhost:3000,http://localhost:8000'  # Solo para desarrollo
+    )
+    origins = [origin.strip() for origin in origins_str.split(',')]
+
+    # Advertencia si CORS está abierto
+    if "*" in origins:
+        logger.warning(
+            "⚠️  CORS configurado con wildcard (*). "
+            "Esto es INSEGURO para producción. "
+            "Configure CORS_ALLOWED_ORIGINS en variables de entorno."
+        )
+
+    logger.info(f"🔒 CORS configurado con orígenes: {origins}")
+    return origins
+
+
+# Aplicar middleware con configuración segura
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # En producción, especificar el dominio de Next.js
+    allow_origins=get_allowed_origins(),
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
+    allow_headers=["Content-Type", "Authorization", "Accept"],
+    max_age=600,  # Cache preflight por 10 minutos
 )
 
 
@@ -1208,7 +1241,13 @@ def obtener_lista_precios(
                     'total_ventas': demanda.get_total_ventas_anual(),
                     'total_cmv': demanda.get_total_cmv_anual(),
                 }
-            except:
+            except AttributeError as e:
+                # Demanda no configurada para este producto
+                logger.debug(f"Demanda no disponible para producto {lp.producto.nombre}: {e}")
+                prod_data['demanda'] = None
+            except Exception as e:
+                # Error inesperado procesando demanda
+                logger.error(f"Error procesando demanda para {lp.producto.nombre}: {e}", exc_info=True)
                 prod_data['demanda'] = None
 
             productos.append(prod_data)

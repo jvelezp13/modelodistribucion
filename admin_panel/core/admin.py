@@ -2094,7 +2094,9 @@ class TipologiaProyeccionInline(admin.TabularInline):
         try:
             total = obj.get_venta_mensual_inicial()
             return f"${total:,.0f}"
-        except:
+        except (AttributeError, TypeError, ValueError) as e:
+            # Método no disponible o datos inválidos
+            logger.debug(f"No se pudo obtener venta mensual para {obj}: {e}")
             return "-"
     venta_mensual_fmt.short_description = 'Mes 1'
 
@@ -2104,7 +2106,9 @@ class TipologiaProyeccionInline(admin.TabularInline):
         try:
             total = obj.get_venta_anual()
             return f"${total:,.0f}"
-        except:
+        except (AttributeError, TypeError, ValueError) as e:
+            # Método no disponible o datos inválidos
+            logger.debug(f"No se pudo obtener venta anual para {obj}: {e}")
             return "-"
     venta_anual_fmt.short_description = 'Total Anual'
 
@@ -2193,7 +2197,9 @@ class ProyeccionVentasConfigAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelA
                 else:
                     fuente = "Calculado desde Tipologías"
                     fuente_color = "#388e3c"
-            except:
+            except (AttributeError, ValueError, TypeError):
+                # Proyección manual no existe o tiene datos inválidos
+                # Usar tipologías por defecto
                 fuente = "Calculado desde Tipologías"
                 fuente_color = "#388e3c"
 
