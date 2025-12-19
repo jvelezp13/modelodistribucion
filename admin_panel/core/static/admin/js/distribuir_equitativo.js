@@ -25,7 +25,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
         btn.onclick = function(e) {
             e.preventDefault();
+            e.stopPropagation();
             distribuirEquitativo(inlineGroup);
+            return false;
         };
 
         // Agregar el botón al header del inline
@@ -39,24 +41,43 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     function distribuirEquitativo(inlineGroup) {
-        // Obtener todas las filas visibles del inline (excluyendo empty-form y eliminadas)
-        const rows = inlineGroup.querySelectorAll('.inline-related:not(.empty-form)');
+        // Buscar todas las filas del inline - usar múltiples selectores para compatibilidad
+        // Django admin usa diferentes estructuras para TabularInline
+        let rows = inlineGroup.querySelectorAll('tbody tr.form-row:not(.empty-form)');
+
+        // Si no encuentra con tbody tr.form-row, intentar con .inline-related
+        if (rows.length === 0) {
+            rows = inlineGroup.querySelectorAll('.inline-related:not(.empty-form)');
+        }
+
+        // También buscar en la tabla directamente
+        if (rows.length === 0) {
+            rows = inlineGroup.querySelectorAll('tr:not(.empty-form):not(:first-child)');
+        }
+
+        console.log('Filas encontradas:', rows.length);
 
         // Filtrar filas activas (no marcadas para eliminar y con marca seleccionada)
         const activeRows = Array.from(rows).filter(function(row) {
+            // Ignorar filas que son headers o vacías
+            if (row.classList.contains('add-row')) return false;
+
             // Verificar que no esté marcada para eliminar
             const deleteCheckbox = row.querySelector('input[type="checkbox"][name*="DELETE"]');
             if (deleteCheckbox && deleteCheckbox.checked) return false;
 
             // Verificar que tenga una marca seleccionada
             const marcaSelect = row.querySelector('select[name*="marca"]');
+            console.log('Marca select:', marcaSelect, 'Value:', marcaSelect ? marcaSelect.value : 'N/A');
             if (!marcaSelect || !marcaSelect.value) return false;
 
             return true;
         });
 
+        console.log('Filas activas con marca:', activeRows.length);
+
         if (activeRows.length === 0) {
-            alert('No hay marcas asignadas para distribuir');
+            alert('No hay marcas asignadas para distribuir. Asegúrate de seleccionar las marcas primero.');
             return;
         }
 
@@ -66,10 +87,12 @@ document.addEventListener('DOMContentLoaded', function() {
         // Asignar porcentaje a cada fila activa
         activeRows.forEach(function(row) {
             const porcentajeInput = row.querySelector('input[name*="porcentaje"]');
+            console.log('Porcentaje input:', porcentajeInput);
             if (porcentajeInput) {
                 porcentajeInput.value = porcentaje;
                 // Trigger change event para actualizar cualquier validación
                 porcentajeInput.dispatchEvent(new Event('change', { bubbles: true }));
+                porcentajeInput.dispatchEvent(new Event('input', { bubbles: true }));
             }
         });
 
