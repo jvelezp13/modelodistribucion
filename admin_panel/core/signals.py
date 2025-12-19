@@ -2,6 +2,7 @@ from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.db.models import Sum, Q
 from decimal import Decimal
+from collections import defaultdict
 import logging
 
 from .models import (
@@ -10,7 +11,10 @@ from .models import (
     GastoComercial, GastoLogistico, GastoAdministrativo,
     Escenario, Marca, Vehiculo,
     Zona, ZonaMunicipio, RutaLogistica, RutaMunicipio,
-    ConfiguracionLejania, MatrizDesplazamiento
+    ConfiguracionLejania, MatrizDesplazamiento,
+    # Modelos through para asignación multi-marca
+    PersonalComercialMarca, PersonalLogisticoMarca, PersonalAdministrativoMarca,
+    GastoComercialMarca, GastoLogisticoMarca, GastoAdministrativoMarca
 )
 
 logger = logging.getLogger(__name__)
@@ -18,7 +22,10 @@ logger = logging.getLogger(__name__)
 def calculate_hr_expenses(escenario):
     """
     Recalcula los gastos de Dotación, EPP y Exámenes Médicos para un escenario dado.
-    Agrupa por Marca para asignar correctamente el gasto.
+
+    Usa el sistema multi-marca: agrupa por zona/operación/tipo_asignacion_geo,
+    calcula la distribución ponderada de marcas del personal, y crea gastos
+    con asignaciones multi-marca proporcionales.
     """
     if not escenario:
         return
@@ -35,27 +42,26 @@ def calculate_hr_expenses(escenario):
         return
 
     tope_dotacion = politica.tope_smlv_dotacion * smlv
-    
-    # Función auxiliar para procesar gastos por grupo (marca, operacion, tipo_asignacion_geo, zona)
-    def process_expenses(model_personal, model_gasto, tipo_personal):
+
+    def process_expenses(model_personal, model_gasto, model_gasto_marca, tipo_personal):
+        """
+        Procesa gastos RRHH para un tipo de personal.
+        Agrupa SIN marca, calcula distribución ponderada de marcas.
+        """
         try:
-            qs = model_personal.objects.filter(escenario=escenario)
+            qs = model_personal.objects.filter(escenario=escenario).prefetch_related('asignaciones_marca__marca')
 
             # Verificar campos disponibles en el modelo
             campos_modelo = [f.name for f in model_personal._meta.get_fields()]
             tiene_zona = 'zona' in campos_modelo
             tiene_operacion = 'operacion' in campos_modelo
 
-            # Procesar en dos fases:
-            # 1. Personal con asignación directa (agrupa por zona)
-            # 2. Personal con asignación proporcional/compartida (NO agrupa por zona)
-
-            grupos = []
-
-            # Campos base para agrupar (siempre incluir operación si existe)
-            campos_base = ['marca', 'tipo_asignacion_geo']
+            # Campos para agrupar (SIN marca - usaremos through table)
+            campos_base = ['tipo_asignacion_geo']
             if tiene_operacion:
                 campos_base.extend(['tipo_asignacion_operacion', 'operacion', 'criterio_prorrateo_operacion'])
+
+            grupos = []
 
             # Fase 1: Personal con tipo_asignacion_geo = 'directo' (agrupa por zona)
             if tiene_zona:
@@ -63,13 +69,13 @@ def calculate_hr_expenses(escenario):
                 grupos_directos = qs.filter(tipo_asignacion_geo='directo').order_by().values(
                     *campos_directos
                 ).distinct()
-                grupos.extend(grupos_directos)
+                grupos.extend(list(grupos_directos))
 
-            # Fase 2: Personal con tipo_asignacion_geo != 'directo' o NULL (NO agrupa por zona)
+            # Fase 2: Personal con tipo_asignacion_geo != 'directo' o NULL
             grupos_no_directos = qs.exclude(tipo_asignacion_geo='directo').order_by().values(
                 *campos_base
             ).distinct()
-            grupos.extend(grupos_no_directos)
+            grupos.extend(list(grupos_no_directos))
 
             # Limpiar gastos de provisiones existentes para este escenario y modelo
             model_gasto.objects.filter(
@@ -82,7 +88,6 @@ def calculate_hr_expenses(escenario):
 
         for grupo in grupos:
             try:
-                marca_id = grupo['marca']
                 tipo_asig_geo_original = grupo['tipo_asignacion_geo']
                 zona_id = grupo.get('zona', None)
 
@@ -91,8 +96,8 @@ def calculate_hr_expenses(escenario):
                 operacion_id = grupo.get('operacion', None)
                 criterio_prorrateo_op = grupo.get('criterio_prorrateo_operacion', None)
 
-                # Filtrar personal de este grupo
-                filtro = {'marca_id': marca_id}
+                # Construir filtro SIN marca
+                filtro = {}
 
                 # Filtro por zona (solo si tipo='directo')
                 if tiene_zona and 'zona' in grupo:
@@ -119,22 +124,44 @@ def calculate_hr_expenses(escenario):
                 tipo_asig_geo = tipo_asig_geo_original or 'proporcional'
 
                 # Obtener objetos relacionados
-                marca_obj = Marca.objects.get(pk=marca_id) if marca_id else None
                 zona_obj = None
                 if zona_id and tipo_asig_geo == 'directo':
                     zona_obj = Zona.objects.get(pk=zona_id)
 
-                # Obtener operación
                 from .models import Operacion
                 operacion_obj = None
                 if operacion_id:
                     operacion_obj = Operacion.objects.get(pk=operacion_id)
 
-                asignacion = 'compartido' if marca_id is None else 'individual'
-
                 # Sumar cantidad de empleados
                 count_total = personal_grupo.aggregate(total=Sum('cantidad'))['total'] or 0
                 if count_total == 0:
+                    continue
+
+                # =======================================================
+                # CALCULAR DISTRIBUCIÓN PONDERADA DE MARCAS
+                # Cada personal tiene asignaciones de marca con porcentajes.
+                # Ponderamos por cantidad de empleados de cada personal.
+                # =======================================================
+                distribucion_marcas = defaultdict(Decimal)
+                total_ponderado = Decimal('0')
+
+                for personal in personal_grupo:
+                    cantidad = Decimal(str(personal.cantidad))
+                    # Obtener distribución de marcas del personal
+                    for asig in personal.asignaciones_marca.all():
+                        peso = cantidad * (asig.porcentaje / Decimal('100'))
+                        distribucion_marcas[asig.marca_id] += peso
+                        total_ponderado += peso
+
+                # Normalizar a porcentajes (deben sumar 100%)
+                marcas_porcentajes = {}
+                if total_ponderado > 0:
+                    for marca_id, peso in distribucion_marcas.items():
+                        marcas_porcentajes[marca_id] = (peso / total_ponderado) * Decimal('100')
+
+                # Si no hay asignaciones de marca, no crear gastos
+                if not marcas_porcentajes:
                     continue
 
                 # Generar nombre descriptivo para el gasto
@@ -148,6 +175,7 @@ def calculate_hr_expenses(escenario):
                     nombre_suffix = f" - {' / '.join(nombre_parts)}"
                 else:
                     nombre_suffix = f" ({tipo_asig_geo})"
+
             except Exception as e:
                 logger.error(f"ERROR procesando grupo en {tipo_personal}: {str(e)}", exc_info=True)
                 continue
@@ -155,10 +183,8 @@ def calculate_hr_expenses(escenario):
             # Helper para agregar campos opcionales según el modelo de gasto
             def agregar_campos_opcionales(datos_gasto):
                 campos_gasto = [f.name for f in model_gasto._meta.get_fields()]
-                # Zona
                 if 'zona' in campos_gasto:
                     datos_gasto['zona'] = zona_obj
-                # Operación
                 if 'operacion' in campos_gasto:
                     datos_gasto['operacion'] = operacion_obj
                 if 'tipo_asignacion_operacion' in campos_gasto:
@@ -167,24 +193,44 @@ def calculate_hr_expenses(escenario):
                     datos_gasto['criterio_prorrateo_operacion'] = criterio_prorrateo_op
                 return datos_gasto
 
+            # Helper para crear gasto con asignaciones multi-marca
+            def crear_gasto_con_marcas(tipo_gasto, nombre, valor):
+                if valor <= 0:
+                    return
+
+                datos_gasto = agregar_campos_opcionales({
+                    'escenario': escenario,
+                    'tipo': tipo_gasto,
+                    'marca': None,  # No usar FK antiguo
+                    'nombre': nombre,
+                    'valor_mensual': valor,
+                    'asignacion': 'compartido',  # Siempre compartido con multi-marca
+                    'tipo_asignacion_geo': tipo_asig_geo,
+                    'indice_incremento': 'ipc',
+                })
+                gasto = model_gasto.objects.create(**datos_gasto)
+
+                # Crear asignaciones de marca
+                for marca_id, porcentaje in marcas_porcentajes.items():
+                    marca_obj = Marca.objects.get(pk=marca_id)
+                    # Determinar el nombre del campo FK en el modelo through
+                    if 'gasto' in [f.name for f in model_gasto_marca._meta.get_fields()]:
+                        model_gasto_marca.objects.create(
+                            gasto=gasto,
+                            marca=marca_obj,
+                            porcentaje=porcentaje
+                        )
+                    else:
+                        # Fallback - no debería ocurrir
+                        logger.warning(f"Modelo {model_gasto_marca} no tiene campo 'gasto'")
+
             # --- 1. DOTACIÓN (Aplica a todos con salario <= tope) ---
             count_dotacion = personal_grupo.filter(salario_base__lte=tope_dotacion).aggregate(
                 total=Sum('cantidad')
             )['total'] or 0
             valor_dotacion = (count_dotacion * politica.valor_dotacion_completa) / politica.frecuencia_dotacion_meses
 
-            if valor_dotacion > 0:
-                datos_gasto = agregar_campos_opcionales({
-                    'escenario': escenario,
-                    'tipo': 'dotacion',
-                    'marca': marca_obj,
-                    'nombre': f'Provisión Dotación{nombre_suffix}',
-                    'valor_mensual': valor_dotacion,
-                    'asignacion': asignacion,
-                    'tipo_asignacion_geo': tipo_asig_geo,
-                    'indice_incremento': 'ipc',  # Provisiones RRHH usan IPC
-                })
-                model_gasto.objects.create(**datos_gasto)
+            crear_gasto_con_marcas('dotacion', f'Provisión Dotación{nombre_suffix}', valor_dotacion)
 
             # --- 2. EXÁMENES MÉDICOS ---
             if tipo_personal == 'comercial':
@@ -197,40 +243,17 @@ def calculate_hr_expenses(escenario):
             valor_examenes = (count_total * costo_ingreso * (politica.tasa_rotacion_anual / 100) / 12) + \
                              (count_total * costo_periodico / 12)
 
-            if valor_examenes > 0:
-                datos_gasto = agregar_campos_opcionales({
-                    'escenario': escenario,
-                    'tipo': 'examenes',
-                    'marca': marca_obj,
-                    'nombre': f'Provisión Exámenes Médicos{nombre_suffix}',
-                    'valor_mensual': valor_examenes,
-                    'asignacion': asignacion,
-                    'tipo_asignacion_geo': tipo_asig_geo,
-                    'indice_incremento': 'ipc',  # Provisiones RRHH usan IPC
-                })
-                model_gasto.objects.create(**datos_gasto)
+            crear_gasto_con_marcas('examenes', f'Provisión Exámenes Médicos{nombre_suffix}', valor_examenes)
 
             # --- 3. EPP (SOLO COMERCIAL) ---
             if tipo_personal == 'comercial':
                 valor_epp = (count_total * politica.valor_epp_anual_comercial) / politica.frecuencia_epp_meses
+                crear_gasto_con_marcas('epp', f'Provisión EPP (Comercial){nombre_suffix}', valor_epp)
 
-                if valor_epp > 0:
-                    datos_gasto = agregar_campos_opcionales({
-                        'escenario': escenario,
-                        'tipo': 'epp',
-                        'marca': marca_obj,
-                        'nombre': f'Provisión EPP (Comercial){nombre_suffix}',
-                        'valor_mensual': valor_epp,
-                        'asignacion': asignacion,
-                        'tipo_asignacion_geo': tipo_asig_geo,
-                        'indice_incremento': 'ipc',  # Provisiones RRHH usan IPC
-                    })
-                    model_gasto.objects.create(**datos_gasto)
-
-    # Ejecutar para cada tipo de personal
-    process_expenses(PersonalComercial, GastoComercial, 'comercial')
-    process_expenses(PersonalLogistico, GastoLogistico, 'logistico')
-    process_expenses(PersonalAdministrativo, GastoAdministrativo, 'administrativo')
+    # Ejecutar para cada tipo de personal con su modelo through correspondiente
+    process_expenses(PersonalComercial, GastoComercial, GastoComercialMarca, 'comercial')
+    process_expenses(PersonalLogistico, GastoLogistico, GastoLogisticoMarca, 'logistico')
+    process_expenses(PersonalAdministrativo, GastoAdministrativo, GastoAdministrativoMarca, 'administrativo')
 
 
 @receiver([post_save, post_delete], sender=PersonalComercial)
