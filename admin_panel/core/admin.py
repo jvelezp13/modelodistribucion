@@ -28,6 +28,7 @@ from .models import (
     # Modelos de asignación multi-marca
     PersonalComercialMarca, PersonalLogisticoMarca, PersonalAdministrativoMarca,
     GastoComercialMarca, GastoLogisticoMarca, GastoAdministrativoMarca,
+    ZonaMarca,
 )
 from .admin_site import dxv_admin_site
 
@@ -181,6 +182,17 @@ class GastoLogisticoMarcaInline(admin.TabularInline):
 class GastoAdministrativoMarcaInline(admin.TabularInline):
     """Inline para asignar marcas con porcentajes a Gasto Administrativo"""
     model = GastoAdministrativoMarca
+    extra = 1
+    min_num = 1
+    autocomplete_fields = ['marca']
+    fields = ['marca', 'porcentaje']
+    verbose_name = "Marca Asignada"
+    verbose_name_plural = "Marcas Asignadas (debe sumar 100%)"
+
+
+class ZonaMarcaInline(admin.TabularInline):
+    """Inline para asignar marcas con porcentajes a Zona Comercial"""
+    model = ZonaMarca
     extra = 1
     min_num = 1
     autocomplete_fields = ['marca']
@@ -1792,12 +1804,12 @@ class ZonaMunicipioInline(admin.TabularInline):
 @admin.register(Zona, site=dxv_admin_site)
 class ZonaAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin):
     """Admin para Zonas Comerciales (vendedores)"""
-    list_display = ('nombre', 'marca', 'operacion', 'vendedor', 'participacion_ventas_fmt', 'venta_proyectada_fmt', 'tipo_vehiculo_comercial', 'frecuencia', 'requiere_pernocta', 'activo')
-    list_filter = ('marca', 'escenario', 'operacion', 'frecuencia', 'requiere_pernocta', 'tipo_vehiculo_comercial', 'activo')
-    search_fields = ['nombre', 'vendedor__nombre', 'marca__nombre', 'operacion__nombre']
+    list_display = ('nombre', 'marcas_display_admin', 'operacion', 'vendedor', 'participacion_ventas_fmt', 'venta_proyectada_fmt', 'tipo_vehiculo_comercial', 'frecuencia', 'requiere_pernocta', 'activo')
+    list_filter = ('asignaciones_marca__marca', 'escenario', 'operacion', 'frecuencia', 'requiere_pernocta', 'tipo_vehiculo_comercial', 'activo')
+    search_fields = ['nombre', 'vendedor__nombre', 'asignaciones_marca__marca__nombre', 'operacion__nombre']
     readonly_fields = ('participacion_ventas', 'venta_proyectada', 'fecha_creacion', 'fecha_modificacion')
     autocomplete_fields = ['vendedor', 'municipio_base_vendedor', 'operacion']
-    inlines = [ZonaMunicipioInline]
+    inlines = [ZonaMarcaInline, ZonaMunicipioInline]
     actions = ['duplicar_registros']
 
     fieldsets = (
@@ -1805,8 +1817,8 @@ class ZonaAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin):
             'fields': ('nombre', 'activo')
         }),
         ('Asignación', {
-            'fields': ('marca', 'escenario', 'operacion', 'vendedor', 'municipio_base_vendedor'),
-            'description': 'La Operación determina el centro de costos y la tasa de ICA'
+            'fields': ('escenario', 'operacion', 'vendedor', 'municipio_base_vendedor'),
+            'description': 'La Operación determina el centro de costos. Las marcas se asignan en el inline inferior.'
         }),
         ('Distribución de Ventas', {
             'fields': ('participacion_ventas', 'venta_proyectada'),
@@ -1829,6 +1841,11 @@ class ZonaAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin):
     class Media:
         js = ('admin/js/personal_condicional.js', 'admin/js/distribuir_equitativo.js')
 
+    def marcas_display_admin(self, obj):
+        """Muestra las marcas asignadas en el listado"""
+        return obj.marcas_display
+    marcas_display_admin.short_description = 'Marcas'
+
     def venta_proyectada_fmt(self, obj):
         return f"${obj.venta_proyectada:,.0f}"
     venta_proyectada_fmt.short_description = 'Venta Proy.'
@@ -1840,7 +1857,7 @@ class ZonaAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin):
     participacion_ventas_fmt.admin_order_field = 'participacion_ventas'
 
     def get_queryset(self, request):
-        return super().get_queryset(request).select_related('marca', 'vendedor', 'municipio_base_vendedor')
+        return super().get_queryset(request).select_related('vendedor', 'municipio_base_vendedor').prefetch_related('asignaciones_marca__marca')
 
 
 @admin.register(ZonaMunicipio, site=dxv_admin_site)

@@ -11,7 +11,7 @@ from django.db import transaction
 from .models import (
     Escenario, ParametrosMacro, PersonalComercial, PersonalLogistico,
     PersonalAdministrativo, Vehiculo, GastoComercial, GastoLogistico,
-    GastoAdministrativo, Zona, ZonaMunicipio, RutaLogistica, RutaMunicipio,
+    GastoAdministrativo, Zona, ZonaMunicipio, ZonaMarca, RutaLogistica, RutaMunicipio,
     ProyeccionVentasConfig, ProyeccionManual, TipologiaProyeccion,
     Marca, FactorPrestacional,
     # Modelos intermedios para asignación multi-marca
@@ -272,6 +272,13 @@ class EscenarioService:
                 override={'escenario': target},
                 sufijo_nombre=""
             )
+            # Copiar asignaciones de marca (multi-marca)
+            for asig in ZonaMarca.objects.filter(zona=zona):
+                ZonaMarca.objects.create(
+                    zona=nueva_zona,
+                    marca=asig.marca,
+                    porcentaje=asig.porcentaje
+                )
             # Copiar municipios de la zona
             for zm in ZonaMunicipio.objects.filter(zona=zona):
                 copiar_instancia(

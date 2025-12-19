@@ -25,6 +25,9 @@ def calcular_pyg_zona(escenario, zona, admin_totales: Dict = None) -> Dict:
     - Comerciales: directamente para esta zona específica
     - Logísticas: proporcionalmente según participación en ventas de la marca
 
+    NOTA: Soporta zonas multi-marca. Los costos se ponderan según el porcentaje
+    de cada marca asignado a la zona.
+
     Args:
         escenario: Escenario activo
         zona: Zona a calcular
@@ -34,44 +37,72 @@ def calcular_pyg_zona(escenario, zona, admin_totales: Dict = None) -> Dict:
     from core.models import (
         Zona, PersonalComercial, GastoComercial,
         PersonalLogistico, GastoLogistico,
-        PersonalAdministrativo, GastoAdministrativo
+        PersonalAdministrativo, GastoAdministrativo,
+        Marca
     )
 
-    marca = zona.marca
+    # Obtener distribución de marcas de la zona (multi-marca)
+    distribucion_marcas = zona.get_distribucion_marcas()
+    if not distribucion_marcas:
+        # Zona sin marca asignada, retornar ceros
+        return _pyg_zona_vacio(zona)
+
     participacion = (zona.participacion_ventas or Decimal('0')) / 100
 
-    # Contar zonas de la marca
-    zonas_marca = Zona.objects.filter(
-        escenario=escenario,
-        marca=marca,
-        activo=True
-    )
-    zonas_count = zonas_marca.count() or 1
+    # Calcular costos acumulados de todas las marcas de la zona
+    comercial = {'personal': Decimal('0'), 'gastos': Decimal('0'), 'total': Decimal('0')}
+    logistico = {'personal': Decimal('0'), 'gastos': Decimal('0'), 'total': Decimal('0')}
+    administrativo = {'personal': Decimal('0'), 'gastos': Decimal('0'), 'total': Decimal('0')}
 
-    # Calcular costos comerciales (personal + gastos fijos)
-    comercial = _distribuir_costos_a_zona(
-        escenario, zona, participacion, zonas_count,
-        PersonalComercial, GastoComercial
-    )
+    for marca_id, porcentaje_zona in distribucion_marcas.items():
+        # Obtener objeto marca
+        try:
+            marca = Marca.objects.get(marca_id=marca_id)
+        except Marca.DoesNotExist:
+            continue
 
-    # Calcular costos logísticos (personal + gastos fijos)
-    logistico = _distribuir_costos_a_zona(
-        escenario, zona, participacion, zonas_count,
-        PersonalLogistico, GastoLogistico
-    )
+        # Contar zonas de esta marca (incluyendo zonas compartidas)
+        zonas_marca = Zona.objects.filter(
+            escenario=escenario,
+            asignaciones_marca__marca=marca,
+            activo=True
+        ).distinct()
+        zonas_count = zonas_marca.count() or 1
 
-    # Calcular costos administrativos (siempre equitativo entre zonas)
-    if admin_totales:
-        # Usar los totales ya calculados por el simulador
-        factor_zona = Decimal('1') / zonas_count
-        administrativo = {
-            'personal': Decimal(str(admin_totales['personal'])) * factor_zona,
-            'gastos': Decimal(str(admin_totales['gastos'])) * factor_zona,
-            'total': (Decimal(str(admin_totales['personal'])) + Decimal(str(admin_totales['gastos']))) * factor_zona
-        }
-    else:
-        # Calcular usando el simulador (menos eficiente, pero funciona)
-        administrativo = _distribuir_admin_a_zona(escenario, zona, zonas_count)
+        # Calcular costos comerciales para esta marca (ponderados por porcentaje de zona)
+        comercial_marca = _distribuir_costos_a_zona(
+            escenario, zona, participacion, zonas_count,
+            PersonalComercial, GastoComercial, marca
+        )
+        comercial['personal'] += comercial_marca['personal'] * porcentaje_zona
+        comercial['gastos'] += comercial_marca['gastos'] * porcentaje_zona
+        comercial['total'] += comercial_marca['total'] * porcentaje_zona
+
+        # Calcular costos logísticos para esta marca
+        logistico_marca = _distribuir_costos_a_zona(
+            escenario, zona, participacion, zonas_count,
+            PersonalLogistico, GastoLogistico, marca
+        )
+        logistico['personal'] += logistico_marca['personal'] * porcentaje_zona
+        logistico['gastos'] += logistico_marca['gastos'] * porcentaje_zona
+        logistico['total'] += logistico_marca['total'] * porcentaje_zona
+
+        # Calcular costos administrativos para esta marca
+        if admin_totales:
+            # Usar los totales ya calculados por el simulador
+            factor_zona = Decimal('1') / zonas_count
+            admin_marca = {
+                'personal': Decimal(str(admin_totales['personal'])) * factor_zona,
+                'gastos': Decimal(str(admin_totales['gastos'])) * factor_zona,
+                'total': (Decimal(str(admin_totales['personal'])) + Decimal(str(admin_totales['gastos']))) * factor_zona
+            }
+        else:
+            # Calcular usando el simulador
+            admin_marca = _distribuir_admin_a_zona(escenario, zona, zonas_count, marca)
+
+        administrativo['personal'] += admin_marca['personal'] * porcentaje_zona
+        administrativo['gastos'] += admin_marca['gastos'] * porcentaje_zona
+        administrativo['total'] += admin_marca['total'] * porcentaje_zona
 
     # Calcular lejanías dinámicas usando CalculadoraLejanias
     lejanias = _calcular_lejanias_zona(escenario, zona, participacion)
@@ -110,6 +141,34 @@ def calcular_pyg_zona(escenario, zona, admin_totales: Dict = None) -> Dict:
         'administrativo': administrativo,
         'total_mensual': total_mensual,
         'total_anual': total_mensual * 12
+    }
+
+
+def _pyg_zona_vacio(zona) -> Dict:
+    """Retorna un P&G vacío para una zona sin marca asignada."""
+    operacion_info = None
+    tasa_ica = Decimal('0')
+    if zona.operacion:
+        operacion_info = {
+            'id': zona.operacion.id,
+            'nombre': zona.operacion.nombre,
+            'codigo': zona.operacion.codigo,
+        }
+        tasa_ica = (zona.operacion.tasa_ica or Decimal('0')) / Decimal('100')
+
+    return {
+        'zona': {
+            'id': zona.id,
+            'nombre': zona.nombre,
+            'participacion_ventas': float(zona.participacion_ventas or 0),
+            'operacion': operacion_info,
+            'tasa_ica': float(tasa_ica),
+        },
+        'comercial': {'personal': Decimal('0'), 'gastos': Decimal('0'), 'lejanias': Decimal('0'), 'total': Decimal('0')},
+        'logistico': {'personal': Decimal('0'), 'gastos': Decimal('0'), 'lejanias': Decimal('0'), 'total': Decimal('0')},
+        'administrativo': {'personal': Decimal('0'), 'gastos': Decimal('0'), 'total': Decimal('0')},
+        'total_mensual': Decimal('0'),
+        'total_anual': Decimal('0')
     }
 
 
@@ -194,14 +253,16 @@ def _calcular_lejanias_zona(escenario, zona, participacion: Decimal) -> Dict:
     - Flete base de rutas (terceros)
     - Combustible, peajes, pernocta
     - Costos fijos de vehículos (monitoreo, seguros, etc.) - calculados aparte
+
+    NOTA: Soporta zonas multi-marca - los costos logísticos se ponderan por el
+    porcentaje de cada marca asignado a la zona.
     """
-    from core.models import Vehiculo, GastoComercial
+    from core.models import Vehiculo, GastoComercial, Marca
 
     try:
         calc = CalculadoraLejanias(escenario)
-        marca = zona.marca
 
-        # Lejanía comercial: directa para esta zona
+        # Lejanía comercial: directa para esta zona (no depende de la marca)
         lejania_comercial_zona = calc.calcular_lejania_comercial_zona(zona)
         comercial_total = lejania_comercial_zona['total_mensual']
 
@@ -214,31 +275,44 @@ def _calcular_lejanias_zona(escenario, zona, participacion: Decimal) -> Dict:
         for comite_gasto in comite_gastos:
             comercial_total += Decimal(str(comite_gasto.valor_mensual))
 
-        # Lejanía logística: calcular para toda la marca y prorratear
-        logistica_marca = calc.calcular_lejanias_logisticas_marca(marca)
+        # Lejanía logística: calcular para cada marca de la zona y ponderar
+        distribucion_marcas = zona.get_distribucion_marcas()
+        logistica_total = Decimal('0')
 
-        # El cálculo de lejanías incluye flete_base pero NO los costos fijos de vehículos
-        # (monitoreo, seguros mercancía, etc.) que están en la tabla Vehiculo.
-        # Necesitamos agregar esos costos para que coincida con P&G Detallado.
-        costos_fijos_vehiculos = Decimal('0')
-        vehiculos = Vehiculo.objects.filter(escenario=escenario, marca=marca)
-        for v in vehiculos:
-            # Costos que aplican a todos los esquemas (incluyendo terceros)
-            costos_fijos_vehiculos += (v.costo_monitoreo_mensual + v.costo_seguro_mercancia_mensual) * v.cantidad
-            # Costos adicionales para renting y tradicional
-            if v.esquema in ['renting', 'tradicional']:
-                costos_fijos_vehiculos += (v.costo_lavado_mensual + v.costo_parqueadero_mensual) * v.cantidad
-                if v.esquema == 'renting':
-                    costos_fijos_vehiculos += v.canon_renting * v.cantidad
-                elif v.esquema == 'tradicional':
-                    if v.vida_util_anios > 0:
-                        depreciacion = (v.costo_compra - v.valor_residual) / (v.vida_util_anios * 12)
-                        costos_fijos_vehiculos += depreciacion * v.cantidad
-                    costos_fijos_vehiculos += (v.costo_mantenimiento_mensual + v.costo_seguro_mensual) * v.cantidad
+        for marca_id, porcentaje_zona in distribucion_marcas.items():
+            try:
+                marca = Marca.objects.get(marca_id=marca_id)
+            except Marca.DoesNotExist:
+                continue
 
-        # Total logístico = lejanías de rutas + costos fijos de vehículos
-        logistica_rutas = logistica_marca['total_mensual']
-        logistica_total = (logistica_rutas + costos_fijos_vehiculos) * participacion
+            # Calcular lejanías logísticas para esta marca
+            logistica_marca = calc.calcular_lejanias_logisticas_marca(marca)
+
+            # El cálculo de lejanías incluye flete_base pero NO los costos fijos de vehículos
+            # (monitoreo, seguros mercancía, etc.) que están en la tabla Vehiculo.
+            # Necesitamos agregar esos costos para que coincida con P&G Detallado.
+            costos_fijos_vehiculos = Decimal('0')
+            vehiculos = Vehiculo.objects.filter(escenario=escenario, marca=marca)
+            for v in vehiculos:
+                # Costos que aplican a todos los esquemas (incluyendo terceros)
+                costos_fijos_vehiculos += (v.costo_monitoreo_mensual + v.costo_seguro_mercancia_mensual) * v.cantidad
+                # Costos adicionales para renting y tradicional
+                if v.esquema in ['renting', 'tradicional']:
+                    costos_fijos_vehiculos += (v.costo_lavado_mensual + v.costo_parqueadero_mensual) * v.cantidad
+                    if v.esquema == 'renting':
+                        costos_fijos_vehiculos += v.canon_renting * v.cantidad
+                    elif v.esquema == 'tradicional':
+                        if v.vida_util_anios > 0:
+                            depreciacion = (v.costo_compra - v.valor_residual) / (v.vida_util_anios * 12)
+                            costos_fijos_vehiculos += depreciacion * v.cantidad
+                        costos_fijos_vehiculos += (v.costo_mantenimiento_mensual + v.costo_seguro_mensual) * v.cantidad
+
+            # Total logístico para esta marca = lejanías de rutas + costos fijos de vehículos
+            logistica_rutas = logistica_marca['total_mensual']
+            logistica_marca_total = (logistica_rutas + costos_fijos_vehiculos) * participacion
+
+            # Ponderar por el porcentaje de esta marca en la zona
+            logistica_total += logistica_marca_total * porcentaje_zona
 
         return {
             'comercial': comercial_total,
@@ -256,7 +330,7 @@ def _calcular_lejanias_zona(escenario, zona, participacion: Decimal) -> Dict:
 
 def _distribuir_costos_a_zona(
     escenario, zona, participacion: Decimal, zonas_count: int,
-    modelo_personal, modelo_gasto
+    modelo_personal, modelo_gasto, marca
 ) -> Dict:
     """
     Distribuye costos de personal y gastos a una zona según tipo_asignacion_geo.
@@ -273,10 +347,12 @@ def _distribuir_costos_a_zona(
 
     NOTA: Usa el sistema multi-marca con through table (asignaciones_marca)
     para distribuir costos según porcentaje asignado a cada marca.
+
+    Args:
+        marca: Marca específica para la cual calcular costos
     """
     from core.models import GastoLogistico, GastoComercial
 
-    marca = zona.marca
     personal_total = Decimal('0')
     gastos_total = Decimal('0')
 
@@ -346,17 +422,18 @@ def _distribuir_costos_a_zona(
     }
 
 
-def _distribuir_admin_a_zona(escenario, zona, zonas_count: int) -> Dict:
+def _distribuir_admin_a_zona(escenario, zona, zonas_count: int, marca) -> Dict:
     """
     Distribuye costos administrativos a una zona (siempre equitativo entre zonas).
 
     Usa el SIMULADOR para obtener los valores exactos de admin (igual que P&G Detallado),
     luego divide equitativamente entre las zonas de la marca.
+
+    Args:
+        marca: Marca específica para la cual calcular costos administrativos
     """
     from core.simulator import Simulator
     from utils.loaders_db import DataLoaderDB
-
-    marca = zona.marca
 
     # Usar el simulador para obtener los valores exactos de admin
     # Esto garantiza que coincida con P&G Detallado
@@ -427,20 +504,18 @@ def calcular_pyg_todas_zonas(escenario, marca, operacion_ids: Optional[List[int]
     from core.simulator import Simulator
     from utils.loaders_db import DataLoaderDB
 
-    # Filtro base de zonas
-    zonas_filter = {
-        'escenario': escenario,
-        'marca': marca,
-        'activo': True
-    }
-
-    zonas = Zona.objects.filter(**zonas_filter)
+    # Filtro base de zonas - usar asignaciones_marca para multi-marca
+    zonas = Zona.objects.filter(
+        escenario=escenario,
+        asignaciones_marca__marca=marca,
+        activo=True
+    ).distinct()
 
     # Filtrar por operaciones si se especifican
     if operacion_ids:
         zonas = zonas.filter(operacion_id__in=operacion_ids)
 
-    zonas = zonas.order_by('nombre')
+    zonas = zonas.prefetch_related('asignaciones_marca__marca').order_by('nombre')
 
     zonas_list = list(zonas)
     zonas_count = len(zonas_list) or 1
@@ -663,10 +738,11 @@ def calcular_pyg_todos_municipios(escenario, zona) -> List[Dict]:
     - Administrativo: Se prorratea por participación
 
     Esto hace que municipios más lejanos tengan mayor costo y menor margen.
+
+    NOTA: Soporta zonas multi-marca - usa calcular_pyg_zona() que agrega costos
+    de todas las marcas asignadas a la zona.
     """
     from core.models import ZonaMunicipio
-
-    marca = zona.marca
 
     # Obtener municipios de la zona con su participación ya calculada
     zona_municipios = ZonaMunicipio.objects.filter(
@@ -683,11 +759,10 @@ def calcular_pyg_todos_municipios(escenario, zona) -> List[Dict]:
         pesos_relativos[zm.municipio.id] = (zm.participacion_ventas or Decimal('0')) / 100
         ventas_proyectadas[zm.municipio.id] = zm.venta_proyectada or Decimal('0')
 
-    # Obtener P&G de la zona usando la MISMA función que la vista de zonas
-    pyg_todas_zonas = calcular_pyg_todas_zonas(escenario, marca)
-    pyg_zona = next((z for z in pyg_todas_zonas if z['zona']['id'] == zona.id), None)
+    # Obtener P&G de la zona directamente (soporta multi-marca)
+    pyg_zona = calcular_pyg_zona(escenario, zona)
 
-    if not pyg_zona:
+    if not pyg_zona or pyg_zona['total_mensual'] == Decimal('0'):
         return []
 
     # =========================================================================

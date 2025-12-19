@@ -2566,10 +2566,14 @@ class Zona(models.Model):
         related_name='zonas_asignadas',
         verbose_name="Vendedor Asignado"
     )
+    # Campo legacy - se mantiene para retrocompatibilidad durante migración
     marca = models.ForeignKey(
         'Marca',
-        on_delete=models.CASCADE,
-        verbose_name="Marca"
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Marca (Legacy)",
+        help_text="DEPRECADO - Usar asignaciones_marca en su lugar"
     )
     escenario = models.ForeignKey(
         'Escenario',
@@ -2660,11 +2664,12 @@ class Zona(models.Model):
         db_table = 'dxv_zona'
         verbose_name = "Zona Comercial"
         verbose_name_plural = "Zonas Comerciales"
-        ordering = ['marca', 'nombre']
-        unique_together = [['marca', 'escenario', 'nombre']]
+        ordering = ['nombre']
+        # Nota: marca ya no está en unique_together porque ahora es multi-marca
+        unique_together = [['escenario', 'nombre']]
 
     def __str__(self):
-        return f"{self.nombre} - {self.marca}"
+        return f"{self.nombre} ({self.marcas_display})"
 
     def obtener_marca_operacion(self):
         """Obtiene el MarcaOperacion correspondiente a esta zona."""
@@ -2753,6 +2758,48 @@ class Zona(models.Model):
             return Decimal('2.00')
         else:  # MENSUAL
             return Decimal('1.00')
+
+    # ===========================================
+    # MÉTODOS PARA SISTEMA MULTI-MARCA
+    # ===========================================
+
+    def get_distribucion_marcas(self):
+        """
+        Retorna la distribución de esta zona entre marcas.
+
+        Returns:
+            dict {marca_id: porcentaje_decimal (0-1)}
+        """
+        # Primero intentar con nuevo modelo (asignaciones_marca)
+        asignaciones = self.asignaciones_marca.select_related('marca').all()
+        if asignaciones.exists():
+            return {
+                asig.marca.marca_id: asig.porcentaje / Decimal('100')
+                for asig in asignaciones
+            }
+        # Fallback: usar campo antiguo marca (retrocompatibilidad)
+        if self.marca_id:
+            return {self.marca.marca_id: Decimal('1')}
+        return {}
+
+    @property
+    def es_compartido(self):
+        """True si la zona está asignada a múltiples marcas."""
+        asignaciones = self.asignaciones_marca.all()
+        if asignaciones.exists():
+            return asignaciones.count() > 1
+        return False
+
+    @property
+    def marcas_display(self):
+        """Retorna string con nombres de marcas para mostrar en admin."""
+        asignaciones = self.asignaciones_marca.select_related('marca').all()
+        if asignaciones.exists():
+            return ", ".join([f"{a.marca.nombre} ({a.porcentaje}%)" for a in asignaciones])
+        # Fallback: usar campo antiguo
+        if self.marca:
+            return self.marca.nombre
+        return "-"
 
 
 class ZonaMunicipio(models.Model):
@@ -3583,6 +3630,35 @@ class GastoAdministrativoMarca(models.Model):
         unique_together = [['gasto', 'marca']]
         verbose_name = "Asignación de Marca (Gasto Administrativo)"
         verbose_name_plural = "Asignaciones de Marca (Gasto Administrativo)"
+
+    def __str__(self):
+        return f"{self.marca.nombre}: {self.porcentaje}%"
+
+
+class ZonaMarca(models.Model):
+    """Relación entre Zona y Marca con porcentaje de asignación"""
+    zona = models.ForeignKey(
+        'Zona',
+        on_delete=models.CASCADE,
+        related_name='asignaciones_marca'
+    )
+    marca = models.ForeignKey(
+        'Marca',
+        on_delete=models.CASCADE,
+        related_name='zona_asignaciones'
+    )
+    porcentaje = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        help_text="Porcentaje asignado a esta marca (0-100). Debe sumar 100% entre todas las marcas."
+    )
+
+    class Meta:
+        db_table = 'dxv_zona_marca'
+        unique_together = [['zona', 'marca']]
+        verbose_name = "Asignación de Marca (Zona)"
+        verbose_name_plural = "Asignaciones de Marca (Zona)"
 
     def __str__(self):
         return f"{self.marca.nombre}: {self.porcentaje}%"

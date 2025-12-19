@@ -14,7 +14,8 @@ from .models import (
     ConfiguracionLejania, MatrizDesplazamiento,
     # Modelos through para asignación multi-marca
     PersonalComercialMarca, PersonalLogisticoMarca, PersonalAdministrativoMarca,
-    GastoComercialMarca, GastoLogisticoMarca, GastoAdministrativoMarca
+    GastoComercialMarca, GastoLogisticoMarca, GastoAdministrativoMarca,
+    ZonaMarca
 )
 
 logger = logging.getLogger(__name__)
@@ -383,6 +384,9 @@ def calculate_lejanias_comerciales(escenario):
     """
     Calcula y persiste los gastos de lejanías comerciales por zona.
 
+    MULTI-MARCA: Si la zona tiene múltiples marcas, crea UN gasto
+    con asignaciones_marca proporcionales.
+
     Crea registros en GastoComercial para:
     - Combustible (tipo='transporte_vendedores')
     - Viáticos/Pernocta (tipo='viaticos')
@@ -402,11 +406,12 @@ def calculate_lejanias_comerciales(escenario):
     zonas = Zona.objects.filter(
         escenario=escenario,
         activo=True
-    ).select_related('marca', 'municipio_base_vendedor')
+    ).select_related('municipio_base_vendedor').prefetch_related('asignaciones_marca__marca')
 
     for zona in zonas:
-        marca = zona.marca
-        if not marca:
+        # Obtener distribución de marcas de la zona
+        distribucion = zona.get_distribucion_marcas()
+        if not distribucion:
             continue
 
         # Calcular lejanías para esta zona
@@ -416,71 +421,43 @@ def calculate_lejanias_comerciales(escenario):
         costos_adicionales = resultado['costos_adicionales_mensual']
         pernocta = resultado['pernocta_mensual']
 
-        # Guardar combustible como gasto comercial
-        if combustible > 0:
-            GastoComercial.objects.update_or_create(
-                escenario=escenario,
-                tipo='transporte_vendedores',
-                marca=marca,
-                nombre=f'Combustible Lejanía - {zona.nombre}',
-                defaults={
-                    'valor_mensual': combustible,
-                    'asignacion': 'individual',
-                    'tipo_asignacion_geo': 'directo',
-                    'zona': zona,
-                }
-            )
-        else:
-            GastoComercial.objects.filter(
-                escenario=escenario,
-                tipo='transporte_vendedores',
-                marca=marca,
-                nombre=f'Combustible Lejanía - {zona.nombre}'
-            ).delete()
+        # Helper para crear/actualizar gasto con multi-marca
+        def _crear_gasto_multimarca(tipo, nombre, valor):
+            if valor > 0:
+                # Buscar gasto existente por nombre y zona
+                gasto, created = GastoComercial.objects.update_or_create(
+                    escenario=escenario,
+                    tipo=tipo,
+                    nombre=nombre,
+                    zona=zona,
+                    defaults={
+                        'valor_mensual': valor,
+                        'marca': None,  # No usar FK legacy
+                        'asignacion': 'compartido' if zona.es_compartido else 'individual',
+                        'tipo_asignacion_geo': 'directo',
+                    }
+                )
+                # Actualizar asignaciones de marca
+                GastoComercialMarca.objects.filter(gasto=gasto).delete()
+                for marca_id, porcentaje_decimal in distribucion.items():
+                    marca_obj = Marca.objects.get(marca_id=marca_id)
+                    GastoComercialMarca.objects.create(
+                        gasto=gasto,
+                        marca=marca_obj,
+                        porcentaje=porcentaje_decimal * Decimal('100')
+                    )
+            else:
+                # Eliminar gasto si valor es 0
+                GastoComercial.objects.filter(
+                    escenario=escenario,
+                    tipo=tipo,
+                    nombre=nombre,
+                    zona=zona
+                ).delete()
 
-        # Guardar costos adicionales (mantenimiento, depreciación, llantas) como gasto comercial
-        if costos_adicionales > 0:
-            GastoComercial.objects.update_or_create(
-                escenario=escenario,
-                tipo='transporte_vendedores',
-                marca=marca,
-                nombre=f'Mant/Deprec/Llantas - {zona.nombre}',
-                defaults={
-                    'valor_mensual': costos_adicionales,
-                    'asignacion': 'individual',
-                    'tipo_asignacion_geo': 'directo',
-                    'zona': zona,
-                }
-            )
-        else:
-            GastoComercial.objects.filter(
-                escenario=escenario,
-                tipo='transporte_vendedores',
-                marca=marca,
-                nombre=f'Mant/Deprec/Llantas - {zona.nombre}'
-            ).delete()
-
-        # Guardar viáticos/pernocta como gasto comercial
-        if pernocta > 0:
-            GastoComercial.objects.update_or_create(
-                escenario=escenario,
-                tipo='viaticos',
-                marca=marca,
-                nombre=f'Viáticos Pernocta - {zona.nombre}',
-                defaults={
-                    'valor_mensual': pernocta,
-                    'asignacion': 'individual',
-                    'tipo_asignacion_geo': 'directo',
-                    'zona': zona,
-                }
-            )
-        else:
-            GastoComercial.objects.filter(
-                escenario=escenario,
-                tipo='viaticos',
-                marca=marca,
-                nombre=f'Viáticos Pernocta - {zona.nombre}'
-            ).delete()
+        _crear_gasto_multimarca('transporte_vendedores', f'Combustible Lejanía - {zona.nombre}', combustible)
+        _crear_gasto_multimarca('transporte_vendedores', f'Mant/Deprec/Llantas - {zona.nombre}', costos_adicionales)
+        _crear_gasto_multimarca('viaticos', f'Viáticos Pernocta - {zona.nombre}', pernocta)
 
     # Calcular costos del comité comercial (si está configurado)
     _calcular_comite_comercial(escenario, config)
@@ -575,6 +552,9 @@ def _calcular_comite_comercial(escenario, config):
     """
     Calcula y persiste los costos de desplazamiento al comité comercial para cada zona/vendedor.
 
+    MULTI-MARCA: Si la zona tiene múltiples marcas, crea UN gasto
+    con asignaciones_marca proporcionales.
+
     El comité comercial es una reunión periódica donde todos los vendedores se desplazan
     a un municipio fijo. Aplica el mismo umbral de lejanía comercial.
     """
@@ -582,7 +562,7 @@ def _calcular_comite_comercial(escenario, config):
         # Eliminar gastos de comité previos si ya no aplica
         GastoComercial.objects.filter(
             escenario=escenario,
-            nombre__startswith='Comité Comercial -'
+            nombre__startswith='Comité Comercial'
         ).delete()
         return
 
@@ -594,13 +574,14 @@ def _calcular_comite_comercial(escenario, config):
     zonas = Zona.objects.filter(
         escenario=escenario,
         activo=True
-    ).select_related('marca', 'municipio_base_vendedor', 'vendedor')
+    ).select_related('municipio_base_vendedor', 'vendedor').prefetch_related('asignaciones_marca__marca')
 
     zonas_procesadas = set()
 
     for zona in zonas:
-        marca = zona.marca
-        if not marca:
+        # Obtener distribución de marcas de la zona
+        distribucion = zona.get_distribucion_marcas()
+        if not distribucion:
             continue
 
         zonas_procesadas.add(zona.id)
@@ -608,10 +589,11 @@ def _calcular_comite_comercial(escenario, config):
         # Base del vendedor
         base_vendedor = zona.municipio_base_vendedor or config.municipio_bodega
         if not base_vendedor:
-            # Eliminar gasto previo si existe
+            # Eliminar gastos previos si existen
             GastoComercial.objects.filter(
                 escenario=escenario,
-                nombre=f'Comité Comercial - {zona.nombre}'
+                nombre__startswith=f'Comité Comercial',
+                zona=zona
             ).delete()
             continue
 
@@ -650,47 +632,39 @@ def _calcular_comite_comercial(escenario, config):
         # Costos adicionales mensual (mantenimiento, depreciación, llantas)
         costos_adicionales_mes = distancia_ida_vuelta * costo_adicional_km * viajes_mes
 
-        # Guardar como DOS registros separados (igual que las zonas comerciales)
-        # Registro 1: Combustible
-        GastoComercial.objects.update_or_create(
-            escenario=escenario,
-            tipo='transporte_vendedores',
-            marca=marca,
-            nombre=f'Comité Comercial (Combustible) - {zona.nombre}',
-            defaults={
-                'valor_mensual': combustible_mes,
-                'asignacion': 'individual',
-                'tipo_asignacion_geo': 'directo',
-                'zona': zona,
-            }
-        )
+        # Helper para crear/actualizar gasto con multi-marca
+        def _crear_gasto_comite_multimarca(nombre, valor):
+            gasto, created = GastoComercial.objects.update_or_create(
+                escenario=escenario,
+                tipo='transporte_vendedores',
+                nombre=nombre,
+                zona=zona,
+                defaults={
+                    'valor_mensual': valor,
+                    'marca': None,  # No usar FK legacy
+                    'asignacion': 'compartido' if zona.es_compartido else 'individual',
+                    'tipo_asignacion_geo': 'directo',
+                }
+            )
+            # Actualizar asignaciones de marca
+            GastoComercialMarca.objects.filter(gasto=gasto).delete()
+            for marca_id, porcentaje_decimal in distribucion.items():
+                marca_obj = Marca.objects.get(marca_id=marca_id)
+                GastoComercialMarca.objects.create(
+                    gasto=gasto,
+                    marca=marca_obj,
+                    porcentaje=porcentaje_decimal * Decimal('100')
+                )
 
-        # Registro 2: Costos adicionales (Mant/Dep/Llan)
-        GastoComercial.objects.update_or_create(
-            escenario=escenario,
-            tipo='transporte_vendedores',
-            marca=marca,
-            nombre=f'Comité Comercial (Mant/Dep/Llan) - {zona.nombre}',
-            defaults={
-                'valor_mensual': costos_adicionales_mes,
-                'asignacion': 'individual',
-                'tipo_asignacion_geo': 'directo',
-                'zona': zona,
-            }
-        )
+        # Guardar como DOS registros separados (igual que las zonas comerciales)
+        _crear_gasto_comite_multimarca(f'Comité Comercial (Combustible) - {zona.nombre}', combustible_mes)
+        _crear_gasto_comite_multimarca(f'Comité Comercial (Mant/Dep/Llan) - {zona.nombre}', costos_adicionales_mes)
 
     # Limpiar gastos de comité de zonas que ya no existen o no están activas
-    # Incluye ambos tipos de registro (Combustible y Mant/Dep/Llan)
     GastoComercial.objects.filter(
         escenario=escenario,
         nombre__startswith='Comité Comercial'
     ).exclude(zona_id__in=zonas_procesadas).delete()
-
-    # Limpiar registros con nomenclatura antigua (sin paréntesis)
-    GastoComercial.objects.filter(
-        escenario=escenario,
-        nombre__regex=r'^Comité Comercial - [^(]'
-    ).delete()
 
 
 # =============================================================================
