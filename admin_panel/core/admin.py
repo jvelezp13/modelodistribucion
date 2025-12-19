@@ -514,6 +514,7 @@ class PersonalComercialForm(forms.ModelForm):
     class Meta:
         model = PersonalComercial
         fields = '__all__'
+        exclude = []  # Campos eliminados ya no existen en el modelo
         widgets = {
             'auxilios_no_prestacionales': AuxiliosNoPrestacionalesWidget(),
         }
@@ -1823,8 +1824,8 @@ class ZonaMunicipioInline(admin.TabularInline):
 class ZonaAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin):
     """Admin para Zonas Comerciales (vendedores)"""
     list_display = ('nombre', 'marcas_display_admin', 'operacion', 'vendedor', 'participacion_ventas_fmt', 'venta_proyectada_fmt', 'tipo_vehiculo_comercial', 'frecuencia', 'requiere_pernocta', 'activo')
-    list_filter = ('asignaciones_marca__marca', 'escenario', 'operacion', 'frecuencia', 'requiere_pernocta', 'tipo_vehiculo_comercial', 'activo')
-    search_fields = ['nombre', 'vendedor__nombre', 'asignaciones_marca__marca__nombre', 'operacion__nombre']
+    list_filter = ('escenario', 'vendedor__operacion', 'frecuencia', 'requiere_pernocta', 'tipo_vehiculo_comercial', 'activo')
+    search_fields = ['nombre', 'vendedor__nombre', 'vendedor__operacion__nombre']
     readonly_fields = ('operacion_display', 'marcas_heredadas_display', 'participacion_ventas', 'venta_proyectada', 'fecha_creacion', 'fecha_modificacion')
     autocomplete_fields = ['vendedor', 'municipio_base_vendedor']
     inlines = [ZonaMunicipioInline]  # ZonaMarcaInline eliminado - marcas se heredan del vendedor
