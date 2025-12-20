@@ -534,25 +534,24 @@ class PersonalComercialAdmin(GlobalFilterMixin, DuplicarMixin, admin.ModelAdmin)
         ('Información Básica', {
             'fields': ('escenario', 'nombre', 'tipo', 'cantidad', 'salario_base', 'perfil_prestacional')
         }),
+        ('Asignación de Operación', {
+            'fields': (
+                'tipo_asignacion_operacion',
+                'operacion',
+                'criterio_prorrateo_operacion',
+            ),
+            'description': '''
+                <b>Tipo:</b> Individual = 100% a una operación | Compartido = se distribuye entre operaciones<br>
+                <b>Operación:</b> Centro de costos al que pertenece este vendedor (solo si tipo es Individual)
+            '''
+        }),
         ('Proyección Anual', {
             'fields': ('indice_incremento',),
             'description': 'Índice usado para proyectar este costo a años futuros.'
         }),
-        ('Asignación de Operación', {
-            'fields': (
-                'operacion',
-                'tipo_asignacion_operacion',
-                'criterio_prorrateo_operacion',
-            ),
-            'description': '''
-                <b>Operación:</b> Define el centro de costos al que pertenece este vendedor.<br>
-                <b>Tipo:</b> Individual = 100% a una operación | Compartido = se distribuye entre operaciones
-            '''
-        }),
         ('Zonas Asignadas', {
             'fields': ('zonas_asignadas_display',),
-            'description': '🔒 Solo lectura - Las zonas se asignan desde el módulo de Zonas Comerciales, no aquí.',
-            'classes': ('collapse',)
+            'description': '🔒 Solo lectura - Las zonas se asignan desde el módulo de Zonas Comerciales, no aquí.'
         }),
         ('Auxilios No Prestacionales', {
             'fields': ('auxilios_no_prestacionales',),
