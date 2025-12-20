@@ -18,11 +18,9 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-dev-key-change
 
 # DEBUG: Modo de depuración
 # IMPORTANTE: DEBE ser False en producción para evitar exposición de información sensible
-# TEMPORAL: Habilitado para diagnosticar error 500 en PersonalComercial
-DEBUG = True
-# DEBUG = False
-# if os.environ.get('DJANGO_DEBUG', '').lower() in ('true', '1', 'yes'):
-#     DEBUG = True
+DEBUG = False
+if os.environ.get('DJANGO_DEBUG', '').lower() in ('true', '1', 'yes'):
+    DEBUG = True
 
 # 🔒 VALIDACIÓN DE SEGURIDAD
 INSECURE_KEY_DETECTED = SECRET_KEY == 'django-insecure-dev-key-change-in-production'
