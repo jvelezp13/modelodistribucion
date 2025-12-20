@@ -323,7 +323,15 @@ class PersonalComercial(models.Model):
         null=True,
         blank=True
     )
-    marca = models.ForeignKey(Marca, on_delete=models.CASCADE, related_name='personal_comercial')
+    # Campo legacy - ahora se usa PersonalComercialMarca (sistema multi-marca)
+    marca = models.ForeignKey(
+        Marca,
+        on_delete=models.CASCADE,
+        related_name='personal_comercial',
+        null=True,
+        blank=True,
+        help_text="DEPRECADO: Usar asignaciones multi-marca en su lugar"
+    )
     nombre = models.CharField(max_length=200, verbose_name="Nombre/Descripción", help_text="Ej: 'Vendedor Zona Norte', 'Supervisor Equipo A'", default='', blank=True)
     tipo = models.CharField(max_length=50, choices=TIPO_CHOICES, verbose_name="Tipo de Personal")
     cantidad = models.IntegerField(validators=[MinValueValidator(1)], verbose_name="Cantidad")
