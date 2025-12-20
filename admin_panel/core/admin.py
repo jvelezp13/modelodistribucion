@@ -514,7 +514,6 @@ class PersonalComercialForm(forms.ModelForm):
     class Meta:
         model = PersonalComercial
         fields = '__all__'
-        exclude = []  # Campos eliminados ya no existen en el modelo
         widgets = {
             'auxilios_no_prestacionales': AuxiliosNoPrestacionalesWidget(),
         }
