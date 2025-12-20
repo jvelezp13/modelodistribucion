@@ -80,10 +80,15 @@ def calculate_hr_expenses(escenario):
                 grupos_no_directos = qs.exclude(tipo_asignacion_geo='directo').order_by().values(
                     *campos_base
                 ).distinct()
+                grupos.extend(list(grupos_no_directos))
+            elif campos_base:
+                # Si no tiene tipo_asignacion_geo pero sí tiene operación, agrupar por operación
+                grupos_no_directos = qs.order_by().values(*campos_base).distinct()
+                grupos.extend(list(grupos_no_directos))
             else:
-                # Si no tiene tipo_asignacion_geo, agrupar solo por campos de operación
-                grupos_no_directos = qs.order_by().values(*campos_base).distinct() if campos_base else [{}]
-            grupos.extend(list(grupos_no_directos))
+                # Si no tiene ningún campo de agrupación (ej: PersonalComercial sin operacion asignada),
+                # crear un solo grupo con todos los registros
+                grupos = [{}]
 
             # Limpiar gastos de provisiones existentes para este escenario y modelo
             model_gasto.objects.filter(
