@@ -56,26 +56,33 @@ def calculate_hr_expenses(escenario):
             campos_modelo = [f.name for f in model_personal._meta.get_fields()]
             tiene_zona = 'zona' in campos_modelo
             tiene_operacion = 'operacion' in campos_modelo
+            tiene_tipo_asignacion_geo = 'tipo_asignacion_geo' in campos_modelo
 
             # Campos para agrupar (SIN marca - usaremos through table)
-            campos_base = ['tipo_asignacion_geo']
+            campos_base = []
+            if tiene_tipo_asignacion_geo:
+                campos_base.append('tipo_asignacion_geo')
             if tiene_operacion:
                 campos_base.extend(['tipo_asignacion_operacion', 'operacion', 'criterio_prorrateo_operacion'])
 
             grupos = []
 
             # Fase 1: Personal con tipo_asignacion_geo = 'directo' (agrupa por zona)
-            if tiene_zona:
+            if tiene_zona and tiene_tipo_asignacion_geo:
                 campos_directos = campos_base + ['zona']
                 grupos_directos = qs.filter(tipo_asignacion_geo='directo').order_by().values(
                     *campos_directos
                 ).distinct()
                 grupos.extend(list(grupos_directos))
 
-            # Fase 2: Personal con tipo_asignacion_geo != 'directo' o NULL
-            grupos_no_directos = qs.exclude(tipo_asignacion_geo='directo').order_by().values(
-                *campos_base
-            ).distinct()
+            # Fase 2: Personal con tipo_asignacion_geo != 'directo' o NULL, o sin campo tipo_asignacion_geo
+            if tiene_tipo_asignacion_geo:
+                grupos_no_directos = qs.exclude(tipo_asignacion_geo='directo').order_by().values(
+                    *campos_base
+                ).distinct()
+            else:
+                # Si no tiene tipo_asignacion_geo, agrupar solo por campos de operación
+                grupos_no_directos = qs.order_by().values(*campos_base).distinct() if campos_base else [{}]
             grupos.extend(list(grupos_no_directos))
 
             # Limpiar gastos de provisiones existentes para este escenario y modelo
@@ -89,7 +96,7 @@ def calculate_hr_expenses(escenario):
 
         for grupo in grupos:
             try:
-                tipo_asig_geo_original = grupo['tipo_asignacion_geo']
+                tipo_asig_geo_original = grupo.get('tipo_asignacion_geo') if tiene_tipo_asignacion_geo else None
                 zona_id = grupo.get('zona', None)
 
                 # Campos de operación (heredados del personal)
@@ -104,11 +111,12 @@ def calculate_hr_expenses(escenario):
                 if tiene_zona and 'zona' in grupo:
                     filtro['zona_id'] = zona_id
 
-                # Filtro por tipo_asignacion_geo
-                if tipo_asig_geo_original is not None:
-                    filtro['tipo_asignacion_geo'] = tipo_asig_geo_original
-                else:
-                    filtro['tipo_asignacion_geo__isnull'] = True
+                # Filtro por tipo_asignacion_geo (solo si el modelo tiene este campo)
+                if tiene_tipo_asignacion_geo:
+                    if tipo_asig_geo_original is not None:
+                        filtro['tipo_asignacion_geo'] = tipo_asig_geo_original
+                    else:
+                        filtro['tipo_asignacion_geo__isnull'] = True
 
                 # Filtro por operación (si el modelo lo soporta)
                 if tiene_operacion:
@@ -192,6 +200,8 @@ def calculate_hr_expenses(escenario):
                     datos_gasto['tipo_asignacion_operacion'] = tipo_asig_op or 'individual'
                 if 'criterio_prorrateo_operacion' in campos_gasto:
                     datos_gasto['criterio_prorrateo_operacion'] = criterio_prorrateo_op
+                if 'tipo_asignacion_geo' in campos_gasto:
+                    datos_gasto['tipo_asignacion_geo'] = tipo_asig_geo
                 return datos_gasto
 
             # Helper para crear gasto con asignaciones multi-marca
@@ -206,7 +216,6 @@ def calculate_hr_expenses(escenario):
                     'nombre': nombre,
                     'valor_mensual': valor,
                     'asignacion': 'compartido',  # Siempre compartido con multi-marca
-                    'tipo_asignacion_geo': tipo_asig_geo,
                     'indice_incremento': 'ipc',
                 })
                 gasto = model_gasto.objects.create(**datos_gasto)
